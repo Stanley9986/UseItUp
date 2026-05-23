@@ -1,98 +1,432 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { Button, Card, ExpirationText, palette, Screen, SectionTitle } from '@/components/useitup/ui';
+import { expiringItems, pantryItems, recipes } from '@/data/mock-useitup';
+
+const foodImages: Record<string, string> = {
+  steak: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=240&q=80',
+  spinach: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=240&q=80',
+  milk: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=240&q=80',
+};
+
+const recipeImages: Record<string, string> = {
+  'steak-rice-bowl': 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=400&q=80',
+  'spinach-omelet': 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=400&q=80',
+  'egg-fried-rice': 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=400&q=80',
+};
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const fridgeCount = pantryItems.filter((item) => item.storageLocation === 'fridge').length;
+  const freezerCount = pantryItems.filter((item) => item.storageLocation === 'freezer').length;
+  const pantryCount = pantryItems.filter((item) => item.storageLocation === 'pantry').length;
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  return (
+    <Screen>
+      <View style={styles.appHeader}>
+        <Text style={styles.logo}>UseItUp</Text>
+        <View style={styles.headerActions}>
+          <View style={styles.iconButton}>
+            <Ionicons color={palette.ink} name="notifications-outline" size={20} />
+            <View style={styles.notificationDot} />
+          </View>
+          <View style={styles.iconButton}>
+            <Ionicons color={palette.ink} name="options-outline" size={20} />
+          </View>
+        </View>
+      </View>
+
+      <Card style={styles.greetingCard}>
+        <View style={styles.greetingCopy}>
+          <Text style={styles.greeting}>Good afternoon, Alex</Text>
+          <Text style={styles.heroCopy}>Let&apos;s make the most of what you have.</Text>
+        </View>
+        <View style={styles.greetingIcon}>
+          <Ionicons color={palette.green} name="leaf-outline" size={24} />
+        </View>
+      </Card>
+
+      <View style={styles.heroGrid}>
+        <View style={styles.statPair}>
+          <Card style={styles.alertTile}>
+            <View style={styles.tileTopRow}>
+              <View style={styles.alertIconSmall}>
+                <Ionicons color={palette.red} name="alert" size={18} />
+              </View>
+              <Text style={styles.tileValue}>{expiringItems.length}</Text>
+            </View>
+            <Text style={styles.tileLabel}>expiring soon</Text>
+          </Card>
+          <Card style={styles.trackedTile}>
+            <View style={styles.tileTopRow}>
+              <View style={styles.trackedIconSmall}>
+                <Ionicons color={palette.blue} name="cube-outline" size={18} />
+              </View>
+              <Text style={styles.tileValue}>{pantryItems.length}</Text>
+            </View>
+            <Text style={styles.tileLabel}>items tracked</Text>
+            <Text style={styles.tileBreakdown}>
+              {fridgeCount} fridge · {freezerCount} freezer · {pantryCount} pantry
+            </Text>
+          </Card>
+        </View>
+        <Button href="/(tabs)/recipes" icon="sparkles-outline">
+          Cook What I Have
+        </Button>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <SectionTitle>Expiring Soon</SectionTitle>
+          <Link asChild href="/(tabs)/pantry">
+            <Pressable hitSlop={10}>
+              <Text style={styles.viewAll}>View all</Text>
+            </Pressable>
+          </Link>
+        </View>
+        <Card style={styles.expiringCard}>
+          {expiringItems.map((item, index) => (
+            <View key={item.id} style={index > 0 && styles.withDivider}>
+              <Link asChild href={`/pantry-item/${item.id}`}>
+                <Pressable style={styles.expiringRow}>
+                  <Image source={{ uri: foodImages[item.id] }} style={styles.foodThumb} />
+                  <View style={styles.expiringCopy}>
+                    <Text numberOfLines={1} style={styles.foodName}>
+                      {item.name}
+                    </Text>
+                    <ExpirationText expirationDate={item.expirationDate} />
+                  </View>
+                  <View style={styles.expiringMeta}>
+                    <Text style={styles.itemDate}>
+                      {index === 0 ? 'May 23' : index === 1 ? 'May 24' : 'May 25'}
+                    </Text>
+                    <Ionicons color={palette.muted} name="chevron-forward" size={18} />
+                  </View>
+                </Pressable>
+              </Link>
+            </View>
+          ))}
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <SectionTitle>Suggested Meals</SectionTitle>
+          <Link asChild href="/(tabs)/recipes">
+            <Pressable hitSlop={10}>
+              <Text style={styles.viewAll}>View all</Text>
+            </Pressable>
+          </Link>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.mealRow}>
+            {recipes.map((recipe) => (
+              <Link asChild href={`/recipe/${recipe.id}`} key={recipe.id}>
+                <Pressable style={styles.mealCard}>
+                  <Image source={{ uri: recipeImages[recipe.id] }} style={styles.mealImage} />
+                  <View style={styles.timePill}>
+                    <Ionicons color={palette.ink} name="time-outline" size={12} />
+                    <Text style={styles.timePillText}>{recipe.prepTimeMinutes} min</Text>
+                  </View>
+                  <Text numberOfLines={2} style={styles.mealTitle}>
+                    {recipe.title}
+                  </Text>
+                  <Text style={styles.mealTag}>
+                    {recipe.usesExpiringItems ? 'High Protein' : 'Quick & Easy'}
+                  </Text>
+                </Pressable>
+              </Link>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
+      <View style={styles.section}>
+        <SectionTitle>Pantry Summary</SectionTitle>
+        <Card style={styles.statsCard}>
+          <StatTile icon="cube-outline" label="Items" value={pantryItems.length} />
+          <StatTile icon="snow-outline" label="Frozen" value={freezerCount} />
+          <StatTile icon="file-tray-outline" label="Fridge" value={fridgeCount} />
+          <StatTile icon="storefront-outline" label="Pantry" value={pantryCount} />
+        </Card>
+      </View>
+    </Screen>
+  );
+}
+
+function StatTile({
+  icon,
+  label,
+  value,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: number;
+}) {
+  return (
+    <View style={styles.statTile}>
+      <Ionicons color={palette.green} name={icon} size={20} />
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  appHeader: {
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  logo: {
+    color: palette.ink,
+    fontSize: 29,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  headerActions: {
+    flexDirection: 'row',
     gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  iconButton: {
+    alignItems: 'center',
+    backgroundColor: palette.card,
+    borderColor: palette.line,
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: 'center',
+    position: 'relative',
+    width: 40,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  notificationDot: {
+    backgroundColor: palette.red,
+    borderRadius: 4,
+    height: 8,
     position: 'absolute',
+    right: 10,
+    top: 9,
+    width: 8,
+  },
+  greetingCard: {
+    alignItems: 'center',
+    backgroundColor: palette.surface,
+    flexDirection: 'row',
+    gap: 14,
+  },
+  greetingCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  greeting: {
+    color: palette.ink,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 0,
+  },
+  heroCopy: {
+    color: palette.muted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  greetingIcon: {
+    alignItems: 'center',
+    backgroundColor: palette.greenSoft,
+    borderRadius: 8,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  heroGrid: {
+    gap: 12,
+  },
+  statPair: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  alertTile: {
+    backgroundColor: palette.greenSoft,
+    flex: 1,
+  },
+  trackedTile: {
+    backgroundColor: palette.card,
+    flex: 1,
+  },
+  tileBreakdown: {
+    color: palette.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 15,
+  },
+  tileTopRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 9,
+  },
+  tileValue: {
+    color: palette.ink,
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  tileLabel: {
+    color: palette.muted,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  alertIconSmall: {
+    alignItems: 'center',
+    backgroundColor: palette.blush,
+    borderRadius: 8,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  trackedIconSmall: {
+    alignItems: 'center',
+    backgroundColor: palette.blueSoft,
+    borderRadius: 8,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  section: {
+    gap: 10,
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  viewAll: {
+    color: palette.blue,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  expiringCard: {
+    gap: 0,
+    padding: 0,
+  },
+  expiringRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 74,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    width: '100%',
+  },
+  withDivider: {
+    borderTopColor: palette.line,
+    borderTopWidth: 1,
+  },
+  foodThumb: {
+    backgroundColor: palette.surface,
+    borderRadius: 8,
+    height: 52,
+    width: 52,
+  },
+  expiringCopy: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  foodName: {
+    color: palette.ink,
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0,
+  },
+  itemDate: {
+    color: palette.red,
+    fontSize: 12,
+    fontWeight: '700',
+    minWidth: 44,
+    textAlign: 'right',
+  },
+  expiringMeta: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexShrink: 0,
+    gap: 6,
+  },
+  mealRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingRight: 18,
+  },
+  mealCard: {
+    backgroundColor: palette.card,
+    borderColor: palette.line,
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: 'hidden',
+    paddingBottom: 10,
+    width: 142,
+  },
+  mealImage: {
+    backgroundColor: palette.surface,
+    height: 88,
+    width: '100%',
+  },
+  timePill: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 8,
+    flexDirection: 'row',
+    gap: 3,
+    marginLeft: 8,
+    marginTop: -78,
+    minHeight: 24,
+    paddingHorizontal: 7,
+  },
+  timePillText: {
+    color: palette.ink,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  mealTitle: {
+    color: palette.ink,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 17,
+    marginTop: 54,
+    paddingHorizontal: 9,
+  },
+  mealTag: {
+    color: palette.blue,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 4,
+    paddingHorizontal: 9,
+  },
+  statsCard: {
+    flexDirection: 'row',
+    gap: 0,
+    justifyContent: 'space-between',
+    paddingHorizontal: 6,
+  },
+  statTile: {
+    alignItems: 'center',
+    borderRightColor: palette.line,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    gap: 3,
+    paddingVertical: 8,
+  },
+  statValue: {
+    color: palette.ink,
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  statLabel: {
+    color: palette.muted,
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

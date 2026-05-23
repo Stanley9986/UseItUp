@@ -1,18 +1,32 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { useWindowDimensions } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { palette } from '@/components/useitup/ui';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { width } = useWindowDimensions();
+  const sidePadding = width > 760 ? Math.max((width - 760) / 2, 0) : 0;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: palette.blue,
+        tabBarInactiveTintColor: palette.muted,
+        tabBarItemStyle: {
+          maxWidth: 190,
+        },
+        tabBarStyle: {
+          backgroundColor: palette.card,
+          borderTopColor: palette.line,
+          height: 72,
+          paddingBottom: 10,
+          paddingLeft: sidePadding,
+          paddingRight: sidePadding,
+          paddingTop: 8,
+        },
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
@@ -20,14 +34,56 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons color={color} name={focused ? 'home' : 'home-outline'} size={23} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="pantry"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Pantry',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons color={color} name={focused ? 'basket' : 'basket-outline'} size={23} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="add"
+        options={{
+          title: '',
+          tabBarIcon: () => (
+            <Ionicons
+              color="#fff"
+              name="add"
+              size={28}
+              style={{
+                backgroundColor: palette.blue,
+                borderRadius: 24,
+                height: 48,
+                padding: 10,
+                width: 48,
+              }}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="recipes"
+        options={{
+          title: 'Recipes',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons color={color} name={focused ? 'restaurant' : 'restaurant-outline'} size={23} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'More',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons color={color} name={focused ? 'ellipsis-horizontal-circle' : 'ellipsis-horizontal-circle-outline'} size={23} />
+          ),
         }}
       />
     </Tabs>
