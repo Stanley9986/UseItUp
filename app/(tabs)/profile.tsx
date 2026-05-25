@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, palette, Screen, SectionTitle } from '@/components/useitup/ui';
+import { useAuth } from '@/contexts/auth-context';
 
 const settingsRows = [
   {
@@ -17,21 +19,33 @@ const settingsRows = [
   {
     icon: 'shield-checkmark-outline',
     title: 'Account Security',
-    detail: 'Login arrives in Phase 2',
+    detail: 'Email/password login active',
   },
 ] as const;
 
 export default function ProfileScreen() {
+  const { signOut, user } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const email = user?.email ?? 'Signed-in user';
+  const displayName = user?.user_metadata?.name ?? email.split('@')[0] ?? 'UseItUp User';
+  const initial = displayName.charAt(0).toUpperCase();
+
+  async function handleSignOut() {
+    setIsSigningOut(true);
+    await signOut();
+    setIsSigningOut(false);
+  }
+
   return (
-    <Screen title="More" subtitle="Profile and preference placeholders for the static prototype.">
+    <Screen title="More" subtitle="Manage your UseItUp account and preferences.">
       <Card style={styles.profileCard}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>A</Text>
+          <Text style={styles.avatarText}>{initial}</Text>
         </View>
         <View style={styles.profileCopy}>
-          <Text style={styles.name}>Alex Pantry</Text>
-          <Text style={styles.email}>alex@example.com</Text>
-          <Text style={styles.phaseLabel}>Static prototype account</Text>
+          <Text style={styles.name}>{displayName}</Text>
+          <Text style={styles.email}>{email}</Text>
+          <Text style={styles.phaseLabel}>Supabase account</Text>
         </View>
       </Card>
 
@@ -54,15 +68,15 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Phase 2 Preview</SectionTitle>
+        <SectionTitle>Account</SectionTitle>
         <Card style={styles.previewCard}>
-          <Text style={styles.previewTitle}>Next: Supabase Auth + Pantry CRUD</Text>
+          <Text style={styles.previewTitle}>Signed in with Supabase Auth</Text>
           <Text style={styles.previewText}>
-            Login, signup, real pantry items, edit/delete, and expiration sorting come after this
-            static UI phase.
+            Pantry items will be connected to this account next, so each user only sees their own
+            food.
           </Text>
-          <Button compact href="/(tabs)/pantry" secondary icon="basket-outline">
-            Review Pantry
+          <Button compact onPress={handleSignOut} secondary icon="log-out-outline">
+            {isSigningOut ? 'Signing Out...' : 'Sign Out'}
           </Button>
         </Card>
       </View>

@@ -40,7 +40,7 @@ export default function HomeScreen() {
 
       <Card style={styles.greetingCard}>
         <View style={styles.greetingCopy}>
-          <Text style={styles.greeting}>Good afternoon, Alex</Text>
+          <Text style={styles.greeting}>Good afternoon, Jabita</Text>
           <Text style={styles.heroCopy}>Let&apos;s make the most of what you have.</Text>
         </View>
         <View style={styles.greetingIcon}>
