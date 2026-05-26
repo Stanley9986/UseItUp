@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Button, Chip, palette, PantryCard, Screen, SectionTitle } from '@/components/useitup/ui';
-import { pantryItems } from '@/data/mock-useitup';
-import { StorageLocation } from '@/types/useitup';
+import { Button, Card, Chip, palette, PantryCard, Screen, SectionTitle } from '@/components/useitup/ui';
+import { useAuth } from '@/contexts/auth-context';
+import { getPantryItems } from '@/lib/pantry';
+import { PantryItem, StorageLocation } from '@/types/useitup';
 
 type PantryFilter = 'all' | StorageLocation | 'expiring';
 
@@ -17,12 +19,40 @@ const filters: { label: string; value: PantryFilter }[] = [
 ];
 
 export default function PantryScreen() {
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PantryFilter>('all');
+  const [items, setItems] = useState<PantryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const loadPantryItems = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    setErrorMessage('');
+    setIsLoading(true);
+
+    try {
+      const nextItems = await getPantryItems(user.id);
+      setItems(nextItems);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPantryItems();
+    }, [loadPantryItems]),
+  );
 
   const visibleItems = useMemo(
     () =>
-      pantryItems.filter((item) => {
+      items.filter((item) => {
         const matchesQuery = item.name.toLowerCase().includes(query.trim().toLowerCase());
         const matchesFilter =
           filter === 'all' ||
@@ -31,7 +61,7 @@ export default function PantryScreen() {
 
         return matchesQuery && matchesFilter;
       }),
-    [filter, query]
+    [filter, items, query],
   );
 
   return (
@@ -61,13 +91,56 @@ export default function PantryScreen() {
         ))}
       </View>
       <SectionTitle>{visibleItems.length} Tracked Items</SectionTitle>
-      <View style={styles.list}>
-        {visibleItems.map((item) => (
-          <PantryCard item={item} key={item.id} showEdit />
-        ))}
-      </View>
+      {isLoading ? (
+        <Card style={styles.stateCard}>
+          <ActivityIndicator color={palette.blue} />
+          <Text style={styles.stateText}>Loading pantry items...</Text>
+        </Card>
+      ) : errorMessage ? (
+        <Card style={styles.stateCard}>
+          <Ionicons color={palette.red} name="alert-circle-outline" size={24} />
+          <Text style={styles.stateTitle}>Could not load pantry</Text>
+          <Text style={styles.stateText}>{errorMessage}</Text>
+          <Button compact onPress={loadPantryItems} secondary icon="refresh-outline">
+            Try Again
+          </Button>
+        </Card>
+      ) : visibleItems.length ? (
+        <View style={styles.list}>
+          {visibleItems.map((item) => (
+            <PantryCard item={item} key={item.id} showEdit />
+          ))}
+        </View>
+      ) : (
+        <Card style={styles.stateCard}>
+          <Ionicons color={palette.green} name="basket-outline" size={24} />
+          <Text style={styles.stateTitle}>{items.length ? 'No matching items' : 'Your pantry is empty'}</Text>
+          <Text style={styles.stateText}>
+            {items.length
+              ? 'Try a different search or filter.'
+              : 'Add your first item so UseItUp can start tracking what should be used soon.'}
+          </Text>
+          {!items.length ? (
+            <Button compact href="/add-item" icon="add">
+              Add Item
+            </Button>
+          ) : null}
+        </Card>
+      )}
     </Screen>
   );
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String(error.message);
+  }
+
+  return 'Unable to load pantry items.';
 }
 
 const styles = StyleSheet.create({
@@ -95,5 +168,18 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 10,
+  },
+  stateCard: {
+    alignItems: 'flex-start',
+  },
+  stateTitle: {
+    color: palette.ink,
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  stateText: {
+    color: palette.muted,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

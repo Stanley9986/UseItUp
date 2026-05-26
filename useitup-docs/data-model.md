@@ -34,6 +34,7 @@ Stores each food item the user wants to track.
 | id | UUID | Primary key |
 | user_id | UUID | Foreign key to User |
 | name | text | Required |
+| normalized_name | text | Required normalized lookup name used to prevent duplicates like "steak" vs "Steak" |
 | category | text | Optional: produce, meat, dairy, grain, snack, condiment, other |
 | storage_location | text | fridge, freezer, pantry |
 | quantity_value | numeric | Optional depending on quantity type |
@@ -125,6 +126,7 @@ create table pantry_items (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
+  normalized_name text not null,
   category text,
   storage_location text check (storage_location in ('fridge', 'freezer', 'pantry')),
   quantity_value numeric,
@@ -135,6 +137,9 @@ create table pantry_items (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+create unique index pantry_items_user_normalized_name_location_idx
+on pantry_items (user_id, normalized_name, storage_location);
 ```
 
 ### recipes

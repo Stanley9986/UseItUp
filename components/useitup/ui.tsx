@@ -4,6 +4,8 @@ import { Href, Link } from 'expo-router';
 import { ComponentProps, PropsWithChildren, ReactNode } from 'react';
 import {
   Pressable,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleProp,
   StyleSheet,
@@ -44,29 +46,44 @@ type ScreenProps = PropsWithChildren<{
   title?: string;
   subtitle?: string;
   headerAction?: ReactNode;
+  keyboardAware?: boolean;
   style?: StyleProp<ViewStyle>;
 }>;
 
-export function Screen({ children, title, subtitle, headerAction, style }: ScreenProps) {
+export function Screen({ children, title, subtitle, headerAction, keyboardAware, style }: ScreenProps) {
   const { width } = useWindowDimensions();
   const isTabletWidth = width >= 700;
+  const content = (
+    <ScrollView
+      automaticallyAdjustKeyboardInsets={keyboardAware}
+      contentContainerStyle={[styles.screen, keyboardAware && styles.keyboardAwareScreen, isTabletWidth && styles.tabletScreen, style]}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}>
+      {title ? (
+        <View style={styles.header}>
+          <View style={styles.headerCopy}>
+            <Text style={styles.title}>{title}</Text>
+            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          </View>
+          {headerAction}
+        </View>
+      ) : null}
+      {children}
+    </ScrollView>
+  );
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={[styles.screen, isTabletWidth && styles.tabletScreen, style]}
-        showsVerticalScrollIndicator={false}>
-        {title ? (
-          <View style={styles.header}>
-            <View style={styles.headerCopy}>
-              <Text style={styles.title}>{title}</Text>
-              {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-            </View>
-            {headerAction}
-          </View>
-        ) : null}
-        {children}
-      </ScrollView>
+      {keyboardAware ? (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+          style={styles.keyboardAvoidingView}>
+          {content}
+        </KeyboardAvoidingView>
+      ) : (
+        content
+      )}
     </SafeAreaView>
   );
 }
@@ -221,6 +238,9 @@ const styles = StyleSheet.create({
     backgroundColor: palette.background,
     flex: 1,
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   screen: {
     alignSelf: 'center',
     backgroundColor: palette.background,
@@ -230,6 +250,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 14,
     width: '100%',
+  },
+  keyboardAwareScreen: {
+    paddingBottom: 260,
   },
   tabletScreen: {
     maxWidth: 760,

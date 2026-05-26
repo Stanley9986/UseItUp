@@ -1,10 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, ExpirationText, palette, Screen, SectionTitle } from '@/components/useitup/ui';
-import { expiringItems, pantryItems, recipes } from '@/data/mock-useitup';
+import { useAuth } from '@/contexts/auth-context';
+import { recipes } from '@/data/mock-useitup';
+import { getErrorMessage, getPantryItems } from '@/lib/pantry';
+import { PantryItem } from '@/types/useitup';
 
 const foodImages: Record<string, string> = {
   steak: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=240&q=80',
@@ -19,6 +24,52 @@ const recipeImages: Record<string, string> = {
 };
 
 export default function HomeScreen() {
+  const { user } = useAuth();
+  const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const loadPantryItems = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      const nextItems = await getPantryItems(user.id);
+      setPantryItems(nextItems);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, 'Unable to load pantry summary.'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPantryItems();
+    }, [loadPantryItems]),
+  );
+
+  const expiringItems = useMemo(() => {
+    const today = startOfDay(new Date());
+    const limit = new Date(today);
+    limit.setDate(limit.getDate() + 7);
+
+    return pantryItems
+      .filter((item) => {
+        if (!item.expirationDate) {
+          return false;
+        }
+
+        const expiry = new Date(`${item.expirationDate}T12:00:00`);
+        return expiry <= limit;
+      })
+      .slice(0, 3);
+  }, [pantryItems]);
+
   const fridgeCount = pantryItems.filter((item) => item.storageLocation === 'fridge').length;
   const freezerCount = pantryItems.filter((item) => item.storageLocation === 'freezer').length;
   const pantryCount = pantryItems.filter((item) => item.storageLocation === 'pantry').length;
@@ -68,7 +119,7 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.tileLabel}>items tracked</Text>
             <Text style={styles.tileBreakdown}>
-              {fridgeCount} fridge · {freezerCount} freezer · {pantryCount} pantry
+              {isLoading ? 'Loading pantry...' : `${fridgeCount} fridge · ${freezerCount} freezer · ${pantryCount} pantry`}
             </Text>
           </Card>
         </View>
@@ -87,27 +138,41 @@ export default function HomeScreen() {
           </Link>
         </View>
         <Card style={styles.expiringCard}>
-          {expiringItems.map((item, index) => (
-            <View key={item.id} style={index > 0 && styles.withDivider}>
-              <Link asChild href={`/pantry-item/${item.id}`}>
-                <Pressable style={styles.expiringRow}>
-                  <Image source={{ uri: foodImages[item.id] }} style={styles.foodThumb} />
-                  <View style={styles.expiringCopy}>
-                    <Text numberOfLines={1} style={styles.foodName}>
-                      {item.name}
-                    </Text>
-                    <ExpirationText expirationDate={item.expirationDate} />
-                  </View>
-                  <View style={styles.expiringMeta}>
-                    <Text style={styles.itemDate}>
-                      {index === 0 ? 'May 23' : index === 1 ? 'May 24' : 'May 25'}
-                    </Text>
-                    <Ionicons color={palette.muted} name="chevron-forward" size={18} />
-                  </View>
-                </Pressable>
-              </Link>
+          {errorMessage ? (
+            <View style={styles.emptyExpiring}>
+              <Text style={styles.emptyTitle}>Could not load pantry summary</Text>
+              <Text style={styles.emptyCopy}>{errorMessage}</Text>
             </View>
-          ))}
+          ) : isLoading ? (
+            <View style={styles.emptyExpiring}>
+              <Text style={styles.emptyTitle}>Loading expiring items...</Text>
+            </View>
+          ) : expiringItems.length ? (
+            expiringItems.map((item, index) => (
+              <View key={item.id} style={index > 0 && styles.withDivider}>
+                <Link asChild href={`/pantry-item/${item.id}`}>
+                  <Pressable style={styles.expiringRow}>
+                    <FoodThumb item={item} />
+                    <View style={styles.expiringCopy}>
+                      <Text numberOfLines={1} style={styles.foodName}>
+                        {item.name}
+                      </Text>
+                      <ExpirationText expirationDate={item.expirationDate} />
+                    </View>
+                    <View style={styles.expiringMeta}>
+                      <Text style={styles.itemDate}>{formatShortDate(item.expirationDate)}</Text>
+                      <Ionicons color={palette.muted} name="chevron-forward" size={18} />
+                    </View>
+                  </Pressable>
+                </Link>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyExpiring}>
+              <Text style={styles.emptyTitle}>Nothing expiring soon</Text>
+              <Text style={styles.emptyCopy}>Add expiration dates to see priority items here.</Text>
+            </View>
+          )}
         </Card>
       </View>
 
@@ -156,6 +221,20 @@ export default function HomeScreen() {
   );
 }
 
+function FoodThumb({ item }: { item: PantryItem }) {
+  const imageUrl = foodImages[item.normalizedName ?? item.id];
+
+  if (imageUrl) {
+    return <Image source={{ uri: imageUrl }} style={styles.foodThumb} />;
+  }
+
+  return (
+    <View style={styles.foodThumbFallback}>
+      <Ionicons color={palette.green} name={getCategoryIcon(item.category)} size={22} />
+    </View>
+  );
+}
+
 function StatTile({
   icon,
   label,
@@ -172,6 +251,43 @@ function StatTile({
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
+}
+
+function startOfDay(date: Date) {
+  const nextDate = new Date(date);
+  nextDate.setHours(0, 0, 0, 0);
+  return nextDate;
+}
+
+function formatShortDate(expirationDate?: string) {
+  if (!expirationDate) {
+    return '--';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(`${expirationDate}T12:00:00`));
+}
+
+function getCategoryIcon(category?: string) {
+  if (category === 'meat') {
+    return 'restaurant-outline' as const;
+  }
+
+  if (category === 'produce') {
+    return 'leaf-outline' as const;
+  }
+
+  if (category === 'dairy') {
+    return 'water-outline' as const;
+  }
+
+  if (category === 'grain') {
+    return 'grid-outline' as const;
+  }
+
+  return 'basket-outline' as const;
 }
 
 const styles = StyleSheet.create({
@@ -328,6 +444,14 @@ const styles = StyleSheet.create({
     height: 52,
     width: 52,
   },
+  foodThumbFallback: {
+    alignItems: 'center',
+    backgroundColor: palette.greenSoft,
+    borderRadius: 8,
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+  },
   expiringCopy: {
     flex: 1,
     gap: 2,
@@ -351,6 +475,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexShrink: 0,
     gap: 6,
+  },
+  emptyExpiring: {
+    gap: 5,
+    padding: 14,
+  },
+  emptyTitle: {
+    color: palette.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  emptyCopy: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
   },
   mealRow: {
     flexDirection: 'row',

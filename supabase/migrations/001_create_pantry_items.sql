@@ -45,3 +45,9 @@ using (auth.uid() = user_id);
 
 create index pantry_items_user_expiration_idx
 on public.pantry_items (user_id, expiration_date);
+
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update, delete
+on public.pantry_items
+to authenticated;

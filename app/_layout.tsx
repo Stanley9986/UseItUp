@@ -59,6 +59,7 @@ function RootStack() {
       <Stack.Screen name="signup" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="add-item" options={{ headerShown: false }} />
+      <Stack.Screen name="edit-item/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="pantry-item/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="recipe/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="update-pantry" options={{ headerShown: false }} />

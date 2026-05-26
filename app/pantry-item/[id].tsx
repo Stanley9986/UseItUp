@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 
 import {
   Button,
@@ -11,16 +12,121 @@ import {
   Screen,
   SectionTitle,
 } from '@/components/useitup/ui';
-import { findPantryItem } from '@/data/mock-useitup';
+import { useAuth } from '@/contexts/auth-context';
+import { deletePantryItem, getErrorMessage, getPantryItemById } from '@/lib/pantry';
+import { PantryItem } from '@/types/useitup';
 
 export default function PantryItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const item = findPantryItem(id);
+  const { user } = useAuth();
+  const [item, setItem] = useState<PantryItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadItem() {
+      if (!user || !id) {
+        return;
+      }
+
+      setErrorMessage('');
+      setIsLoading(true);
+
+      try {
+        const nextItem = await getPantryItemById(user.id, id);
+
+        if (isActive) {
+          setItem(nextItem);
+        }
+      } catch (error) {
+        if (isActive) {
+          setErrorMessage(getErrorMessage(error, 'Unable to load pantry item.'));
+        }
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadItem();
+
+    return () => {
+      isActive = false;
+    };
+  }, [id, user]);
+
+  async function handleDelete() {
+    if (!user || !id || isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setErrorMessage('');
+
+    try {
+      await deletePantryItem(user.id, id);
+      router.replace('/(tabs)/pantry');
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, 'Unable to delete pantry item.'));
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  function confirmDelete() {
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(`Remove ${item?.name ?? 'this item'} from your pantry?`)) {
+        handleDelete();
+      }
+      return;
+    }
+
+    Alert.alert('Delete pantry item?', `Remove ${item?.name ?? 'this item'} from your pantry?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', onPress: handleDelete, style: 'destructive' },
+    ]);
+  }
+
+  if (isLoading) {
+    return (
+      <Screen
+        title="Pantry Item"
+        subtitle="Loading item details."
+        headerAction={<Button compact onPress={() => router.back()} secondary icon="arrow-back">Back</Button>}>
+        <Card style={styles.actionCard}>
+          <Text style={styles.actionTitle}>Loading...</Text>
+        </Card>
+      </Screen>
+    );
+  }
+
+  if (errorMessage || !item) {
+    return (
+      <Screen
+        title="Pantry Item"
+        subtitle="This item could not be found."
+        headerAction={<Button compact onPress={() => router.back()} secondary icon="arrow-back">Back</Button>}>
+        <Card style={styles.actionCard}>
+          <Text style={styles.actionTitle}>{errorMessage ? 'Unable to load item' : 'Item not found'}</Text>
+          <Text style={styles.actionCopy}>
+            {errorMessage || 'This pantry item may have been deleted or belongs to another account.'}
+          </Text>
+          <Button compact href="/(tabs)/pantry" secondary icon="basket-outline">
+            Back to Pantry
+          </Button>
+        </Card>
+      </Screen>
+    );
+  }
 
   return (
     <Screen
       title={item.name}
-      subtitle="Static pantry item detail for the clickable prototype."
+      subtitle="Pantry item detail from your Supabase inventory."
       headerAction={<Button compact onPress={() => router.back()} secondary icon="arrow-back">Back</Button>}>
       <Card style={styles.heroCard}>
         <View style={styles.itemIconLarge}>
@@ -52,15 +158,20 @@ export default function PantryItemDetailScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Prototype Actions</SectionTitle>
+        <SectionTitle>Actions</SectionTitle>
         <Card style={styles.actionCard}>
-          <Text style={styles.actionTitle}>Phase 2 will make these real</Text>
+          <Text style={styles.actionTitle}>Manage this item</Text>
           <Text style={styles.actionCopy}>
-            Editing, deleting, and saving pantry updates will connect to Supabase in the next phase.
+            Edit details when quantities change, or remove the item when it is no longer in your
+            pantry.
           </Text>
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
           <View style={styles.actionRow}>
-            <Button compact href="/add-item" secondary icon="create-outline">
+            <Button compact href={`/edit-item/${item.id}`} secondary icon="create-outline">
               Edit Item
+            </Button>
+            <Button compact onPress={confirmDelete} secondary icon="trash-outline">
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </Button>
             <Button compact href="/(tabs)/recipes" icon="restaurant-outline">
               Find Meals
@@ -202,5 +313,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 9,
+  },
+  errorText: {
+    color: palette.red,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
   },
 });

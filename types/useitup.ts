@@ -5,6 +5,7 @@ export type QuantityLabel = 'empty' | 'low' | 'medium' | 'half' | 'full';
 export type PantryItem = {
   id: string;
   name: string;
+  normalizedName?: string;
   category?: string;
   storageLocation: StorageLocation;
   quantityValue?: number;
