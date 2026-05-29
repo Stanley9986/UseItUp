@@ -16,23 +16,31 @@ import { Card, palette, Screen } from '@/components/useitup/ui';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
 import { supabase } from '@/lib/supabase';
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  async function handleLogin() {
+  async function handleResetPassword() {
     setMessage('');
+    setIsSuccess(false);
     setIsSubmitting(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
+    const redirectTo =
+      Platform.OS === 'web' && typeof globalThis.location !== 'undefined'
+        ? `${globalThis.location.origin}/reset-password`
+        : undefined;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo,
     });
 
     if (error) {
-      setMessage(getFriendlyAuthError(error, 'Unable to log in.'));
+      setMessage(getFriendlyAuthError(error, 'Unable to send password reset email.'));
+    } else {
+      setIsSuccess(true);
+      setMessage('Password reset email sent. Check your inbox for the next step.');
     }
 
     setIsSubmitting(false);
@@ -43,17 +51,17 @@ export default function LoginScreen() {
       <Screen style={styles.screen}>
         <View style={styles.brandBlock}>
           <Text style={styles.brand}>UseItUp</Text>
-          <Text style={styles.tagline}>Sign in to track your pantry and cook what you already have.</Text>
+          <Text style={styles.tagline}>Reset your password and get back to your pantry.</Text>
         </View>
 
         <Card style={styles.formCard}>
           <View style={styles.formHeader}>
             <View style={styles.iconBox}>
-              <Ionicons color={palette.green} name="lock-closed-outline" size={24} />
+              <Ionicons color={palette.green} name="mail-outline" size={24} />
             </View>
             <View style={styles.formHeaderCopy}>
-              <Text style={styles.formTitle}>Welcome back</Text>
-              <Text style={styles.formSubtitle}>Use your email and password to continue.</Text>
+              <Text style={styles.formTitle}>Forgot password?</Text>
+              <Text style={styles.formSubtitle}>Enter your account email and Supabase will send a reset link.</Text>
             </View>
           </View>
 
@@ -71,34 +79,18 @@ export default function LoginScreen() {
             />
           </View>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              autoCapitalize="none"
-              autoComplete="password"
-              onChangeText={setPassword}
-              placeholder="Your password"
-              placeholderTextColor={palette.muted}
-              secureTextEntry
-              style={styles.input}
-              value={password}
-            />
-          </View>
+          {message ? <Text style={[styles.messageText, isSuccess ? styles.successText : styles.errorText]}>{message}</Text> : null}
 
-          {message ? <Text style={styles.errorText}>{message}</Text> : null}
-
-          <Link href={'/forgot-password' as Href} style={styles.forgotLink}>
-            Forgot password?
-          </Link>
-
-          <Pressable disabled={isSubmitting} onPress={handleLogin} style={[styles.primaryButton, isSubmitting && styles.disabledButton]}>
-            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Log In</Text>}
+          <Pressable
+            disabled={isSubmitting}
+            onPress={handleResetPassword}
+            style={[styles.primaryButton, isSubmitting && styles.disabledButton]}>
+            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Send Reset Email</Text>}
           </Pressable>
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>New to UseItUp?</Text>
-            <Link href={'/signup' as Href} style={styles.switchLink}>
-              Create an account
+            <Link href={'/login' as Href} style={styles.switchLink}>
+              Back to login
             </Link>
           </View>
         </Card>
@@ -179,18 +171,16 @@ const styles = StyleSheet.create({
     minHeight: 50,
     paddingHorizontal: 13,
   },
-  errorText: {
-    color: palette.red,
+  messageText: {
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 20,
   },
-  forgotLink: {
-    alignSelf: 'flex-start',
-    color: palette.blue,
-    fontSize: 14,
-    fontWeight: '800',
-    marginTop: -6,
+  errorText: {
+    color: palette.red,
+  },
+  successText: {
+    color: palette.green,
   },
   primaryButton: {
     alignItems: 'center',
@@ -213,10 +203,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
     justifyContent: 'center',
-  },
-  switchText: {
-    color: palette.muted,
-    fontSize: 14,
   },
   switchLink: {
     color: palette.blue,

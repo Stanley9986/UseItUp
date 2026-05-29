@@ -33,14 +33,15 @@ function RootStack() {
     }
 
     const firstSegment = String(segments[0] ?? '');
-    const isAuthRoute = firstSegment === 'login' || firstSegment === 'signup';
+    const isEntryAuthRoute = firstSegment === 'login' || firstSegment === 'signup' || firstSegment === 'forgot-password';
+    const isPasswordResetRoute = firstSegment === 'reset-password';
 
-    if (!session && !isAuthRoute) {
+    if (!session && !isEntryAuthRoute && !isPasswordResetRoute) {
       router.replace('/login' as Href);
       return;
     }
 
-    if (session && isAuthRoute) {
+    if (session && isEntryAuthRoute) {
       router.replace('/(tabs)');
     }
   }, [isLoading, router, segments, session]);
@@ -57,6 +58,8 @@ function RootStack() {
     <Stack>
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="signup" options={{ headerShown: false }} />
+      <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+      <Stack.Screen name="reset-password" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="add-item" options={{ headerShown: false }} />
       <Stack.Screen name="edit-item/[id]" options={{ headerShown: false }} />

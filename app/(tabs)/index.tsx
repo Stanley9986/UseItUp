@@ -73,6 +73,7 @@ export default function HomeScreen() {
   const fridgeCount = pantryItems.filter((item) => item.storageLocation === 'fridge').length;
   const freezerCount = pantryItems.filter((item) => item.storageLocation === 'freezer').length;
   const pantryCount = pantryItems.filter((item) => item.storageLocation === 'pantry').length;
+  const displayName = user?.user_metadata?.name ?? user?.email?.split('@')[0] ?? 'there';
 
   return (
     <Screen>
@@ -91,7 +92,7 @@ export default function HomeScreen() {
 
       <Card style={styles.greetingCard}>
         <View style={styles.greetingCopy}>
-          <Text style={styles.greeting}>Good afternoon, Jabita</Text>
+          <Text style={styles.greeting}>Good afternoon, {displayName}</Text>
           <Text style={styles.heroCopy}>Let&apos;s make the most of what you have.</Text>
         </View>
         <View style={styles.greetingIcon}>

@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button, Card, palette, Screen, SectionTitle } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { getFriendlyAuthError } from '@/lib/auth-errors';
+import { supabase } from '@/lib/supabase';
 
 const settingsRows = [
   {
@@ -26,14 +28,51 @@ const settingsRows = [
 export default function ProfileScreen() {
   const { signOut, user } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [displayNameInput, setDisplayNameInput] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
+  const [profileMessageType, setProfileMessageType] = useState<'error' | 'success'>('success');
   const email = user?.email ?? 'Signed-in user';
   const displayName = user?.user_metadata?.name ?? email.split('@')[0] ?? 'UseItUp User';
   const initial = displayName.charAt(0).toUpperCase();
+
+  useEffect(() => {
+    setDisplayNameInput(displayName);
+  }, [displayName]);
 
   async function handleSignOut() {
     setIsSigningOut(true);
     await signOut();
     setIsSigningOut(false);
+  }
+
+  async function handleSaveDisplayName() {
+    const nextName = displayNameInput.trim();
+
+    if (!nextName) {
+      setProfileMessageType('error');
+      setProfileMessage('Enter a display name before saving.');
+      return;
+    }
+
+    setIsSavingName(true);
+    setProfileMessage('');
+
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        name: nextName,
+      },
+    });
+
+    if (error) {
+      setProfileMessageType('error');
+      setProfileMessage(getFriendlyAuthError(error, 'Unable to update display name.'));
+    } else {
+      setProfileMessageType('success');
+      setProfileMessage('Display name updated.');
+    }
+
+    setIsSavingName(false);
   }
 
   return (
@@ -48,6 +87,28 @@ export default function ProfileScreen() {
           <Text style={styles.phaseLabel}>Supabase account</Text>
         </View>
       </Card>
+
+      <View style={styles.section}>
+        <SectionTitle>Profile</SectionTitle>
+        <Card style={styles.editProfileCard}>
+          <Text style={styles.inputLabel}>Display Name</Text>
+          <TextInput
+            onChangeText={setDisplayNameInput}
+            placeholder="Your name"
+            placeholderTextColor={palette.muted}
+            style={styles.input}
+            value={displayNameInput}
+          />
+          {profileMessage ? (
+            <Text style={[styles.profileMessage, profileMessageType === 'error' ? styles.errorText : styles.successText]}>
+              {profileMessage}
+            </Text>
+          ) : null}
+          <Button compact onPress={handleSaveDisplayName} icon="save-outline">
+            {isSavingName ? 'Saving...' : 'Save Name'}
+          </Button>
+        </Card>
+      </View>
 
       <View style={styles.section}>
         <SectionTitle>Preferences</SectionTitle>
@@ -131,6 +192,35 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: 10,
+  },
+  editProfileCard: {
+    alignItems: 'stretch',
+  },
+  inputLabel: {
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  input: {
+    backgroundColor: palette.card,
+    borderColor: palette.line,
+    borderRadius: 8,
+    borderWidth: 1,
+    color: palette.ink,
+    fontSize: 16,
+    minHeight: 48,
+    paddingHorizontal: 12,
+  },
+  profileMessage: {
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  errorText: {
+    color: palette.red,
+  },
+  successText: {
+    color: palette.green,
   },
   listCard: {
     gap: 0,

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { Card, palette, Screen } from '@/components/useitup/ui';
+import { getFriendlyAuthError } from '@/lib/auth-errors';
 import { supabase } from '@/lib/supabase';
 
 export default function SignupScreen() {
@@ -21,10 +22,12 @@ export default function SignupScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   async function handleSignup() {
     setMessage('');
     setIsSuccess(false);
+    setNeedsVerification(false);
     setIsSubmitting(true);
 
     const { data, error } = await supabase.auth.signUp({
@@ -33,13 +36,35 @@ export default function SignupScreen() {
     });
 
     if (error) {
-      setMessage(error.message);
+      setMessage(getFriendlyAuthError(error, 'Unable to create account.'));
     } else if (data.session) {
       setMessage('Account created. Taking you to your pantry.');
       setIsSuccess(true);
     } else {
-      setMessage('Check your email to confirm your account, then log in.');
+      setMessage('We sent a confirmation link to your email. Open it, then return here to log in.');
       setIsSuccess(true);
+      setNeedsVerification(true);
+    }
+
+    setIsSubmitting(false);
+  }
+
+  async function handleResendConfirmation() {
+    setMessage('');
+    setIsSubmitting(true);
+
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim(),
+    });
+
+    if (error) {
+      setMessage(getFriendlyAuthError(error, 'Unable to resend confirmation email.'));
+      setIsSuccess(false);
+    } else {
+      setMessage('Confirmation email sent again. Check your inbox.');
+      setIsSuccess(true);
+      setNeedsVerification(true);
     }
 
     setIsSubmitting(false);
@@ -92,11 +117,27 @@ export default function SignupScreen() {
             />
           </View>
 
-          {message ? <Text style={[styles.messageText, isSuccess ? styles.successText : styles.errorText]}>{message}</Text> : null}
+          {needsVerification ? (
+            <View style={styles.successCard}>
+              <Ionicons color={palette.green} name="mail-unread-outline" size={24} />
+              <View style={styles.successCopy}>
+                <Text style={styles.successTitle}>Verify your email</Text>
+                <Text style={styles.successBody}>{message}</Text>
+              </View>
+            </View>
+          ) : message ? (
+            <Text style={[styles.messageText, isSuccess ? styles.successText : styles.errorText]}>{message}</Text>
+          ) : null}
 
           <Pressable disabled={isSubmitting} onPress={handleSignup} style={[styles.primaryButton, isSubmitting && styles.disabledButton]}>
             {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Create Account</Text>}
           </Pressable>
+
+          {needsVerification ? (
+            <Pressable disabled={isSubmitting} onPress={handleResendConfirmation} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Resend Confirmation Email</Text>
+            </Pressable>
+          ) : null}
 
           <View style={styles.switchRow}>
             <Text style={styles.switchText}>Already have an account?</Text>
@@ -193,6 +234,30 @@ const styles = StyleSheet.create({
   successText: {
     color: palette.green,
   },
+  successCard: {
+    alignItems: 'flex-start',
+    backgroundColor: palette.greenSoft,
+    borderColor: '#bfe6dc',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  successCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  successTitle: {
+    color: palette.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  successBody: {
+    color: palette.muted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
   primaryButton: {
     alignItems: 'center',
     backgroundColor: palette.blue,
@@ -206,6 +271,20 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '800',
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    backgroundColor: palette.blueSoft,
+    borderColor: '#c7d8ff',
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  secondaryButtonText: {
+    color: palette.blue,
+    fontSize: 15,
     fontWeight: '800',
   },
   switchRow: {

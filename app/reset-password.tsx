@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Href, Link } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,23 +16,39 @@ import { Card, palette, Screen } from '@/components/useitup/ui';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
 import { supabase } from '@/lib/supabase';
 
-export default function LoginScreen() {
-  const [email, setEmail] = useState('');
+export default function ResetPasswordScreen() {
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  async function handleLogin() {
+  async function handleUpdatePassword() {
     setMessage('');
+    setIsSuccess(false);
+
+    if (password.length < 6) {
+      setMessage('Use a password with at least 6 characters.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setMessage('The passwords do not match.');
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+    const { error } = await supabase.auth.updateUser({
       password,
     });
 
     if (error) {
-      setMessage(getFriendlyAuthError(error, 'Unable to log in.'));
+      setMessage(getFriendlyAuthError(error, 'Unable to update password.'));
+    } else {
+      setIsSuccess(true);
+      setMessage('Password updated. You can log in with the new password now.');
+      await supabase.auth.signOut();
     }
 
     setIsSubmitting(false);
@@ -43,41 +59,27 @@ export default function LoginScreen() {
       <Screen style={styles.screen}>
         <View style={styles.brandBlock}>
           <Text style={styles.brand}>UseItUp</Text>
-          <Text style={styles.tagline}>Sign in to track your pantry and cook what you already have.</Text>
+          <Text style={styles.tagline}>Choose a new password for your account.</Text>
         </View>
 
         <Card style={styles.formCard}>
           <View style={styles.formHeader}>
             <View style={styles.iconBox}>
-              <Ionicons color={palette.green} name="lock-closed-outline" size={24} />
+              <Ionicons color={palette.green} name="key-outline" size={24} />
             </View>
             <View style={styles.formHeaderCopy}>
-              <Text style={styles.formTitle}>Welcome back</Text>
-              <Text style={styles.formSubtitle}>Use your email and password to continue.</Text>
+              <Text style={styles.formTitle}>Reset password</Text>
+              <Text style={styles.formSubtitle}>Enter a new password after opening the reset link from your email.</Text>
             </View>
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>New Password</Text>
             <TextInput
               autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor={palette.muted}
-              style={styles.input}
-              value={email}
-            />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              autoCapitalize="none"
-              autoComplete="password"
+              autoComplete="new-password"
               onChangeText={setPassword}
-              placeholder="Your password"
+              placeholder="At least 6 characters"
               placeholderTextColor={palette.muted}
               secureTextEntry
               style={styles.input}
@@ -85,22 +87,34 @@ export default function LoginScreen() {
             />
           </View>
 
-          {message ? <Text style={styles.errorText}>{message}</Text> : null}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Confirm Password</Text>
+            <TextInput
+              autoCapitalize="none"
+              autoComplete="new-password"
+              onChangeText={setConfirmPassword}
+              placeholder="Repeat password"
+              placeholderTextColor={palette.muted}
+              secureTextEntry
+              style={styles.input}
+              value={confirmPassword}
+            />
+          </View>
 
-          <Link href={'/forgot-password' as Href} style={styles.forgotLink}>
-            Forgot password?
-          </Link>
+          {message ? <Text style={[styles.messageText, isSuccess ? styles.successText : styles.errorText]}>{message}</Text> : null}
 
-          <Pressable disabled={isSubmitting} onPress={handleLogin} style={[styles.primaryButton, isSubmitting && styles.disabledButton]}>
-            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Log In</Text>}
+          <Pressable
+            disabled={isSubmitting || isSuccess}
+            onPress={handleUpdatePassword}
+            style={[styles.primaryButton, (isSubmitting || isSuccess) && styles.disabledButton]}>
+            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Update Password</Text>}
           </Pressable>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchText}>New to UseItUp?</Text>
-            <Link href={'/signup' as Href} style={styles.switchLink}>
-              Create an account
-            </Link>
-          </View>
+          {isSuccess ? (
+            <Pressable onPress={() => router.replace('/login')} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Back to Login</Text>
+            </Pressable>
+          ) : null}
         </Card>
       </Screen>
     </KeyboardAvoidingView>
@@ -179,18 +193,16 @@ const styles = StyleSheet.create({
     minHeight: 50,
     paddingHorizontal: 13,
   },
-  errorText: {
-    color: palette.red,
+  messageText: {
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 20,
   },
-  forgotLink: {
-    alignSelf: 'flex-start',
-    color: palette.blue,
-    fontSize: 14,
-    fontWeight: '800',
-    marginTop: -6,
+  errorText: {
+    color: palette.red,
+  },
+  successText: {
+    color: palette.green,
   },
   primaryButton: {
     alignItems: 'center',
@@ -207,20 +219,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-  switchRow: {
+  secondaryButton: {
     alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    backgroundColor: palette.blueSoft,
+    borderColor: '#c7d8ff',
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 48,
     justifyContent: 'center',
   },
-  switchText: {
-    color: palette.muted,
-    fontSize: 14,
-  },
-  switchLink: {
+  secondaryButtonText: {
     color: palette.blue,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
   },
 });
