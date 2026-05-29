@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button, Card, Chip, palette } from '@/components/useitup/ui';
+import { parseExpirationDate } from '@/lib/date-utils';
 import { QuantityLabel, QuantityUnit, StorageLocation } from '@/types/useitup';
 
 export type PantryItemFormValues = {
@@ -154,33 +155,7 @@ export function PantryItemForm({
   );
 }
 
-export function parseExpirationDate(value: string) {
-  const normalized = value.trim().toLowerCase();
-
-  if (!normalized) {
-    return undefined;
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-    return normalized;
-  }
-
-  if (normalized === 'today') {
-    return formatDateFromNow(0);
-  }
-
-  if (normalized === 'tomorrow') {
-    return formatDateFromNow(1);
-  }
-
-  const daysMatch = normalized.match(/^(?:in\s*)?(\d+)\s*days?$/);
-
-  if (daysMatch?.[1]) {
-    return formatDateFromNow(Number(daysMatch[1]));
-  }
-
-  return undefined;
-}
+export { parseExpirationDate };
 
 export function quantityLabelFromLevel(level: string) {
   return level.toLowerCase() as QuantityLabel;
@@ -188,12 +163,6 @@ export function quantityLabelFromLevel(level: string) {
 
 function FieldLabel({ children }: { children: string }) {
   return <Text style={styles.label}>{children}</Text>;
-}
-
-function formatDateFromNow(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
 }
 
 const styles = StyleSheet.create({
