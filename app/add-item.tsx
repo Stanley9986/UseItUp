@@ -9,6 +9,7 @@ import {
   quantityLabelFromLevel,
 } from '@/components/useitup/pantry-item-form';
 import { useAuth } from '@/contexts/auth-context';
+import { safeBack } from '@/lib/navigation';
 import { createPantryItem, getErrorMessage, isDuplicatePantryItemError, normalizePantryName } from '@/lib/pantry';
 
 export default function AddItemScreen() {
@@ -75,7 +76,7 @@ export default function AddItemScreen() {
       keyboardAware
       title="Add Item"
       subtitle="Add a real pantry item to your Supabase-backed inventory."
-      headerAction={<Button compact onPress={() => router.back()} secondary icon="close">Close</Button>}>
+      headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="close">Close</Button>}>
       <PantryItemForm isSaving={isSaving} message={message} onSubmit={handleSave} submitLabel="Save Item" />
     </Screen>
   );

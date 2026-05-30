@@ -1,8 +1,8 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, Chip, palette, Screen, SectionTitle } from '@/components/useitup/ui';
+import { Button, Card, Chip, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
+import { safeBack } from '@/lib/navigation';
 
 type UsageChoice = 'suggested' | 'all' | 'less' | 'skip' | 'low' | 'unchanged';
 
@@ -28,7 +28,7 @@ export default function UpdatePantryScreen() {
     <Screen
       title="Update Your Pantry"
       subtitle="Confirm what changed after cooking Steak Rice Bowl."
-      headerAction={<Button compact onPress={() => router.back()} secondary icon="arrow-back">Back</Button>}>
+      headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">Back</Button>}>
       <Card style={styles.success}>
         <Text style={styles.successTitle}>Dinner marked cooked</Text>
         <Text style={styles.copy}>Choose rough updates so the next recipe suggestion stays useful.</Text>
@@ -108,6 +108,7 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     color: palette.ink,
+    fontFamily: typography.display,
     fontSize: 18,
     fontWeight: '900',
     letterSpacing: 0,
@@ -122,6 +123,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: palette.ink,
+    fontFamily: typography.display,
     fontSize: 17,
     fontWeight: '900',
     letterSpacing: 0,

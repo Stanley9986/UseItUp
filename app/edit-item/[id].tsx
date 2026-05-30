@@ -10,6 +10,7 @@ import {
 } from '@/components/useitup/pantry-item-form';
 import { Button, Card, palette, Screen } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { safeBack } from '@/lib/navigation';
 import {
   getErrorMessage,
   getPantryItemById,
@@ -121,7 +122,7 @@ export default function EditItemScreen() {
       <Screen
         title="Edit Item"
         subtitle="Loading item details."
-        headerAction={<Button compact onPress={() => router.back()} secondary icon="arrow-back">Back</Button>}>
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
         <Card>
           <Text style={{ color: palette.muted }}>Loading...</Text>
         </Card>
@@ -134,7 +135,7 @@ export default function EditItemScreen() {
       <Screen
         title="Edit Item"
         subtitle="This item could not be found."
-        headerAction={<Button compact onPress={() => router.back()} secondary icon="arrow-back">Back</Button>}>
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
         <Card>
           <Text style={{ color: palette.muted }}>{message || 'Item not found.'}</Text>
         </Card>
@@ -147,7 +148,7 @@ export default function EditItemScreen() {
       keyboardAware
       title={`Edit ${item.name}`}
       subtitle="Update the details stored in your pantry."
-      headerAction={<Button compact onPress={() => router.back()} secondary icon="close">Close</Button>}>
+      headerAction={<Button compact onPress={() => safeBack(`/pantry-item/${item.id}`)} secondary icon="close">Close</Button>}>
       <PantryItemForm
         initialValues={{
           name: item.name,

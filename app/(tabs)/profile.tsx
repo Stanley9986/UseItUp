@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Button, Card, palette, Screen, SectionTitle } from '@/components/useitup/ui';
+import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
 import { supabase } from '@/lib/supabase';
@@ -170,6 +170,7 @@ const styles = StyleSheet.create({
   },
   name: {
     color: palette.ink,
+    fontFamily: typography.display,
     fontSize: 20,
     fontWeight: '900',
     letterSpacing: 0,
@@ -252,6 +253,7 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     color: palette.ink,
+    fontFamily: typography.display,
     fontSize: 15,
     fontWeight: '900',
     letterSpacing: 0,
@@ -266,6 +268,7 @@ const styles = StyleSheet.create({
   },
   previewTitle: {
     color: palette.ink,
+    fontFamily: typography.display,
     fontSize: 17,
     fontWeight: '900',
   },

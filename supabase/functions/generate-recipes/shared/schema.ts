@@ -15,6 +15,7 @@ export const recipeSchema = {
           usesExpiringItems: { type: 'boolean' },
           ingredients: {
             type: 'array',
+            maxItems: 8,
             items: {
               type: 'object',
               properties: {
@@ -30,6 +31,7 @@ export const recipeSchema = {
           },
           missingIngredients: {
             type: 'array',
+            maxItems: 4,
             items: { type: 'string' },
           },
           instructions: {

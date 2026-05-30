@@ -21,7 +21,7 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: palette.card,
           borderTopColor: palette.line,
-          height: 72,
+          height: 74,
           paddingBottom: 10,
           paddingLeft: sidePadding,
           paddingRight: sidePadding,
@@ -59,7 +59,7 @@ export default function TabLayout() {
               size={28}
               style={{
                 backgroundColor: palette.blue,
-                borderRadius: 24,
+                borderRadius: 18,
                 height: 48,
                 padding: 10,
                 width: 48,

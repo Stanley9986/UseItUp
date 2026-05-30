@@ -25,21 +25,25 @@ const recipeImages: Record<string, string> = {
 };
 
 export const palette = {
-  background: '#f4f8fb',
-  surface: '#eef5f7',
-  card: '#ffffff',
-  ink: '#17242b',
-  muted: '#667780',
-  line: '#d7e2e7',
-  green: '#137a7f',
-  greenSoft: '#dff4ef',
-  blue: '#2563eb',
-  blueSoft: '#e7efff',
-  gold: '#f4b740',
-  goldSoft: '#fff4d8',
-  blush: '#ffe8e2',
-  red: '#d5533f',
-  graphite: '#22313a',
+  background: '#f8f2e9',
+  surface: '#f1e7da',
+  card: '#fffdf9',
+  ink: '#342a22',
+  muted: '#7a6d61',
+  line: '#e8ded2',
+  green: '#6f7d4d',
+  greenSoft: '#ede8d5',
+  blue: '#8b6742',
+  blueSoft: '#f0dec8',
+  gold: '#d5a36f',
+  goldSoft: '#f7ead8',
+  blush: '#f5dfd1',
+  red: '#b45b42',
+  graphite: '#5a4632',
+};
+
+export const typography = {
+  display: Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia' }),
 };
 
 type ScreenProps = PropsWithChildren<{
@@ -99,11 +103,12 @@ type ButtonProps = {
   onPress?: () => void;
   secondary?: boolean;
   compact?: boolean;
+  style?: StyleProp<ViewStyle>;
 };
 
-export function Button({ children, href, icon, onPress, secondary, compact }: ButtonProps) {
+export function Button({ children, href, icon, onPress, secondary, compact, style }: ButtonProps) {
   const content = (
-    <View style={[styles.button, secondary && styles.secondaryButton, compact && styles.compactButton]}>
+    <View style={[styles.button, secondary && styles.secondaryButton, compact && styles.compactButton, style]}>
       {icon ? <Ionicons color={secondary ? palette.blue : '#fff'} name={icon} size={18} /> : null}
       <Text style={[styles.buttonText, secondary && styles.secondaryButtonText]}>{children}</Text>
     </View>
@@ -201,21 +206,21 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
         <Image source={{ uri: recipeImages[recipe.id] }} style={styles.recipeImage} />
       ) : (
         <View style={styles.recipeImageFallback}>
-          <Ionicons color={palette.green} name="restaurant-outline" size={30} />
+          <Ionicons color={palette.green} name="restaurant-outline" size={24} />
         </View>
       )}
-      <View style={styles.tagRow}>
-        {recipe.usesExpiringItems ? <Text style={styles.tag}>Uses expiring food</Text> : null}
-        <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} min</Text>
-      </View>
       <View style={styles.recipeBody}>
-        <Text style={styles.itemTitle}>{recipe.title}</Text>
-        <Text style={styles.description}>{recipe.description}</Text>
-        <Text style={styles.meta}>Uses: {available}</Text>
-        <Text style={styles.meta}>
+        <View style={styles.tagRow}>
+          {recipe.usesExpiringItems ? <Text style={styles.tag}>Uses expiring food</Text> : <View />}
+          <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} min</Text>
+        </View>
+        <Text numberOfLines={2} style={styles.itemTitle}>{recipe.title}</Text>
+        <Text numberOfLines={2} style={styles.description}>{recipe.description}</Text>
+        <Text numberOfLines={1} style={styles.meta}>Uses: {available}</Text>
+        <Text numberOfLines={1} style={styles.meta}>
           Missing: {recipe.missingIngredients.length ? recipe.missingIngredients.join(', ') : 'nothing essential'}
         </Text>
-        <Button compact href={`/recipe/${recipe.id}`} icon="restaurant-outline">
+        <Button compact href={`/recipe/${recipe.id}`} icon="restaurant-outline" style={styles.recipeButton}>
           View Recipe
         </Button>
       </View>
@@ -250,11 +255,11 @@ const styles = StyleSheet.create({
   screen: {
     alignSelf: 'center',
     backgroundColor: palette.background,
-    gap: 18,
+    gap: 20,
     maxWidth: 520,
-    paddingBottom: 32,
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingBottom: 112,
+    paddingHorizontal: 22,
+    paddingTop: 22,
     width: '100%',
   },
   keyboardAwareScreen: {
@@ -276,8 +281,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: palette.ink,
-    fontSize: 29,
-    fontWeight: '800',
+    fontFamily: typography.display,
+    fontSize: 30,
+    fontWeight: '900',
     letterSpacing: 0,
   },
   subtitle: {
@@ -288,20 +294,20 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: palette.card,
     borderColor: palette.line,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
     gap: 10,
-    padding: 14,
+    padding: 16,
     shadowColor: palette.graphite,
-    shadowOffset: { height: 6, width: 0 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.04,
+    shadowRadius: 18,
   },
   button: {
     alignItems: 'center',
     backgroundColor: palette.blue,
     borderColor: palette.blue,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 7,
@@ -319,11 +325,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   secondaryButton: {
-    backgroundColor: palette.blueSoft,
-    borderColor: '#c7d8ff',
+    backgroundColor: palette.gold,
+    borderColor: palette.gold,
   },
   secondaryButtonText: {
-    color: palette.blue,
+    color: palette.ink,
   },
   compactButton: {
     alignSelf: 'flex-start',
@@ -333,24 +339,26 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: palette.ink,
-    fontSize: 19,
-    fontWeight: '800',
-    letterSpacing: 0,
+    fontFamily: typography.display,
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   chip: {
     backgroundColor: palette.card,
     borderColor: palette.line,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
-    minHeight: 38,
     justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    minHeight: 42,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
   chipText: {
     color: palette.muted,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     letterSpacing: 0,
   },
   selectedChip: {
@@ -361,9 +369,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   itemCard: {
-    padding: 13,
-    borderLeftColor: palette.green,
-    borderLeftWidth: 4,
+    padding: 16,
   },
   itemRow: {
     alignItems: 'center',
@@ -373,8 +379,8 @@ const styles = StyleSheet.create({
   },
   itemIcon: {
     alignItems: 'center',
-    backgroundColor: palette.greenSoft,
-    borderRadius: 8,
+    backgroundColor: palette.goldSoft,
+    borderRadius: 12,
     height: 44,
     justifyContent: 'center',
     width: 44,
@@ -385,8 +391,9 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     color: palette.ink,
-    fontSize: 17,
-    fontWeight: '800',
+    fontFamily: typography.display,
+    fontSize: 16,
+    fontWeight: '900',
     letterSpacing: 0,
   },
   inlineMeta: {
@@ -411,25 +418,27 @@ const styles = StyleSheet.create({
   },
   recipeCard: {
     alignItems: 'stretch',
+    flexDirection: 'row',
     overflow: 'hidden',
     padding: 0,
   },
   recipeImage: {
     backgroundColor: palette.surface,
-    height: 118,
-    width: '100%',
+    height: '100%',
+    minHeight: 160,
+    width: 112,
   },
   recipeImageFallback: {
     alignItems: 'center',
-    backgroundColor: palette.greenSoft,
-    height: 118,
+    backgroundColor: palette.goldSoft,
+    minHeight: 160,
     justifyContent: 'center',
-    width: '100%',
+    width: 112,
   },
   recipeBody: {
+    flex: 1,
     gap: 8,
-    paddingBottom: 14,
-    paddingHorizontal: 14,
+    padding: 14,
   },
   tagRow: {
     alignItems: 'center',
@@ -437,12 +446,10 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingTop: 14,
   },
   tag: {
     backgroundColor: palette.blush,
-    borderRadius: 6,
+    borderRadius: 10,
     color: palette.red,
     fontSize: 12,
     fontWeight: '800',
@@ -459,5 +466,8 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 14,
     lineHeight: 20,
+  },
+  recipeButton: {
+    marginTop: 2,
   },
 });

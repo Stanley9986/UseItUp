@@ -1,9 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { Link } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Button, Card, Chip, palette, PantryCard, Screen, SectionTitle } from '@/components/useitup/ui';
+import {
+  Button,
+  Card,
+  Chip,
+  ExpirationText,
+  palette,
+  QuantityText,
+  Screen,
+  SectionTitle,
+  typography,
+} from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { getPantryItems } from '@/lib/pantry';
 import { PantryItem, StorageLocation } from '@/types/useitup';
@@ -63,12 +74,23 @@ export default function PantryScreen() {
       }),
     [filter, items, query],
   );
+  const groupedItems = useMemo(() => groupItemsByCategory(visibleItems), [visibleItems]);
 
   return (
-    <Screen
-      title="Pantry"
-      subtitle="Keep quantities rough and focus on what should be used soon."
-      headerAction={<Button compact href="/add-item" icon="add">Add</Button>}>
+    <Screen title="My Pantry" subtitle={`${items.length} item${items.length === 1 ? '' : 's'} available`}>
+      <View style={styles.actionRow}>
+        <View style={styles.actionButtonSlot}>
+          <Button href="/add-item" icon="add" style={styles.actionButton}>
+            Add Item
+          </Button>
+        </View>
+        <View style={styles.actionButtonSlot}>
+          <Button href="/(tabs)/recipes" icon="restaurant-outline" secondary style={styles.actionButton}>
+            Get Recipes
+          </Button>
+        </View>
+      </View>
+
       <View style={styles.search}>
         <Ionicons color={palette.muted} name="search" size={18} />
         <TextInput
@@ -90,7 +112,6 @@ export default function PantryScreen() {
           />
         ))}
       </View>
-      <SectionTitle>{visibleItems.length} Tracked Items</SectionTitle>
       {isLoading ? (
         <Card style={styles.stateCard}>
           <ActivityIndicator color={palette.blue} />
@@ -106,9 +127,16 @@ export default function PantryScreen() {
           </Button>
         </Card>
       ) : visibleItems.length ? (
-        <View style={styles.list}>
-          {visibleItems.map((item) => (
-            <PantryCard item={item} key={item.id} showEdit />
+        <View style={styles.groups}>
+          {groupedItems.map((group) => (
+            <View key={group.title} style={styles.group}>
+              <SectionTitle>{group.title}</SectionTitle>
+              <View style={styles.groupList}>
+                {group.items.map((item) => (
+                  <PantryListItem item={item} key={item.id} />
+                ))}
+              </View>
+            </View>
           ))}
         </View>
       ) : (
@@ -131,6 +159,41 @@ export default function PantryScreen() {
   );
 }
 
+function PantryListItem({ item }: { item: PantryItem }) {
+  return (
+    <Link asChild href={`/pantry-item/${item.id}`}>
+      <Pressable>
+        <Card style={styles.pantryItem}>
+          <Text style={styles.itemName}>{item.name}</Text>
+          <View style={styles.itemMeta}>
+            <QuantityText item={item} />
+            <Text style={styles.metaDot}>.</Text>
+            <ExpirationText expirationDate={item.expirationDate} />
+          </View>
+        </Card>
+      </Pressable>
+    </Link>
+  );
+}
+
+function groupItemsByCategory(items: PantryItem[]) {
+  const groups = new Map<string, PantryItem[]>();
+
+  items.forEach((item) => {
+    const title = titleCase(item.category || 'Other');
+    groups.set(title, [...(groups.get(title) ?? []), item]);
+  });
+
+  return [...groups.entries()].map(([title, groupItems]) => ({ title, items: groupItems }));
+}
+
+function titleCase(value: string) {
+  return value
+    .split(' ')
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(' ');
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
@@ -144,11 +207,22 @@ function getErrorMessage(error: unknown) {
 }
 
 const styles = StyleSheet.create({
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButtonSlot: {
+    flex: 1,
+  },
+  actionButton: {
+    minHeight: 52,
+    width: '100%',
+  },
   search: {
     alignItems: 'center',
     backgroundColor: palette.card,
     borderColor: palette.line,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 8,
@@ -166,8 +240,36 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
-  list: {
+  groups: {
+    gap: 24,
+  },
+  group: {
     gap: 10,
+  },
+  groupList: {
+    gap: 8,
+  },
+  pantryItem: {
+    gap: 8,
+    minHeight: 82,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  itemName: {
+    color: palette.ink,
+    fontFamily: typography.display,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  itemMeta: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+  },
+  metaDot: {
+    color: palette.muted,
+    fontSize: 14,
   },
   stateCard: {
     alignItems: 'flex-start',

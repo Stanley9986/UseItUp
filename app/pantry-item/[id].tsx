@@ -11,8 +11,10 @@ import {
   QuantityText,
   Screen,
   SectionTitle,
+  typography,
 } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { safeBack } from '@/lib/navigation';
 import { deletePantryItem, getErrorMessage, getPantryItemById } from '@/lib/pantry';
 import { PantryItem } from '@/types/useitup';
 
@@ -96,7 +98,7 @@ export default function PantryItemDetailScreen() {
       <Screen
         title="Pantry Item"
         subtitle="Loading item details."
-        headerAction={<Button compact onPress={() => router.back()} secondary icon="arrow-back">Back</Button>}>
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
         <Card style={styles.actionCard}>
           <Text style={styles.actionTitle}>Loading...</Text>
         </Card>
@@ -109,7 +111,7 @@ export default function PantryItemDetailScreen() {
       <Screen
         title="Pantry Item"
         subtitle="This item could not be found."
-        headerAction={<Button compact onPress={() => router.back()} secondary icon="arrow-back">Back</Button>}>
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
         <Card style={styles.actionCard}>
           <Text style={styles.actionTitle}>{errorMessage ? 'Unable to load item' : 'Item not found'}</Text>
           <Text style={styles.actionCopy}>
@@ -127,7 +129,7 @@ export default function PantryItemDetailScreen() {
     <Screen
       title={item.name}
       subtitle="Pantry item detail from your Supabase inventory."
-      headerAction={<Button compact onPress={() => router.back()} secondary icon="arrow-back">Back</Button>}>
+      headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
       <Card style={styles.heroCard}>
         <View style={styles.itemIconLarge}>
           <Ionicons color={palette.green} name={getCategoryIcon(item.category)} size={32} />
@@ -247,6 +249,7 @@ const styles = StyleSheet.create({
   },
   itemName: {
     color: palette.ink,
+    fontFamily: typography.display,
     fontSize: 24,
     fontWeight: '900',
     letterSpacing: 0,
@@ -301,6 +304,7 @@ const styles = StyleSheet.create({
   },
   actionTitle: {
     color: palette.ink,
+    fontFamily: typography.display,
     fontSize: 17,
     fontWeight: '900',
   },

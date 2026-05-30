@@ -1,8 +1,8 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, Chip, palette, RecipeCard, Screen } from '@/components/useitup/ui';
+import { Button, Card, Chip, palette, RecipeCard, Screen, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { recipes } from '@/data/mock-useitup';
 import { setGeneratedRecipes } from '@/lib/generated-recipes';
@@ -18,6 +18,22 @@ const sorts: { label: string; value: RecipeSort }[] = [
   { label: 'Fewest Missing', value: 'missing' },
 ];
 
+const generationSteps = [
+  'Reading your pantry...',
+  'Prioritizing expiring items...',
+  'Sketching recipe 1...',
+  'Checking recipe 1 ingredients...',
+  'Sketching recipe 2...',
+  'Checking recipe 2 ingredients...',
+  'Sketching recipe 3...',
+  'Checking recipe 3 ingredients...',
+  'Balancing prep times...',
+  'Plating the best options...',
+  'Finishing the recipe cards...',
+];
+
+const generationStepIntervalMs = 2000;
+
 export default function RecipesScreen() {
   const { user } = useAuth();
   const [sort, setSort] = useState<RecipeSort>('expiring');
@@ -25,6 +41,7 @@ export default function RecipesScreen() {
   const [generated, setGenerated] = useState<Recipe[]>([]);
   const [isLoadingPantry, setIsLoadingPantry] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStepIndex, setGenerationStepIndex] = useState(0);
   const [message, setMessage] = useState('');
   const activeRecipes = generated.length ? generated : recipes;
   const sortedRecipes = useMemo(() => sortRecipes(activeRecipes, sort), [activeRecipes, sort]);
@@ -51,6 +68,19 @@ export default function RecipesScreen() {
       loadPantry();
     }, [loadPantry]),
   );
+
+  useEffect(() => {
+    if (!isGenerating) {
+      setGenerationStepIndex(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setGenerationStepIndex((current) => Math.min(current + 1, generationSteps.length - 1));
+    }, generationStepIntervalMs);
+
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   async function handleGenerate() {
     if (!pantryItems.length || isGenerating) {
@@ -97,7 +127,22 @@ export default function RecipesScreen() {
         <Button icon="sparkles-outline" onPress={handleGenerate}>
           {isGenerating ? 'Generating...' : generated.length ? 'Regenerate Recipes' : 'Generate Recipes'}
         </Button>
-        {isGenerating ? <ActivityIndicator color={palette.blue} /> : null}
+        {isGenerating ? (
+          <View style={styles.progressBox}>
+            <ActivityIndicator color={palette.blue} />
+            <View style={styles.progressCopy}>
+              <Text style={styles.progressTitle}>{generationSteps[generationStepIndex]}</Text>
+              <View style={styles.progressDots}>
+                {generationSteps.map((step, index) => (
+                  <View
+                    key={step}
+                    style={[styles.progressDot, index <= generationStepIndex && styles.activeProgressDot]}
+                  />
+                ))}
+              </View>
+            </View>
+          </View>
+        ) : null}
       </Card>
 
       <View style={styles.filterRow}>
@@ -110,17 +155,38 @@ export default function RecipesScreen() {
           />
         ))}
       </View>
-      <Text style={styles.note}>
-        {generated.length
-          ? 'Generated recipes are not saved yet. Save/history comes in the next Phase 3 slice.'
-          : 'Sample suggestions are shown until you generate recipes from your pantry.'}
-      </Text>
+      {!isGenerating ? (
+        <Text style={styles.note}>
+          {generated.length
+            ? 'Generated recipes are not saved yet. Save/history comes in the next Phase 3 slice.'
+            : 'Sample suggestions are shown until you generate recipes from your pantry.'}
+        </Text>
+      ) : null}
       <View style={styles.list}>
-        {sortedRecipes.map((recipe) => (
-          <RecipeCard key={recipe.id} recipe={recipe} />
-        ))}
+        {isGenerating
+          ? [0, 1, 2].map((item) => <RecipeSkeleton key={item} index={item} />)
+          : sortedRecipes.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} />)}
       </View>
     </Screen>
+  );
+}
+
+function RecipeSkeleton({ index }: { index: number }) {
+  return (
+    <Card style={styles.skeletonCard}>
+      <View style={styles.skeletonImage}>
+        <ActivityIndicator color={palette.green} />
+      </View>
+      <View style={styles.skeletonBody}>
+        <View style={styles.skeletonHeader}>
+          <View style={[styles.skeletonLine, styles.skeletonTag]} />
+          <Text style={styles.skeletonNumber}>Recipe {index + 1}</Text>
+        </View>
+        <View style={[styles.skeletonLine, styles.skeletonTitle]} />
+        <View style={[styles.skeletonLine, styles.skeletonCopy]} />
+        <View style={[styles.skeletonLine, styles.skeletonCopyShort]} />
+      </View>
+    </Card>
   );
 }
 
@@ -156,6 +222,7 @@ const styles = StyleSheet.create({
   },
   generatorTitle: {
     color: palette.ink,
+    fontFamily: typography.display,
     fontSize: 18,
     fontWeight: '900',
   },
@@ -169,6 +236,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 20,
+  },
+  progressBox: {
+    alignItems: 'center',
+    backgroundColor: palette.blueSoft,
+    borderColor: '#c7d8ff',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 12,
+  },
+  progressCopy: {
+    flex: 1,
+    gap: 8,
+  },
+  progressTitle: {
+    color: palette.blue,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  progressDots: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+  },
+  progressDot: {
+    backgroundColor: '#d8c8b8',
+    borderRadius: 999,
+    height: 7,
+    width: 7,
+  },
+  activeProgressDot: {
+    backgroundColor: palette.blue,
   },
   filterRow: {
     flexDirection: 'row',
@@ -188,5 +288,51 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 10,
+  },
+  skeletonCard: {
+    gap: 0,
+    overflow: 'hidden',
+    padding: 0,
+  },
+  skeletonImage: {
+    alignItems: 'center',
+    backgroundColor: palette.greenSoft,
+    height: 118,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  skeletonBody: {
+    gap: 10,
+    padding: 14,
+  },
+  skeletonHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  skeletonLine: {
+    backgroundColor: palette.line,
+    borderRadius: 999,
+    height: 14,
+  },
+  skeletonTag: {
+    backgroundColor: palette.blush,
+    height: 30,
+    width: 140,
+  },
+  skeletonNumber: {
+    color: palette.muted,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  skeletonTitle: {
+    height: 22,
+    width: '68%',
+  },
+  skeletonCopy: {
+    width: '92%',
+  },
+  skeletonCopyShort: {
+    width: '56%',
   },
 });

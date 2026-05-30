@@ -9,6 +9,7 @@ export async function generateWithGemini(prompt: RecipePrompt) {
   }
 
   const model = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash';
+  const maxOutputTokens = readPositiveInteger(Deno.env.get('GEMINI_MAX_OUTPUT_TOKENS'), 8192);
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -29,8 +30,8 @@ export async function generateWithGemini(prompt: RecipePrompt) {
         generationConfig: {
           response_mime_type: 'application/json',
           response_json_schema: recipeSchema,
-          temperature: 0.7,
-          maxOutputTokens: 4000,
+          temperature: 0.6,
+          maxOutputTokens,
         },
       }),
     },
@@ -42,7 +43,12 @@ export async function generateWithGemini(prompt: RecipePrompt) {
     throw new Error(data?.error?.message ?? 'Gemini recipe generation failed');
   }
 
-  const outputText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = data?.candidates?.[0];
+  const outputText = Array.isArray(candidate?.content?.parts)
+    ? candidate.content.parts
+        .map((part: { text?: unknown }) => (typeof part.text === 'string' ? part.text : ''))
+        .join('')
+    : '';
 
   if (!outputText) {
     throw new Error('Gemini recipe generation returned no content');
@@ -51,6 +57,22 @@ export async function generateWithGemini(prompt: RecipePrompt) {
   try {
     return JSON.parse(outputText);
   } catch {
-    throw new Error('Gemini returned incomplete recipe JSON. Please try again.');
+    if (candidate?.finishReason === 'MAX_TOKENS') {
+      throw new Error(
+        `Gemini stopped because it reached the ${maxOutputTokens} token output limit. Please try again.`,
+      );
+    }
+
+    throw new Error(
+      `Gemini returned incomplete recipe JSON${
+        candidate?.finishReason ? ` (${candidate.finishReason})` : ''
+      }. Please try again.`,
+    );
   }
+}
+
+function readPositiveInteger(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }

@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, palette, Screen, SectionTitle } from '@/components/useitup/ui';
+import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { findRecipe } from '@/data/mock-useitup';
 import { findGeneratedRecipe } from '@/lib/generated-recipes';
+import { safeBack } from '@/lib/navigation';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -15,7 +16,7 @@ export default function RecipeDetailScreen() {
     <Screen
       title={recipe.title}
       subtitle={recipe.description}
-      headerAction={<Button compact onPress={() => router.back()} secondary icon="arrow-back">Back</Button>}>
+      headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">Back</Button>}>
       <View style={styles.summary}>
         <Meta icon="time-outline" label={`${recipe.prepTimeMinutes ?? '--'} min`} />
         {recipe.usesExpiringItems ? <Meta icon="leaf-outline" label="Uses expiring items" /> : null}
@@ -145,6 +146,7 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     color: palette.ink,
+    fontFamily: typography.display,
     flex: 1,
     fontSize: 15,
     fontWeight: '800',

@@ -5,7 +5,7 @@ import { Link } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, ExpirationText, palette, Screen, SectionTitle } from '@/components/useitup/ui';
+import { Button, Card, ExpirationText, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { recipes } from '@/data/mock-useitup';
 import { getErrorMessage, getPantryItems } from '@/lib/pantry';
@@ -92,7 +92,8 @@ export default function HomeScreen() {
 
       <Card style={styles.greetingCard}>
         <View style={styles.greetingCopy}>
-          <Text style={styles.greeting}>Good afternoon, {displayName}</Text>
+          <Text style={styles.greeting}>Good afternoon</Text>
+          <Text numberOfLines={2} style={styles.greetingName}>{displayName}</Text>
           <Text style={styles.heroCopy}>Let&apos;s make the most of what you have.</Text>
         </View>
         <View style={styles.greetingIcon}>
@@ -299,6 +300,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     color: palette.ink,
+    fontFamily: typography.display,
     fontSize: 29,
     fontWeight: '900',
     letterSpacing: 0,
@@ -339,8 +341,17 @@ const styles = StyleSheet.create({
   },
   greeting: {
     color: palette.ink,
-    fontSize: 22,
-    fontWeight: '800',
+    fontFamily: typography.display,
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  greetingName: {
+    color: palette.ink,
+    fontFamily: typography.display,
+    fontSize: 24,
+    fontWeight: '900',
+    lineHeight: 30,
     letterSpacing: 0,
   },
   heroCopy: {
@@ -460,6 +471,7 @@ const styles = StyleSheet.create({
   },
   foodName: {
     color: palette.ink,
+    fontFamily: typography.display,
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0,
@@ -529,6 +541,7 @@ const styles = StyleSheet.create({
   },
   mealTitle: {
     color: palette.ink,
+    fontFamily: typography.display,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0,
