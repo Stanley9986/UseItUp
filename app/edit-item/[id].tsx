@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 
 import {
@@ -10,6 +10,7 @@ import {
 } from '@/components/useitup/pantry-item-form';
 import { Button, Card, palette, Screen } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useRefresh } from '@/hooks/use-refresh';
 import { safeBack } from '@/lib/navigation';
 import {
   getErrorMessage,
@@ -28,40 +29,36 @@ export default function EditItemScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    let isActive = true;
-
-    async function loadItem() {
+  const loadItem = useCallback(
+    async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
       if (!user || !id) {
         return;
       }
 
-      setIsLoading(true);
-      setMessage('');
-
       try {
-        const nextItem = await getPantryItemById(user.id, id);
+        if (showLoading) {
+          setIsLoading(true);
+        }
+        setMessage('');
 
-        if (isActive) {
-          setItem(nextItem);
-        }
+        const nextItem = await getPantryItemById(user.id, id);
+        setItem(nextItem);
       } catch (error) {
-        if (isActive) {
-          setMessage(getErrorMessage(error, 'Unable to load item.'));
-        }
+        setMessage(getErrorMessage(error, 'Unable to load item.'));
       } finally {
-        if (isActive) {
+        if (showLoading) {
           setIsLoading(false);
         }
       }
-    }
+    },
+    [id, user],
+  );
 
+  const { isRefreshing, refresh } = useRefresh(() => loadItem({ showLoading: false }));
+
+  useEffect(() => {
     loadItem();
-
-    return () => {
-      isActive = false;
-    };
-  }, [id, user]);
+  }, [loadItem]);
 
   async function handleSave(values: PantryItemFormValues) {
     if (!user || !id || isSaving) {
@@ -120,6 +117,8 @@ export default function EditItemScreen() {
   if (isLoading) {
     return (
       <Screen
+        onRefresh={refresh}
+        refreshing={isRefreshing}
         title="Edit Item"
         subtitle="Loading item details."
         headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
@@ -133,6 +132,8 @@ export default function EditItemScreen() {
   if (!item) {
     return (
       <Screen
+        onRefresh={refresh}
+        refreshing={isRefreshing}
         title="Edit Item"
         subtitle="This item could not be found."
         headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
@@ -146,6 +147,8 @@ export default function EditItemScreen() {
   return (
     <Screen
       keyboardAware
+      onRefresh={refresh}
+      refreshing={isRefreshing}
       title={`Edit ${item.name}`}
       subtitle="Update the details stored in your pantry."
       headerAction={<Button compact onPress={() => safeBack(`/pantry-item/${item.id}`)} secondary icon="close">Close</Button>}>

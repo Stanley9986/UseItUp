@@ -8,6 +8,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, ExpirationText, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { recipes } from '@/data/mock-useitup';
+import { useRefresh } from '@/hooks/use-refresh';
 import { getErrorMessage, getPantryItems } from '@/lib/pantry';
 import { getSavedRecipes } from '@/lib/recipes';
 import { PantryItem, Recipe } from '@/types/useitup';
@@ -29,7 +30,6 @@ export default function HomeScreen() {
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const loadPantryItems = useCallback(async () => {
@@ -70,15 +70,9 @@ export default function HomeScreen() {
     }, [loadPantryItems, loadSavedRecipes]),
   );
 
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-
-    try {
-      await Promise.all([loadPantryItems(), loadSavedRecipes()]);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [loadPantryItems, loadSavedRecipes]);
+  const { isRefreshing, refresh } = useRefresh(async () => {
+    await Promise.all([loadPantryItems(), loadSavedRecipes()]);
+  });
 
   const expiringItems = useMemo(() => {
     const today = startOfDay(new Date());
@@ -104,7 +98,7 @@ export default function HomeScreen() {
   const suggestedRecipes = savedRecipes.length ? savedRecipes : recipes;
 
   return (
-    <Screen onRefresh={handleRefresh} refreshing={isRefreshing}>
+    <Screen onRefresh={refresh} refreshing={isRefreshing}>
       <View style={styles.appHeader}>
         <Text style={styles.logo}>UseItUp</Text>
         <View style={styles.headerActions}>

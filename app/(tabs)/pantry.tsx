@@ -16,6 +16,7 @@ import {
   typography,
 } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useRefresh } from '@/hooks/use-refresh';
 import { getPantryItems } from '@/lib/pantry';
 import { PantryItem, StorageLocation } from '@/types/useitup';
 
@@ -35,7 +36,6 @@ export default function PantryScreen() {
   const [filter, setFilter] = useState<PantryFilter>('all');
   const [items, setItems] = useState<PantryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const loadPantryItems = useCallback(async () => {
@@ -62,15 +62,7 @@ export default function PantryScreen() {
     }, [loadPantryItems]),
   );
 
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-
-    try {
-      await loadPantryItems();
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [loadPantryItems]);
+  const { isRefreshing, refresh } = useRefresh(loadPantryItems);
 
   const visibleItems = useMemo(
     () =>
@@ -89,7 +81,7 @@ export default function PantryScreen() {
 
   return (
     <Screen
-      onRefresh={handleRefresh}
+      onRefresh={refresh}
       refreshing={isRefreshing}
       title="My Pantry"
       subtitle={`${items.length} item${items.length === 1 ? '' : 's'} available`}>

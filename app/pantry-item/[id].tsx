@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -14,6 +14,7 @@ import {
   typography,
 } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useRefresh } from '@/hooks/use-refresh';
 import { safeBack } from '@/lib/navigation';
 import { deletePantryItem, getErrorMessage, getPantryItemById } from '@/lib/pantry';
 import { PantryItem } from '@/types/useitup';
@@ -26,40 +27,36 @@ export default function PantryItemDetailScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    let isActive = true;
-
-    async function loadItem() {
+  const loadItem = useCallback(
+    async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
       if (!user || !id) {
         return;
       }
 
-      setErrorMessage('');
-      setIsLoading(true);
-
       try {
-        const nextItem = await getPantryItemById(user.id, id);
+        setErrorMessage('');
+        if (showLoading) {
+          setIsLoading(true);
+        }
 
-        if (isActive) {
-          setItem(nextItem);
-        }
+        const nextItem = await getPantryItemById(user.id, id);
+        setItem(nextItem);
       } catch (error) {
-        if (isActive) {
-          setErrorMessage(getErrorMessage(error, 'Unable to load pantry item.'));
-        }
+        setErrorMessage(getErrorMessage(error, 'Unable to load pantry item.'));
       } finally {
-        if (isActive) {
+        if (showLoading) {
           setIsLoading(false);
         }
       }
-    }
+    },
+    [id, user],
+  );
 
+  const { isRefreshing, refresh } = useRefresh(() => loadItem({ showLoading: false }));
+
+  useEffect(() => {
     loadItem();
-
-    return () => {
-      isActive = false;
-    };
-  }, [id, user]);
+  }, [loadItem]);
 
   async function handleDelete() {
     if (!user || !id || isDeleting) {
@@ -96,6 +93,8 @@ export default function PantryItemDetailScreen() {
   if (isLoading) {
     return (
       <Screen
+        onRefresh={refresh}
+        refreshing={isRefreshing}
         title="Pantry Item"
         subtitle="Loading item details."
         headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
@@ -109,6 +108,8 @@ export default function PantryItemDetailScreen() {
   if (errorMessage || !item) {
     return (
       <Screen
+        onRefresh={refresh}
+        refreshing={isRefreshing}
         title="Pantry Item"
         subtitle="This item could not be found."
         headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
@@ -127,6 +128,8 @@ export default function PantryItemDetailScreen() {
 
   return (
     <Screen
+      onRefresh={refresh}
+      refreshing={isRefreshing}
       title={item.name}
       subtitle="Pantry item detail from your Supabase inventory."
       headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>

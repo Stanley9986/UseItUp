@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Chip, palette, RecipeCard, Screen, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { recipes } from '@/data/mock-useitup';
+import { useRefresh } from '@/hooks/use-refresh';
 import { setGeneratedRecipes } from '@/lib/generated-recipes';
 import { getPantryItems } from '@/lib/pantry';
 import { generateRecipes } from '@/lib/recipe-generator';
@@ -43,7 +44,6 @@ export default function RecipesScreen() {
   const [isLoadingPantry, setIsLoadingPantry] = useState(true);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [generationStepIndex, setGenerationStepIndex] = useState(0);
   const [message, setMessage] = useState('');
   const activeRecipes = generated.length ? generated : recipes;
@@ -91,15 +91,9 @@ export default function RecipesScreen() {
     }, [loadPantry, loadSavedRecipes]),
   );
 
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-
-    try {
-      await Promise.all([loadPantry(), loadSavedRecipes()]);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [loadPantry, loadSavedRecipes]);
+  const { isRefreshing, refresh } = useRefresh(async () => {
+    await Promise.all([loadPantry(), loadSavedRecipes()]);
+  });
 
   useEffect(() => {
     if (!isGenerating) {
@@ -147,7 +141,7 @@ export default function RecipesScreen() {
 
   return (
     <Screen
-      onRefresh={isGenerating ? undefined : handleRefresh}
+      onRefresh={isGenerating ? undefined : refresh}
       refreshing={isRefreshing}
       title="Meals You Can Make"
       subtitle="Generate meal ideas from your real pantry items.">

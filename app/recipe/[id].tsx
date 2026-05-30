@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { findRecipe } from '@/data/mock-useitup';
+import { useRefresh } from '@/hooks/use-refresh';
 import { findGeneratedRecipe } from '@/lib/generated-recipes';
 import { safeBack } from '@/lib/navigation';
 import { getSavedRecipeById } from '@/lib/recipes';
@@ -20,43 +21,44 @@ export default function RecipeDetailScreen() {
   const recipe = useMemo(() => savedRecipe ?? findGeneratedRecipe(id) ?? findRecipe(id), [id, savedRecipe]);
   const availableIngredients = recipe.ingredients.filter((ingredient) => ingredient.isAvailable);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadRecipe() {
+  const loadRecipe = useCallback(
+    async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
       if (!user || !id || findGeneratedRecipe(id)) {
         return;
       }
 
-      setIsLoading(true);
-      setMessage('');
-
       try {
+        if (showLoading) {
+          setIsLoading(true);
+        }
+        setMessage('');
+
         const nextRecipe = await getSavedRecipeById(user.id, id);
 
-        if (isMounted && nextRecipe) {
+        if (nextRecipe) {
           setSavedRecipe(nextRecipe);
         }
       } catch (error) {
-        if (isMounted) {
-          setMessage(getErrorMessage(error, 'Unable to load saved recipe. Showing sample recipe instead.'));
-        }
+        setMessage(getErrorMessage(error, 'Unable to load saved recipe. Showing sample recipe instead.'));
       } finally {
-        if (isMounted) {
+        if (showLoading) {
           setIsLoading(false);
         }
       }
-    }
+    },
+    [id, user],
+  );
 
+  const { isRefreshing, refresh } = useRefresh(() => loadRecipe({ showLoading: false }));
+
+  useEffect(() => {
     loadRecipe();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [id, user]);
+  }, [loadRecipe]);
 
   return (
     <Screen
+      onRefresh={refresh}
+      refreshing={isRefreshing}
       title={recipe.title}
       subtitle={recipe.description}
       headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">Back</Button>}>

@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useRefresh } from '@/hooks/use-refresh';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
 import { supabase } from '@/lib/supabase';
 
@@ -36,6 +37,9 @@ export default function ProfileScreen() {
   const email = user?.email ?? 'Signed-in user';
   const displayName = user?.user_metadata?.name ?? email.split('@')[0] ?? 'UseItUp User';
   const initial = displayName.charAt(0).toUpperCase();
+  const { isRefreshing, refresh } = useRefresh(async () => {
+    await supabase.auth.refreshSession();
+  });
 
   useEffect(() => {
     setDisplayNameInput(displayName);
@@ -102,7 +106,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <Screen title="More" subtitle="Manage your UseItUp account and preferences.">
+    <Screen onRefresh={refresh} refreshing={isRefreshing} title="More" subtitle="Manage your UseItUp account and preferences.">
       <Card style={styles.profileCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initial}</Text>
