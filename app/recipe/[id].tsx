@@ -19,6 +19,7 @@ export default function RecipeDetailScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const recipe = useMemo(() => savedRecipe ?? findGeneratedRecipe(id) ?? findRecipe(id), [id, savedRecipe]);
+  const canUpdatePantry = Boolean(savedRecipe ?? findGeneratedRecipe(id));
   const availableIngredients = recipe.ingredients.filter((ingredient) => ingredient.isAvailable);
 
   const loadRecipe = useCallback(
@@ -128,9 +129,16 @@ export default function RecipeDetailScreen() {
         </Card>
       </View>
 
-      <Button href="/update-pantry" icon="checkmark-circle-outline">
-        I Cooked This
-      </Button>
+      {canUpdatePantry ? (
+        <Button href={`/update-pantry?recipeId=${recipe.id}`} icon="checkmark-circle-outline">
+          I Cooked This
+        </Button>
+      ) : (
+        <Card style={styles.loadingCard}>
+          <Ionicons color={palette.green} name="information-circle-outline" size={18} />
+          <Text style={styles.body}>Generate and save recipes from your pantry before updating quantities.</Text>
+        </Card>
+      )}
     </Screen>
   );
 }
