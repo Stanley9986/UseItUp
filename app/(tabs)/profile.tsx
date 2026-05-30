@@ -1,11 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Link } from 'expo-router';
 
 import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
+import { getCookHistory } from '@/lib/cook-history';
+import { CookHistoryItem } from '@/lib/cook-history-mappers';
 import { supabase } from '@/lib/supabase';
 
 const settingsRows = [
@@ -32,18 +35,36 @@ export default function ProfileScreen() {
   const [displayNameInput, setDisplayNameInput] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
+  const [cookHistory, setCookHistory] = useState<CookHistoryItem[]>([]);
+  const [historyMessage, setHistoryMessage] = useState('');
   const [profileMessage, setProfileMessage] = useState('');
   const [profileMessageType, setProfileMessageType] = useState<'error' | 'success'>('success');
   const email = user?.email ?? 'Signed-in user';
   const displayName = user?.user_metadata?.name ?? email.split('@')[0] ?? 'UseItUp User';
   const initial = displayName.charAt(0).toUpperCase();
+  const loadCookHistory = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    try {
+      setHistoryMessage('');
+      setCookHistory(await getCookHistory(user.id));
+    } catch (error) {
+      setHistoryMessage(getMessage(error, 'Unable to load cooked recipe history.'));
+    }
+  }, [user]);
   const { isRefreshing, refresh } = useRefresh(async () => {
-    await supabase.auth.refreshSession();
+    await Promise.all([supabase.auth.refreshSession(), loadCookHistory()]);
   });
 
   useEffect(() => {
     setDisplayNameInput(displayName);
   }, [displayName]);
+
+  useEffect(() => {
+    loadCookHistory();
+  }, [loadCookHistory]);
 
   useEffect(() => {
     if (!profileMessage || profileMessageType !== 'success') {
@@ -156,6 +177,46 @@ export default function ProfileScreen() {
       </Card>
 
       <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <SectionTitle>Recently Cooked</SectionTitle>
+          <Link asChild href="/cook-history">
+            <Pressable hitSlop={10}>
+              <Text style={styles.viewAll}>View all</Text>
+            </Pressable>
+          </Link>
+        </View>
+        <Card style={styles.listCard}>
+          {historyMessage ? (
+            <View style={styles.emptyHistory}>
+              <Text style={styles.rowDetail}>{historyMessage}</Text>
+            </View>
+          ) : cookHistory.length ? (
+            cookHistory.slice(0, 5).map((item, index) => (
+              <Link asChild href={`/recipe/${item.recipeId}`} key={item.id}>
+                <Pressable style={styles.linkRow}>
+                  <View style={[styles.row, index > 0 && styles.withDivider]}>
+                    <View style={styles.rowIcon}>
+                      <Ionicons color={palette.green} name="checkmark-circle-outline" size={20} />
+                    </View>
+                    <View style={styles.rowCopy}>
+                      <Text numberOfLines={2} style={styles.rowTitle}>{item.recipeTitle}</Text>
+                      <Text numberOfLines={1} style={styles.rowDetail}>{formatCookedAt(item.cookedAt)}</Text>
+                    </View>
+                    <Ionicons color={palette.muted} name="chevron-forward" size={18} />
+                  </View>
+                </Pressable>
+              </Link>
+            ))
+          ) : (
+            <View style={styles.emptyHistory}>
+              <Text style={styles.rowTitle}>No cooked recipes yet</Text>
+              <Text style={styles.rowDetail}>Cook a saved recipe to see it here.</Text>
+            </View>
+          )}
+        </Card>
+      </View>
+
+      <View style={styles.section}>
         <SectionTitle>Preferences</SectionTitle>
         <Card style={styles.listCard}>
           {settingsRows.map((row, index) => (
@@ -254,6 +315,16 @@ const styles = StyleSheet.create({
   section: {
     gap: 10,
   },
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  viewAll: {
+    color: palette.blue,
+    fontSize: 13,
+    fontWeight: '800',
+  },
   inlineEdit: {
     gap: 9,
     marginTop: 7,
@@ -296,6 +367,9 @@ const styles = StyleSheet.create({
     gap: 0,
     padding: 0,
   },
+  linkRow: {
+    width: '100%',
+  },
   row: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -303,6 +377,7 @@ const styles = StyleSheet.create({
     minHeight: 70,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    width: '100%',
   },
   withDivider: {
     borderTopColor: palette.line,
@@ -319,6 +394,7 @@ const styles = StyleSheet.create({
   rowCopy: {
     flex: 1,
     gap: 3,
+    minWidth: 0,
   },
   rowTitle: {
     color: palette.ink,
@@ -331,6 +407,10 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 13,
     lineHeight: 18,
+  },
+  emptyHistory: {
+    gap: 4,
+    padding: 14,
   },
   previewCard: {
     backgroundColor: palette.surface,
@@ -347,3 +427,23 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+
+function formatCookedAt(value: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
+function getMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String(error.message);
+  }
+
+  return fallback;
+}
