@@ -4,10 +4,11 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, palette, Screen, SectionTitle } from '@/components/useitup/ui';
 import { findRecipe } from '@/data/mock-useitup';
+import { findGeneratedRecipe } from '@/lib/generated-recipes';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const recipe = findRecipe(id);
+  const recipe = findGeneratedRecipe(id) ?? findRecipe(id);
   const availableIngredients = recipe.ingredients.filter((ingredient) => ingredient.isAvailable);
 
   return (

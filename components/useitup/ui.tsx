@@ -197,7 +197,13 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
 
   return (
     <Card style={styles.recipeCard}>
-      <Image source={{ uri: recipeImages[recipe.id] }} style={styles.recipeImage} />
+      {recipeImages[recipe.id] ? (
+        <Image source={{ uri: recipeImages[recipe.id] }} style={styles.recipeImage} />
+      ) : (
+        <View style={styles.recipeImageFallback}>
+          <Ionicons color={palette.green} name="restaurant-outline" size={30} />
+        </View>
+      )}
       <View style={styles.tagRow}>
         {recipe.usesExpiringItems ? <Text style={styles.tag}>Uses expiring food</Text> : null}
         <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} min</Text>
@@ -411,6 +417,13 @@ const styles = StyleSheet.create({
   recipeImage: {
     backgroundColor: palette.surface,
     height: 118,
+    width: '100%',
+  },
+  recipeImageFallback: {
+    alignItems: 'center',
+    backgroundColor: palette.greenSoft,
+    height: 118,
+    justifyContent: 'center',
     width: '100%',
   },
   recipeBody: {

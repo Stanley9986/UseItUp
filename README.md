@@ -1,50 +1,160 @@
-# Welcome to your Expo app 👋
+# UseItUp
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+UseItUp is an Expo React Native pantry app that helps people track ingredients, spot expiring food, and generate meal ideas from what they already have.
 
-## Get started
+## Prerequisites
 
-1. Install dependencies
+- Node.js 20.19 or newer
+- npm
+- Expo Go on a mobile device, or a browser for web testing
+- A Supabase account and project
+- A Gemini API key for recipe generation
 
-   ```bash
-   npm install
-   ```
+## Development
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Install dependencies:
 
 ```bash
-npm run reset-project
+npm ci
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Create a local environment file:
 
-## Learn more
+```bash
+cp .env.example .env
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Start Expo:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npm start -- --port 8081
+```
 
-## Join the community
+Open the app with Expo Go, or press `w` in the Expo terminal to run the web build.
 
-Join our community of developers creating universal apps.
+Run project checks:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npm run test
+npm run lint
+npx tsc --noEmit
+```
+
+## Supabase
+
+Create a Supabase project, then copy the project API URL and anon public key into `.env`:
+
+```bash
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key
+```
+
+Do not commit `.env`. Use `.env.example` as the shared template for collaborators.
+
+Database migrations live in this folder:
+
+```text
+supabase/migrations/
+```
+
+For manual setup, open the Supabase SQL Editor and run the migration files in order:
+
+```text
+001_create_pantry_items.sql
+002_add_pantry_item_normalized_name.sql
+```
+
+The migrations create the pantry table, enable Row Level Security, add authenticated-user policies, and grant the app access through Supabase's authenticated role.
+
+### Auth Redirect URLs
+
+In Supabase, go to **Authentication > URL Configuration**.
+
+For local web development, add:
+
+```text
+http://localhost:8081/**
+```
+
+If you run Expo web on a different port, add that port too.
+
+For mobile password reset flows in Expo Go, the reset link may open in the browser. Production mobile deep links should be configured later when the app has a production URL or native scheme.
+
+### Edge Function Deploy
+
+The Edge Function source lives in:
+
+```text
+supabase/functions/generate-recipes/
+```
+
+Install/use the Supabase CLI through `npx`:
+
+```bash
+npx supabase login
+npx supabase link --project-ref your-project-ref
+```
+
+Deploy the function:
+
+```bash
+npx supabase functions deploy generate-recipes
+```
+
+You can find your project ref in the Supabase project URL or project settings. For example, in `https://abcxyz.supabase.co`, the project ref is `abcxyz`.
+
+## Recipe Generation
+
+Phase 3A generates recipes without saving them to the database. The Expo app calls this Supabase Edge Function:
+
+```text
+supabase/functions/generate-recipes/
+```
+
+Set the Gemini key as a Supabase secret, not in Expo `.env`. This can be done in the Supabase dashboard or with the CLI.
+
+Dashboard path:
+
+```text
+Project Settings > Edge Functions > Secrets
+```
+
+CLI option:
+
+```bash
+npx supabase secrets set GEMINI_API_KEY=your-gemini-api-key
+```
+
+Optional provider/model overrides:
+
+```bash
+npx supabase secrets set AI_PROVIDER=gemini
+npx supabase secrets set GEMINI_MODEL=gemini-2.0-flash
+```
+
+Generated recipes are session-only for now. A later Phase 3B will add saved recipes.
+
+The function is organized by provider so the app can keep calling the same `generate-recipes`
+endpoint if we later switch from Gemini to OpenAI or another LLM.
+
+## Reproducing The Project
+
+From a fresh clone:
+
+```bash
+npm ci
+cp .env.example .env
+```
+
+Then:
+
+1. Create a Supabase project.
+2. Fill in `.env` with the Supabase URL and anon key.
+3. Run the SQL migrations in `supabase/migrations/`.
+4. Add the auth redirect URL for your local Expo port.
+5. Add `GEMINI_API_KEY` as a Supabase Edge Function secret.
+6. Deploy `generate-recipes` with `npx supabase functions deploy generate-recipes`.
+7. Start Expo with `npm start -- --port 8081`.
+8. Run `npm run test`, `npm run lint`, and `npx tsc --noEmit` before committing.
+
+Docker is not required for the current Expo Go workflow. Reproducibility is handled through `package-lock.json`, `.env.example`, Supabase migrations, Edge Function source, and CI.

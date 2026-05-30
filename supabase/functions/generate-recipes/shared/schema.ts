@@ -1,0 +1,56 @@
+export const recipeSchema = {
+  type: 'object',
+  properties: {
+    recipes: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 3,
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          title: { type: 'string' },
+          description: { type: 'string' },
+          prepTimeMinutes: { type: 'number' },
+          usesExpiringItems: { type: 'boolean' },
+          ingredients: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                pantryItemId: { type: ['string', 'null'] },
+                quantityValue: { type: ['number', 'null'] },
+                quantityUnit: { type: ['string', 'null'] },
+                isAvailable: { type: 'boolean' },
+                isOptional: { type: 'boolean' },
+              },
+              required: ['name', 'isAvailable', 'isOptional'],
+            },
+          },
+          missingIngredients: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+          instructions: {
+            type: 'array',
+            minItems: 3,
+            maxItems: 5,
+            items: { type: 'string' },
+          },
+        },
+        required: [
+          'id',
+          'title',
+          'description',
+          'prepTimeMinutes',
+          'usesExpiringItems',
+          'ingredients',
+          'missingIngredients',
+          'instructions',
+        ],
+      },
+    },
+  },
+  required: ['recipes'],
+};
