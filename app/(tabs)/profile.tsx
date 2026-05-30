@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
@@ -29,6 +29,7 @@ export default function ProfileScreen() {
   const { signOut, user } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [displayNameInput, setDisplayNameInput] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
   const [profileMessageType, setProfileMessageType] = useState<'error' | 'success'>('success');
@@ -39,6 +40,18 @@ export default function ProfileScreen() {
   useEffect(() => {
     setDisplayNameInput(displayName);
   }, [displayName]);
+
+  useEffect(() => {
+    if (!profileMessage || profileMessageType !== 'success') {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setProfileMessage('');
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, [profileMessage, profileMessageType]);
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -69,10 +82,23 @@ export default function ProfileScreen() {
       setProfileMessage(getFriendlyAuthError(error, 'Unable to update display name.'));
     } else {
       setProfileMessageType('success');
-      setProfileMessage('Display name updated.');
+      setProfileMessage('Name updated.');
+      setIsEditingName(false);
     }
 
     setIsSavingName(false);
+  }
+
+  function handleStartEditingName() {
+    setDisplayNameInput(displayName);
+    setProfileMessage('');
+    setIsEditingName(true);
+  }
+
+  function handleCancelEditingName() {
+    setDisplayNameInput(displayName);
+    setProfileMessage('');
+    setIsEditingName(false);
   }
 
   return (
@@ -82,33 +108,48 @@ export default function ProfileScreen() {
           <Text style={styles.avatarText}>{initial}</Text>
         </View>
         <View style={styles.profileCopy}>
-          <Text style={styles.name}>{displayName}</Text>
+          <View style={styles.nameRow}>
+            <Text numberOfLines={2} style={styles.name}>{displayName}</Text>
+            {!isEditingName ? (
+              <Pressable
+                accessibilityLabel="Edit display name"
+                hitSlop={10}
+                onPress={handleStartEditingName}
+                style={styles.editIconButton}>
+                <Ionicons color={palette.blue} name="create-outline" size={18} />
+              </Pressable>
+            ) : null}
+          </View>
           <Text style={styles.email}>{email}</Text>
-          <Text style={styles.phaseLabel}>Supabase account</Text>
-        </View>
-      </Card>
-
-      <View style={styles.section}>
-        <SectionTitle>Profile</SectionTitle>
-        <Card style={styles.editProfileCard}>
-          <Text style={styles.inputLabel}>Display Name</Text>
-          <TextInput
-            onChangeText={setDisplayNameInput}
-            placeholder="Your name"
-            placeholderTextColor={palette.muted}
-            style={styles.input}
-            value={displayNameInput}
-          />
+          {isEditingName ? (
+            <View style={styles.inlineEdit}>
+              <Text style={styles.inputLabel}>Edit display name</Text>
+              <TextInput
+                autoCapitalize="words"
+                onChangeText={setDisplayNameInput}
+                placeholder="Your name"
+                placeholderTextColor={palette.muted}
+                style={styles.input}
+                value={displayNameInput}
+              />
+              <View style={styles.editActions}>
+                <Button compact onPress={handleSaveDisplayName} icon="save-outline" style={styles.editAction}>
+                  {isSavingName ? 'Saving...' : 'Save'}
+                </Button>
+                <Button compact onPress={handleCancelEditingName} secondary icon="close-outline" style={styles.editAction}>
+                  Cancel
+                </Button>
+              </View>
+            </View>
+          ) : null}
           {profileMessage ? (
             <Text style={[styles.profileMessage, profileMessageType === 'error' ? styles.errorText : styles.successText]}>
               {profileMessage}
             </Text>
           ) : null}
-          <Button compact onPress={handleSaveDisplayName} icon="save-outline">
-            {isSavingName ? 'Saving...' : 'Save Name'}
-          </Button>
-        </Card>
-      </View>
+          <Text style={styles.phaseLabel}>Supabase account</Text>
+        </View>
+      </Card>
 
       <View style={styles.section}>
         <SectionTitle>Preferences</SectionTitle>
@@ -166,14 +207,29 @@ const styles = StyleSheet.create({
   },
   profileCopy: {
     flex: 1,
-    gap: 3,
+    gap: 5,
+    minWidth: 0,
+  },
+  nameRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   name: {
     color: palette.ink,
+    flex: 1,
     fontFamily: typography.display,
     fontSize: 20,
     fontWeight: '900',
     letterSpacing: 0,
+  },
+  editIconButton: {
+    alignItems: 'center',
+    backgroundColor: palette.blueSoft,
+    borderRadius: 8,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
   },
   email: {
     color: palette.muted,
@@ -194,12 +250,13 @@ const styles = StyleSheet.create({
   section: {
     gap: 10,
   },
-  editProfileCard: {
-    alignItems: 'stretch',
+  inlineEdit: {
+    gap: 9,
+    marginTop: 7,
   },
   inputLabel: {
     color: palette.ink,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   input: {
@@ -211,6 +268,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     minHeight: 48,
     paddingHorizontal: 12,
+  },
+  editActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  editAction: {
+    flexGrow: 1,
   },
   profileMessage: {
     fontSize: 14,

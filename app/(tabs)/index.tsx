@@ -9,7 +9,8 @@ import { Button, Card, ExpirationText, palette, Screen, SectionTitle, typography
 import { useAuth } from '@/contexts/auth-context';
 import { recipes } from '@/data/mock-useitup';
 import { getErrorMessage, getPantryItems } from '@/lib/pantry';
-import { PantryItem } from '@/types/useitup';
+import { getSavedRecipes } from '@/lib/recipes';
+import { PantryItem, Recipe } from '@/types/useitup';
 
 const foodImages: Record<string, string> = {
   steak: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=240&q=80',
@@ -26,7 +27,9 @@ const recipeImages: Record<string, string> = {
 export default function HomeScreen() {
   const { user } = useAuth();
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
+  const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const loadPantryItems = useCallback(async () => {
@@ -47,11 +50,35 @@ export default function HomeScreen() {
     }
   }, [user]);
 
+  const loadSavedRecipes = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    try {
+      const nextRecipes = await getSavedRecipes(user.id);
+      setSavedRecipes(nextRecipes);
+    } catch {
+      setSavedRecipes([]);
+    }
+  }, [user]);
+
   useFocusEffect(
     useCallback(() => {
       loadPantryItems();
-    }, [loadPantryItems]),
+      loadSavedRecipes();
+    }, [loadPantryItems, loadSavedRecipes]),
   );
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+
+    try {
+      await Promise.all([loadPantryItems(), loadSavedRecipes()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadPantryItems, loadSavedRecipes]);
 
   const expiringItems = useMemo(() => {
     const today = startOfDay(new Date());
@@ -74,9 +101,10 @@ export default function HomeScreen() {
   const freezerCount = pantryItems.filter((item) => item.storageLocation === 'freezer').length;
   const pantryCount = pantryItems.filter((item) => item.storageLocation === 'pantry').length;
   const displayName = user?.user_metadata?.name ?? user?.email?.split('@')[0] ?? 'there';
+  const suggestedRecipes = savedRecipes.length ? savedRecipes : recipes;
 
   return (
-    <Screen>
+    <Screen onRefresh={handleRefresh} refreshing={isRefreshing}>
       <View style={styles.appHeader}>
         <Text style={styles.logo}>UseItUp</Text>
         <View style={styles.headerActions}>
@@ -189,10 +217,16 @@ export default function HomeScreen() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.mealRow}>
-            {recipes.map((recipe) => (
+            {suggestedRecipes.slice(0, 6).map((recipe) => (
               <Link asChild href={`/recipe/${recipe.id}`} key={recipe.id}>
                 <Pressable style={styles.mealCard}>
-                  <Image source={{ uri: recipeImages[recipe.id] }} style={styles.mealImage} />
+                  {recipeImages[recipe.id] ? (
+                    <Image source={{ uri: recipeImages[recipe.id] }} style={styles.mealImage} />
+                  ) : (
+                    <View style={styles.mealImageFallback}>
+                      <Ionicons color={palette.green} name="restaurant-outline" size={24} />
+                    </View>
+                  )}
                   <View style={styles.timePill}>
                     <Ionicons color={palette.ink} name="time-outline" size={12} />
                     <Text style={styles.timePillText}>{recipe.prepTimeMinutes} min</Text>
@@ -522,6 +556,13 @@ const styles = StyleSheet.create({
     height: 88,
     width: '100%',
   },
+  mealImageFallback: {
+    alignItems: 'center',
+    backgroundColor: palette.greenSoft,
+    height: 88,
+    justifyContent: 'center',
+    width: '100%',
+  },
   timePill: {
     alignItems: 'center',
     alignSelf: 'flex-start',
@@ -546,7 +587,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0,
     lineHeight: 17,
-    marginTop: 54,
+    marginTop: 60,
     paddingHorizontal: 9,
   },
   mealTag: {

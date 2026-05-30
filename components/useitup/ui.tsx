@@ -6,6 +6,7 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleProp,
   StyleSheet,
@@ -51,10 +52,21 @@ type ScreenProps = PropsWithChildren<{
   subtitle?: string;
   headerAction?: ReactNode;
   keyboardAware?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
   style?: StyleProp<ViewStyle>;
 }>;
 
-export function Screen({ children, title, subtitle, headerAction, keyboardAware, style }: ScreenProps) {
+export function Screen({
+  children,
+  title,
+  subtitle,
+  headerAction,
+  keyboardAware,
+  onRefresh,
+  refreshing,
+  style,
+}: ScreenProps) {
   const { width } = useWindowDimensions();
   const isTabletWidth = width >= 700;
   const content = (
@@ -62,6 +74,11 @@ export function Screen({ children, title, subtitle, headerAction, keyboardAware,
       automaticallyAdjustKeyboardInsets={keyboardAware}
       contentContainerStyle={[styles.screen, keyboardAware && styles.keyboardAwareScreen, isTabletWidth && styles.tabletScreen, style]}
       keyboardShouldPersistTaps="handled"
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl colors={[palette.blue]} onRefresh={onRefresh} refreshing={Boolean(refreshing)} tintColor={palette.blue} />
+        ) : undefined
+      }
       showsVerticalScrollIndicator={false}>
       {title ? (
         <View style={styles.header}>

@@ -1,22 +1,73 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
+import { useAuth } from '@/contexts/auth-context';
 import { findRecipe } from '@/data/mock-useitup';
 import { findGeneratedRecipe } from '@/lib/generated-recipes';
 import { safeBack } from '@/lib/navigation';
+import { getSavedRecipeById } from '@/lib/recipes';
+import { Recipe } from '@/types/useitup';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const recipe = findGeneratedRecipe(id) ?? findRecipe(id);
+  const { user } = useAuth();
+  const [savedRecipe, setSavedRecipe] = useState<Recipe | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const recipe = useMemo(() => savedRecipe ?? findGeneratedRecipe(id) ?? findRecipe(id), [id, savedRecipe]);
   const availableIngredients = recipe.ingredients.filter((ingredient) => ingredient.isAvailable);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadRecipe() {
+      if (!user || !id || findGeneratedRecipe(id)) {
+        return;
+      }
+
+      setIsLoading(true);
+      setMessage('');
+
+      try {
+        const nextRecipe = await getSavedRecipeById(user.id, id);
+
+        if (isMounted && nextRecipe) {
+          setSavedRecipe(nextRecipe);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setMessage(getErrorMessage(error, 'Unable to load saved recipe. Showing sample recipe instead.'));
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadRecipe();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, user]);
 
   return (
     <Screen
       title={recipe.title}
       subtitle={recipe.description}
       headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">Back</Button>}>
+      {isLoading ? (
+        <Card style={styles.loadingCard}>
+          <ActivityIndicator color={palette.blue} />
+          <Text style={styles.body}>Loading saved recipe...</Text>
+        </Card>
+      ) : null}
+      {message ? <Text style={styles.message}>{message}</Text> : null}
+
       <View style={styles.summary}>
         <Meta icon="time-outline" label={`${recipe.prepTimeMinutes ?? '--'} min`} />
         {recipe.usesExpiringItems ? <Meta icon="leaf-outline" label="Uses expiring items" /> : null}
@@ -175,4 +226,27 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     textAlign: 'center',
   },
+  loadingCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  message: {
+    color: palette.red,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
 });
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String(error.message);
+  }
+
+  return fallback;
+}

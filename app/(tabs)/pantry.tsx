@@ -35,6 +35,7 @@ export default function PantryScreen() {
   const [filter, setFilter] = useState<PantryFilter>('all');
   const [items, setItems] = useState<PantryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const loadPantryItems = useCallback(async () => {
@@ -61,6 +62,16 @@ export default function PantryScreen() {
     }, [loadPantryItems]),
   );
 
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+
+    try {
+      await loadPantryItems();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadPantryItems]);
+
   const visibleItems = useMemo(
     () =>
       items.filter((item) => {
@@ -77,7 +88,11 @@ export default function PantryScreen() {
   const groupedItems = useMemo(() => groupItemsByCategory(visibleItems), [visibleItems]);
 
   return (
-    <Screen title="My Pantry" subtitle={`${items.length} item${items.length === 1 ? '' : 's'} available`}>
+    <Screen
+      onRefresh={handleRefresh}
+      refreshing={isRefreshing}
+      title="My Pantry"
+      subtitle={`${items.length} item${items.length === 1 ? '' : 's'} available`}>
       <View style={styles.actionRow}>
         <View style={styles.actionButtonSlot}>
           <Button href="/add-item" icon="add" style={styles.actionButton}>

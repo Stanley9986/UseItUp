@@ -8,6 +8,7 @@ import { recipes } from '@/data/mock-useitup';
 import { setGeneratedRecipes } from '@/lib/generated-recipes';
 import { getPantryItems } from '@/lib/pantry';
 import { generateRecipes } from '@/lib/recipe-generator';
+import { getSavedRecipes, saveGeneratedRecipes } from '@/lib/recipes';
 import { PantryItem, Recipe } from '@/types/useitup';
 
 type RecipeSort = 'expiring' | 'quick' | 'missing';
@@ -40,11 +41,31 @@ export default function RecipesScreen() {
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [generated, setGenerated] = useState<Recipe[]>([]);
   const [isLoadingPantry, setIsLoadingPantry] = useState(true);
+  const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [generationStepIndex, setGenerationStepIndex] = useState(0);
   const [message, setMessage] = useState('');
   const activeRecipes = generated.length ? generated : recipes;
   const sortedRecipes = useMemo(() => sortRecipes(activeRecipes, sort), [activeRecipes, sort]);
+
+  const loadSavedRecipes = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    setIsLoadingRecipes(true);
+
+    try {
+      const savedRecipes = await getSavedRecipes(user.id);
+      setGenerated(savedRecipes);
+      setGeneratedRecipes(savedRecipes);
+    } catch (error) {
+      setMessage(getErrorMessage(error, 'Unable to load saved recipes. Showing sample meals for now.'));
+    } finally {
+      setIsLoadingRecipes(false);
+    }
+  }, [user]);
 
   const loadPantry = useCallback(async () => {
     if (!user) {
@@ -66,8 +87,19 @@ export default function RecipesScreen() {
   useFocusEffect(
     useCallback(() => {
       loadPantry();
-    }, [loadPantry]),
+      loadSavedRecipes();
+    }, [loadPantry, loadSavedRecipes]),
   );
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+
+    try {
+      await Promise.all([loadPantry(), loadSavedRecipes()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadPantry, loadSavedRecipes]);
 
   useEffect(() => {
     if (!isGenerating) {
@@ -83,7 +115,7 @@ export default function RecipesScreen() {
   }, [isGenerating]);
 
   async function handleGenerate() {
-    if (!pantryItems.length || isGenerating) {
+    if (!user || !pantryItems.length || isGenerating) {
       return;
     }
 
@@ -103,8 +135,9 @@ export default function RecipesScreen() {
         setMessage('The generator did not return any recipes. Try adding more pantry items.');
       }
 
-      setGenerated(nextRecipes);
-      setGeneratedRecipes(nextRecipes);
+      const savedRecipes = await saveGeneratedRecipes(user.id, nextRecipes);
+      setGenerated(savedRecipes);
+      setGeneratedRecipes(savedRecipes);
     } catch (error) {
       setMessage(getErrorMessage(error, 'Unable to generate recipes yet. Showing sample meals for now.'));
     } finally {
@@ -113,7 +146,11 @@ export default function RecipesScreen() {
   }
 
   return (
-    <Screen title="Meals You Can Make" subtitle="Generate meal ideas from your real pantry items.">
+    <Screen
+      onRefresh={isGenerating ? undefined : handleRefresh}
+      refreshing={isRefreshing}
+      title="Meals You Can Make"
+      subtitle="Generate meal ideas from your real pantry items.">
       <Card style={styles.generatorCard}>
         <Text style={styles.generatorTitle}>Cook from your pantry</Text>
         <Text style={styles.generatorCopy}>
@@ -158,12 +195,14 @@ export default function RecipesScreen() {
       {!isGenerating ? (
         <Text style={styles.note}>
           {generated.length
-            ? 'Generated recipes are not saved yet. Save/history comes in the next Phase 3 slice.'
+            ? 'Generated recipes are saved to your account and will stay available here.'
             : 'Sample suggestions are shown until you generate recipes from your pantry.'}
         </Text>
       ) : null}
       <View style={styles.list}>
-        {isGenerating
+        {isLoadingRecipes && !isGenerating ? (
+          <RecipeSkeleton index={0} />
+        ) : isGenerating
           ? [0, 1, 2].map((item) => <RecipeSkeleton key={item} index={item} />)
           : sortedRecipes.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} />)}
       </View>
