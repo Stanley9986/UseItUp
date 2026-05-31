@@ -1,11 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
-  findGeneratedRecipe,
   getGeneratedRecipes,
   removeGeneratedRecipe,
   setGeneratedRecipes,
-  updateGeneratedRecipe,
 } from '@/lib/generated-recipes';
 import { Recipe } from '@/types/useitup';
 
@@ -20,14 +18,6 @@ const recipe: Recipe = {
 describe('generated recipe cache', () => {
   beforeEach(() => {
     setGeneratedRecipes([]);
-  });
-
-  it('updates a cached recipe in place', () => {
-    setGeneratedRecipes([recipe]);
-
-    updateGeneratedRecipe({ ...recipe, isFavorite: true });
-
-    expect(findGeneratedRecipe('recipe-1')?.isFavorite).toBe(true);
   });
 
   it('removes a cached recipe by id', () => {

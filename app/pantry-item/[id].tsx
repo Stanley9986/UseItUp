@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import {
   Button,
   Card,
+  ConfirmDialog,
   ExpirationText,
   palette,
   QuantityText,
@@ -25,6 +26,7 @@ export default function PantryItemDetailScreen() {
   const [item, setItem] = useState<PantryItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const loadItem = useCallback(
@@ -76,19 +78,6 @@ export default function PantryItemDetailScreen() {
     }
   }
 
-  function confirmDelete() {
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm(`Remove ${item?.name ?? 'this item'} from your pantry?`)) {
-        handleDelete();
-      }
-      return;
-    }
-
-    Alert.alert('Delete pantry item?', `Remove ${item?.name ?? 'this item'} from your pantry?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', onPress: handleDelete, style: 'destructive' },
-    ]);
-  }
 
   if (isLoading) {
     return (
@@ -175,8 +164,8 @@ export default function PantryItemDetailScreen() {
             <Button compact href={`/edit-item/${item.id}`} secondary icon="create-outline">
               Edit Item
             </Button>
-            <Button compact onPress={confirmDelete} secondary icon="trash-outline">
-              {isDeleting ? 'Deleting...' : 'Delete'}
+            <Button compact onPress={() => setIsConfirmingDelete(true)} secondary icon="trash-outline">
+              Delete
             </Button>
             <Button compact href="/(tabs)/recipes" icon="restaurant-outline">
               Find Meals
@@ -184,6 +173,17 @@ export default function PantryItemDetailScreen() {
           </View>
         </Card>
       </View>
+
+      <ConfirmDialog
+        busy={isDeleting}
+        confirmLabel={isDeleting ? 'Deleting...' : 'Delete Item'}
+        destructive
+        message={`Remove ${item.name} from your pantry?`}
+        onCancel={() => setIsConfirmingDelete(false)}
+        onConfirm={handleDelete}
+        title="Delete this pantry item?"
+        visible={isConfirmingDelete}
+      />
     </Screen>
   );
 }

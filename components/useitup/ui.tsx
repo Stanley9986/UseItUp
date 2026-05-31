@@ -5,6 +5,7 @@ import { ComponentProps, PropsWithChildren, ReactNode } from 'react';
 import {
   Pressable,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -155,6 +156,59 @@ export function Button({ children, href, icon, onPress, secondary, compact, disa
   }
 
   return <Pressable disabled={disabled} onPress={onPress}>{content}</Pressable>;
+}
+
+type ConfirmDialogProps = {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmLabel: string;
+  cancelLabel?: string;
+  confirmIcon?: ComponentProps<typeof Ionicons>['name'];
+  destructive?: boolean;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+};
+
+export function ConfirmDialog({
+  visible,
+  title,
+  message,
+  confirmLabel,
+  cancelLabel = 'Cancel',
+  confirmIcon = 'trash-outline',
+  destructive,
+  busy,
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
+  return (
+    <Modal animationType="fade" onRequestClose={onCancel} transparent visible={visible}>
+      <Pressable onPress={onCancel} style={styles.dialogBackdrop}>
+        <Pressable onPress={() => {}} style={styles.dialogCard}>
+          <Text style={styles.dialogTitle}>{title}</Text>
+          <Text style={styles.dialogMessage}>{message}</Text>
+          <View style={styles.dialogActions}>
+            <View style={styles.dialogActionItem}>
+              <Button icon="close-outline" onPress={onCancel} secondary>
+                {cancelLabel}
+              </Button>
+            </View>
+            <View style={styles.dialogActionItem}>
+              <Button
+                disabled={busy}
+                icon={confirmIcon}
+                onPress={onConfirm}
+                style={destructive ? styles.dialogDestructive : undefined}>
+                {confirmLabel}
+              </Button>
+            </View>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 }
 
 export function SectionTitle({ children }: PropsWithChildren) {
@@ -654,5 +708,44 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 92,
     padding: 12,
+  },
+  dialogBackdrop: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(33, 26, 20, 0.45)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  dialogCard: {
+    backgroundColor: palette.surface,
+    borderColor: palette.line,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 12,
+    maxWidth: 380,
+    padding: 20,
+    width: '100%',
+  },
+  dialogTitle: {
+    color: palette.ink,
+    fontFamily: typography.display,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  dialogMessage: {
+    color: palette.muted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dialogActionItem: {
+    flex: 1,
+  },
+  dialogDestructive: {
+    backgroundColor: palette.red,
+    borderColor: palette.red,
   },
 });

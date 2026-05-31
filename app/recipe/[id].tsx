@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
+import { Button, Card, ConfirmDialog, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { findRecipe } from '@/data/mock-useitup';
 import { useRefresh } from '@/hooks/use-refresh';
@@ -36,6 +36,9 @@ export default function RecipeDetailScreen() {
   const canUpdatePantry = !isFavoriteSource && Boolean(savedRecipe ?? findGeneratedRecipe(id));
   const canManageRecipe = Boolean(user && id && isUuid(id) && (savedRecipe ?? findGeneratedRecipe(id)));
   const availableIngredients = recipe.ingredients.filter((ingredient) => ingredient.isAvailable);
+  // Only pantry-linked ingredients are decremented when cooking, so they define
+  // the recipe's real pantry impact.
+  const pantryIngredients = recipe.ingredients.filter((ingredient) => ingredient.pantryItemId);
 
   const loadRecipe = useCallback(
     async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
@@ -164,26 +167,20 @@ export default function RecipeDetailScreen() {
         </View>
       ) : null}
 
-      {isConfirmingDelete ? (
-        <Card style={styles.confirmCard}>
-          <Text style={styles.confirmTitle}>
-            {isFavoriteSource ? 'Remove this favorite?' : 'Remove this suggestion?'}
-          </Text>
-          <Text style={styles.body}>
-            {isFavoriteSource
-              ? 'This permanently removes it from your favorites.'
-              : 'This removes it from your suggestions. Your cook history stays intact.'}
-          </Text>
-          <View style={styles.managementActions}>
-            <Button compact icon="trash-outline" onPress={handleDeleteRecipe} style={styles.deleteButton}>
-              {isDeleting ? 'Removing...' : isFavoriteSource ? 'Remove Favorite' : 'Remove Recipe'}
-            </Button>
-            <Button compact onPress={() => setIsConfirmingDelete(false)} secondary icon="close-outline">
-              Cancel
-            </Button>
-          </View>
-        </Card>
-      ) : null}
+      <ConfirmDialog
+        busy={isDeleting}
+        confirmLabel={isDeleting ? 'Removing...' : isFavoriteSource ? 'Remove Favorite' : 'Remove Recipe'}
+        destructive
+        message={
+          isFavoriteSource
+            ? 'This permanently removes it from your favorites.'
+            : 'This removes it from your suggestions. Your cook history stays intact.'
+        }
+        onCancel={() => setIsConfirmingDelete(false)}
+        onConfirm={handleDeleteRecipe}
+        title={isFavoriteSource ? 'Remove this favorite?' : 'Remove this suggestion?'}
+        visible={isConfirmingDelete}
+      />
 
       <View style={styles.section}>
         <SectionTitle>Ingredients</SectionTitle>
@@ -224,16 +221,21 @@ export default function RecipeDetailScreen() {
       <View style={styles.section}>
         <SectionTitle>Pantry Impact</SectionTitle>
         <Card>
-          {recipe.id === 'steak-rice-bowl' ? (
+          {pantryIngredients.length ? (
             <>
-              <ImpactRow after="1 portion" before="2 portions" item="Steak" />
-              <ImpactRow after="low" before="medium" item="Spinach" />
+              {pantryIngredients.map((ingredient) => (
+                <ImpactRow
+                  key={ingredient.name}
+                  item={ingredient.name}
+                  detail={[ingredient.quantityValue, ingredient.quantityUnit].filter(Boolean).join(' ') || 'amount varies'}
+                />
+              ))}
+              <Text style={styles.body}>
+                Tap “I Cooked This” to review and confirm exactly how each item’s quantity changes.
+              </Text>
             </>
           ) : (
-            <>
-              <ImpactRow after="6 count" before="8 count" item="Eggs" />
-              <ImpactRow after="low" before="medium" item="Spinach" />
-            </>
+            <Text style={styles.body}>This recipe has no pantry-linked ingredients to update.</Text>
           )}
         </Card>
       </View>
@@ -270,13 +272,11 @@ function IngredientRow({ label, detail }: { label: string; detail: string }) {
   );
 }
 
-function ImpactRow({ after, before, item }: { after: string; before: string; item: string }) {
+function ImpactRow({ detail, item }: { detail: string; item: string }) {
   return (
     <View style={styles.row}>
       <Text style={styles.rowTitle}>{item}</Text>
-      <Text style={styles.body}>
-        {before} to {after}
-      </Text>
+      <Text style={styles.body}>{detail}</Text>
     </View>
   );
 }
@@ -305,20 +305,6 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.55,
-  },
-  confirmCard: {
-    backgroundColor: palette.surface,
-  },
-  confirmTitle: {
-    color: palette.ink,
-    fontFamily: typography.display,
-    fontSize: 17,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  deleteButton: {
-    backgroundColor: palette.red,
-    borderColor: palette.red,
   },
   section: {
     gap: 9,
