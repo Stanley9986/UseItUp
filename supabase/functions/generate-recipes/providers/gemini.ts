@@ -10,6 +10,7 @@ export async function generateWithGemini(prompt: RecipePrompt) {
 
   const model = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash';
   const maxOutputTokens = readPositiveInteger(Deno.env.get('GEMINI_MAX_OUTPUT_TOKENS'), 8192);
+  const temperature = readTemperature(Deno.env.get('GEMINI_TEMPERATURE'), 0.7);
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -30,7 +31,7 @@ export async function generateWithGemini(prompt: RecipePrompt) {
         generationConfig: {
           response_mime_type: 'application/json',
           response_json_schema: recipeSchema,
-          temperature: 0.6,
+          temperature,
           maxOutputTokens,
         },
       }),
@@ -75,4 +76,10 @@ function readPositiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number(value);
 
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export function readTemperature(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 2 ? parsed : fallback;
 }

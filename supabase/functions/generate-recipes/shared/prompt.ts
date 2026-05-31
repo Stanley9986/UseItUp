@@ -23,7 +23,12 @@ export function createRecipePrompt({ pantryItems, preferences }: RecipePromptInp
       'Use at most 5 short instructions per recipe.',
       'Keep each instruction under 100 characters.',
       'Use no more than 8 ingredients per recipe.',
-      'Do not claim spoiled food is safe. Tell users to inspect ingredients and discard unsafe food.',
+      'Respect dietary preferences and avoided ingredients from the user payload.',
+      'Do not include avoided ingredients as required or optional ingredients.',
+      'When dietary preferences limit ingredients, adapt recipes instead of ignoring the preferences.',
+      'Do not claim spoiled food is safe.',
+      'If a recipe uses fresh or expiring items, make instruction 1 inspect those ingredients and discard unsafe food.',
+      'Never put the freshness inspection step at the end.',
       'Return only valid JSON that matches the provided recipe response schema.',
     ].join(' '),
     userPayload: {
@@ -44,11 +49,37 @@ export function createRecipePrompt({ pantryItems, preferences }: RecipePromptInp
           notes: item.notes,
         };
       }),
-      preferences,
+      preferences: normalizePreferences(preferences),
     },
   };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function normalizePreferences(value: unknown) {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return {
+    dietaryPreferences: cleanStringList(value.dietaryPreferences),
+    avoidedIngredients: cleanStringList(value.avoidedIngredients),
+    maxPrepTimeMinutes:
+      typeof value.maxPrepTimeMinutes === 'number' ? value.maxPrepTimeMinutes : undefined,
+    prioritizeExpiringSoon:
+      typeof value.prioritizeExpiringSoon === 'boolean' ? value.prioritizeExpiringSoon : undefined,
+  };
+}
+
+function cleanStringList(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean);
 }

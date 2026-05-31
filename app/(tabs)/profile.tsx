@@ -11,13 +11,11 @@ import { getCookHistory } from '@/lib/cook-history';
 import { CookHistoryItem } from '@/lib/cook-history-mappers';
 import { getErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
+import { defaultUserPreferences, getUserPreferences } from '@/lib/user-preferences';
+import { summarizeUserPreferences } from '@/lib/user-preferences-mappers';
+import { UserPreferences } from '@/types/useitup';
 
 const settingsRows = [
-  {
-    icon: 'leaf-outline',
-    title: 'Dietary Preferences',
-    detail: 'No preferences set',
-  },
   {
     icon: 'notifications-outline',
     title: 'Expiration Reminders',
@@ -37,9 +35,11 @@ export default function ProfileScreen() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
   const [cookHistory, setCookHistory] = useState<CookHistoryItem[]>([]);
+  const [preferences, setPreferences] = useState<UserPreferences>(defaultUserPreferences);
   const [historyMessage, setHistoryMessage] = useState('');
   const [profileMessage, setProfileMessage] = useState('');
   const [profileMessageType, setProfileMessageType] = useState<'error' | 'success'>('success');
+  const [preferencesMessage, setPreferencesMessage] = useState('');
   const email = user?.email ?? 'Signed-in user';
   const displayName = user?.user_metadata?.name ?? email.split('@')[0] ?? 'UseItUp User';
   const initial = displayName.charAt(0).toUpperCase();
@@ -55,8 +55,21 @@ export default function ProfileScreen() {
       setHistoryMessage(getErrorMessage(error, 'Unable to load cooked recipe history.'));
     }
   }, [user]);
+  const loadPreferences = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    try {
+      setPreferencesMessage('');
+      const nextPreferences = await getUserPreferences(user.id);
+      setPreferences(nextPreferences);
+    } catch (error) {
+      setPreferencesMessage(getErrorMessage(error, 'Unable to load dietary preferences.'));
+    }
+  }, [user]);
   const { isRefreshing, refresh } = useRefresh(async () => {
-    await Promise.all([supabase.auth.refreshSession(), loadCookHistory()]);
+    await Promise.all([supabase.auth.refreshSession(), loadCookHistory(), loadPreferences()]);
   });
 
   useEffect(() => {
@@ -66,6 +79,10 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadCookHistory();
   }, [loadCookHistory]);
+
+  useEffect(() => {
+    loadPreferences();
+  }, [loadPreferences]);
 
   useEffect(() => {
     if (!profileMessage || profileMessageType !== 'success') {
@@ -220,8 +237,27 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <SectionTitle>Preferences</SectionTitle>
         <Card style={styles.listCard}>
-          {settingsRows.map((row, index) => (
-            <View key={row.title} style={[styles.row, index > 0 && styles.withDivider]}>
+          <View style={styles.preferenceBlock}>
+            <Link asChild href="/dietary-preferences">
+              <Pressable style={styles.row}>
+                <View style={styles.rowIcon}>
+                  <Ionicons color={palette.green} name="leaf-outline" size={20} />
+                </View>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.rowTitle}>Dietary Preferences</Text>
+                  <Text numberOfLines={2} style={styles.rowDetail}>{summarizeUserPreferences(preferences)}</Text>
+                </View>
+                <Ionicons color={palette.muted} name="chevron-forward" size={18} />
+              </Pressable>
+            </Link>
+            {preferencesMessage ? (
+              <Text style={[styles.preferenceMessage, styles.errorText]}>
+                {preferencesMessage}
+              </Text>
+            ) : null}
+          </View>
+          {settingsRows.map((row) => (
+            <View key={row.title} style={[styles.row, styles.withDivider]}>
               <View style={styles.rowIcon}>
                 <Ionicons color={palette.green} name={row.icon} size={20} />
               </View>
@@ -367,6 +403,16 @@ const styles = StyleSheet.create({
   listCard: {
     gap: 0,
     padding: 0,
+  },
+  preferenceBlock: {
+    width: '100%',
+  },
+  preferenceMessage: {
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 19,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
   },
   linkRow: {
     width: '100%',

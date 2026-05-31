@@ -1,9 +1,8 @@
-import { PantryItem, Recipe } from '@/types/useitup';
+import { PantryItem, Recipe, UserPreferences } from '@/types/useitup';
 
 export type GenerateRecipesRequest = {
   pantryItems: PantryItem[];
-  preferences?: {
-    maxPrepTimeMinutes?: number;
+  preferences?: UserPreferences & {
     prioritizeExpiringSoon?: boolean;
   };
 };

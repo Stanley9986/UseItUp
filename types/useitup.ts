@@ -35,3 +35,9 @@ export type Recipe = {
   missingIngredients: string[];
   instructions: string[];
 };
+
+export type UserPreferences = {
+  dietaryPreferences: string[];
+  avoidedIngredients: string[];
+  maxPrepTimeMinutes?: number;
+};

@@ -33,7 +33,8 @@ import { getPantryItems } from '@/lib/pantry';
 import { generateRecipes } from '@/lib/recipe-generator';
 import { isRecipeFavorited, normalizeRecipeTitle } from '@/lib/recipe-list';
 import { getSavedRecipes, replaceSuggestedRecipes } from '@/lib/recipes';
-import { PantryItem, Recipe } from '@/types/useitup';
+import { defaultUserPreferences, getUserPreferences } from '@/lib/user-preferences';
+import { PantryItem, Recipe, UserPreferences } from '@/types/useitup';
 
 type RecipeSort = 'expiring' | 'quick' | 'missing';
 type FavoriteToast = {
@@ -73,6 +74,7 @@ export default function RecipesScreen() {
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [suggested, setSuggested] = useState<Recipe[]>([]);
   const [favorites, setFavorites] = useState<Recipe[]>([]);
+  const [preferences, setPreferences] = useState<UserPreferences>(defaultUserPreferences);
   const [isLoadingPantry, setIsLoadingPantry] = useState(true);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -142,16 +144,29 @@ export default function RecipesScreen() {
     }
   }, [user]);
 
+  const loadPreferences = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    try {
+      setPreferences(await getUserPreferences(user.id));
+    } catch (error) {
+      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to load dietary preferences for recipe generation.') });
+    }
+  }, [user]);
+
   useFocusEffect(
     useCallback(() => {
       loadPantry();
       loadSuggestedRecipes();
       loadFavorites();
-    }, [loadFavorites, loadPantry, loadSuggestedRecipes]),
+      loadPreferences();
+    }, [loadFavorites, loadPantry, loadPreferences, loadSuggestedRecipes]),
   );
 
   const { isRefreshing, refresh } = useRefresh(async () => {
-    await Promise.all([loadPantry(), loadSuggestedRecipes(), loadFavorites()]);
+    await Promise.all([loadPantry(), loadSuggestedRecipes(), loadFavorites(), loadPreferences()]);
   });
 
   useEffect(() => {
@@ -196,7 +211,7 @@ export default function RecipesScreen() {
       const nextRecipes = await generateRecipes({
         pantryItems,
         preferences: {
-          maxPrepTimeMinutes: 30,
+          ...preferences,
           prioritizeExpiringSoon: true,
         },
       });
