@@ -8,6 +8,7 @@ export type RecipeRow = {
   instructions: unknown;
   prep_time_minutes: number | null;
   uses_expiring_items: boolean;
+  is_suggested: boolean;
   created_by_ai: boolean;
   source: string;
   created_at: string;
@@ -52,6 +53,7 @@ export function mapRecipeInsert(userId: string, recipe: Recipe) {
     instructions: recipe.instructions,
     prep_time_minutes: recipe.prepTimeMinutes ?? null,
     uses_expiring_items: Boolean(recipe.usesExpiringItems),
+    is_suggested: true,
     created_by_ai: true,
     source: 'ai',
   };
@@ -68,6 +70,25 @@ export function mapRecipeIngredientInsert(recipeId: string, ingredient: RecipeIn
     is_optional: Boolean(ingredient.isOptional),
     sort_order: index,
   };
+}
+
+// Payload for the replace_suggested_recipes RPC. The function assigns its own
+// user_id (from auth.uid()) and recipe_id, so those keys are omitted here.
+export function mapSuggestedRecipesPayload(userId: string, recipes: Recipe[]) {
+  return recipes.map((recipe) => {
+    const { user_id, ...recipeInsert } = mapRecipeInsert(userId, recipe);
+    void user_id;
+
+    return {
+      ...recipeInsert,
+      ingredients: recipe.ingredients.map((ingredient, index) => {
+        const { recipe_id, ...ingredientInsert } = mapRecipeIngredientInsert('', ingredient, index);
+        void recipe_id;
+
+        return ingredientInsert;
+      }),
+    };
+  });
 }
 
 function mapRecipeIngredientRow(row: RecipeIngredientRow): RecipeIngredient {

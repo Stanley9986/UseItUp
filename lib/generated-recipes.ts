@@ -13,3 +13,11 @@ export function getGeneratedRecipes() {
 export function findGeneratedRecipe(id?: string) {
   return generatedRecipes.find((recipe) => recipe.id === id);
 }
+
+export function updateGeneratedRecipe(recipe: Recipe) {
+  generatedRecipes = generatedRecipes.map((current) => (current.id === recipe.id ? recipe : current));
+}
+
+export function removeGeneratedRecipe(id: string) {
+  generatedRecipes = generatedRecipes.filter((recipe) => recipe.id !== id);
+}

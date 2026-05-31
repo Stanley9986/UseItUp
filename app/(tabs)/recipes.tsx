@@ -1,18 +1,44 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-import { Button, Card, Chip, palette, RecipeCard, Screen, typography } from '@/components/useitup/ui';
+import {
+  Button,
+  Card,
+  Chip,
+  FavoriteRecipeCard,
+  palette,
+  RecipeRowCard,
+  Screen,
+  SectionTitle,
+  typography,
+} from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
-import { recipes } from '@/data/mock-useitup';
 import { useRefresh } from '@/hooks/use-refresh';
+import { addFavoriteRecipe, getFavoriteRecipes, removeFavoriteRecipeByTitle } from '@/lib/favorite-recipes';
 import { setGeneratedRecipes } from '@/lib/generated-recipes';
 import { getPantryItems } from '@/lib/pantry';
 import { generateRecipes } from '@/lib/recipe-generator';
-import { getSavedRecipes, saveGeneratedRecipes } from '@/lib/recipes';
+import { isRecipeFavorited, normalizeRecipeTitle } from '@/lib/recipe-list';
+import { getSavedRecipes, replaceSuggestedRecipes } from '@/lib/recipes';
 import { PantryItem, Recipe } from '@/types/useitup';
 
 type RecipeSort = 'expiring' | 'quick' | 'missing';
+type FavoriteToast = {
+  isFavorite: boolean;
+  recipe: Recipe;
+};
 
 const sorts: { label: string; value: RecipeSort }[] = [
   { label: 'Expiring Soon', value: 'expiring' },
@@ -40,16 +66,30 @@ export default function RecipesScreen() {
   const { user } = useAuth();
   const [sort, setSort] = useState<RecipeSort>('expiring');
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
-  const [generated, setGenerated] = useState<Recipe[]>([]);
+  const [suggested, setSuggested] = useState<Recipe[]>([]);
+  const [favorites, setFavorites] = useState<Recipe[]>([]);
   const [isLoadingPantry, setIsLoadingPantry] = useState(true);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStepIndex, setGenerationStepIndex] = useState(0);
+  const [favoriteScrollProgress, setFavoriteScrollProgress] = useState(0);
+  const [favoriteRailWidth, setFavoriteRailWidth] = useState(0);
+  const [favoriteContentWidth, setFavoriteContentWidth] = useState(0);
+  const [favoriteToast, setFavoriteToast] = useState<FavoriteToast | null>(null);
   const [message, setMessage] = useState('');
-  const activeRecipes = generated.length ? generated : recipes;
-  const sortedRecipes = useMemo(() => sortRecipes(activeRecipes, sort), [activeRecipes, sort]);
+  // Suggestions are pantry-derived; favorites are a separate permanent list. A
+  // suggested recipe is rendered with a star when it also lives in favorites.
+  const suggestedView = useMemo(
+    () =>
+      sortRecipes(suggested, sort).map((recipe) => ({
+        ...recipe,
+        isFavorite: isRecipeFavorited(favorites, recipe.title),
+      })),
+    [favorites, sort, suggested],
+  );
+  const favoriteCanScroll = favoriteContentWidth > favoriteRailWidth + 1;
 
-  const loadSavedRecipes = useCallback(async () => {
+  const loadSuggestedRecipes = useCallback(async () => {
     if (!user) {
       return;
     }
@@ -57,13 +97,26 @@ export default function RecipesScreen() {
     setIsLoadingRecipes(true);
 
     try {
-      const savedRecipes = await getSavedRecipes(user.id);
-      setGenerated(savedRecipes);
-      setGeneratedRecipes(savedRecipes);
+      const suggestedRecipes = await getSavedRecipes(user.id);
+      setSuggested(suggestedRecipes);
+      setGeneratedRecipes(suggestedRecipes);
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to load saved recipes. Showing sample meals for now.'));
+      setMessage(getErrorMessage(error, 'Unable to load suggested recipes.'));
     } finally {
       setIsLoadingRecipes(false);
+    }
+  }, [user]);
+
+  const loadFavorites = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    try {
+      const favoriteRecipes = await getFavoriteRecipes(user.id);
+      setFavorites(favoriteRecipes);
+    } catch (error) {
+      setMessage(getErrorMessage(error, 'Unable to load favorite recipes.'));
     }
   }, [user]);
 
@@ -87,12 +140,13 @@ export default function RecipesScreen() {
   useFocusEffect(
     useCallback(() => {
       loadPantry();
-      loadSavedRecipes();
-    }, [loadPantry, loadSavedRecipes]),
+      loadSuggestedRecipes();
+      loadFavorites();
+    }, [loadFavorites, loadPantry, loadSuggestedRecipes]),
   );
 
   const { isRefreshing, refresh } = useRefresh(async () => {
-    await Promise.all([loadPantry(), loadSavedRecipes()]);
+    await Promise.all([loadPantry(), loadSuggestedRecipes(), loadFavorites()]);
   });
 
   useEffect(() => {
@@ -108,8 +162,25 @@ export default function RecipesScreen() {
     return () => clearInterval(interval);
   }, [isGenerating]);
 
+  useEffect(() => {
+    if (!favoriteToast) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setFavoriteToast(null);
+    }, 4000);
+
+    return () => clearTimeout(timeout);
+  }, [favoriteToast]);
+
   async function handleGenerate() {
-    if (!user || !pantryItems.length || isGenerating) {
+    if (!user || isGenerating) {
+      return;
+    }
+
+    if (!pantryItems.length) {
+      setMessage('Add pantry items first, then generate recipes to see ideas here.');
       return;
     }
 
@@ -126,22 +197,126 @@ export default function RecipesScreen() {
       });
 
       if (!nextRecipes.length) {
+        // Keep the current suggestions rather than replacing them with nothing.
         setMessage('The generator did not return any recipes. Try adding more pantry items.');
+        return;
       }
 
-      const savedRecipes = await saveGeneratedRecipes(user.id, nextRecipes);
-      setGenerated(savedRecipes);
+      // Regenerating replaces the previous suggestion batch.
+      const savedRecipes = await replaceSuggestedRecipes(user.id, nextRecipes);
+      setSuggested(savedRecipes);
       setGeneratedRecipes(savedRecipes);
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to generate recipes yet. Showing sample meals for now.'));
+      setMessage(getErrorMessage(error, 'Unable to generate recipes yet. Try again.'));
     } finally {
       setIsGenerating(false);
     }
   }
 
+  async function handleToggleFavorite(recipe: Recipe) {
+    if (!user) {
+      return;
+    }
+
+    const wasFavorite = isRecipeFavorited(favorites, recipe.title);
+    const previousFavorites = favorites;
+    const normalizedTitle = normalizeRecipeTitle(recipe.title);
+
+    setFavorites(
+      wasFavorite
+        ? favorites.filter((favorite) => normalizeRecipeTitle(favorite.title) !== normalizedTitle)
+        : [{ ...recipe, isFavorite: true }, ...favorites],
+    );
+    setFavoriteToast({ isFavorite: !wasFavorite, recipe });
+
+    try {
+      if (wasFavorite) {
+        await removeFavoriteRecipeByTitle(user.id, recipe.title);
+      } else {
+        const savedFavorite = await addFavoriteRecipe(user.id, recipe);
+        setFavorites((current) =>
+          current.map((favorite) =>
+            normalizeRecipeTitle(favorite.title) === normalizedTitle ? savedFavorite : favorite,
+          ),
+        );
+      }
+    } catch (error) {
+      setFavorites(previousFavorites);
+      setFavoriteToast(null);
+      setMessage(getErrorMessage(error, 'Unable to update favorite status.'));
+    }
+  }
+
+  async function handleUndoFavoriteToast() {
+    if (!user || !favoriteToast) {
+      return;
+    }
+
+    const { isFavorite, recipe } = favoriteToast;
+    const normalizedTitle = normalizeRecipeTitle(recipe.title);
+    setFavoriteToast(null);
+
+    try {
+      if (isFavorite) {
+        // The toast reported an add, so undo removes it.
+        setFavorites((current) =>
+          current.filter((favorite) => normalizeRecipeTitle(favorite.title) !== normalizedTitle),
+        );
+        await removeFavoriteRecipeByTitle(user.id, recipe.title);
+      } else {
+        const savedFavorite = await addFavoriteRecipe(user.id, recipe);
+        setFavorites((current) => [
+          savedFavorite,
+          ...current.filter((favorite) => normalizeRecipeTitle(favorite.title) !== normalizedTitle),
+        ]);
+      }
+    } catch (error) {
+      setMessage(getErrorMessage(error, 'Unable to undo favorite change.'));
+    }
+  }
+
+  function handleFavoriteScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const scrollableWidth = contentSize.width - layoutMeasurement.width;
+
+    if (scrollableWidth <= 0) {
+      setFavoriteScrollProgress(0);
+      return;
+    }
+
+    setFavoriteScrollProgress(Math.min(Math.max(contentOffset.x / scrollableWidth, 0), 1));
+  }
+
+  function handleFavoriteRailLayout(event: LayoutChangeEvent) {
+    setFavoriteRailWidth(event.nativeEvent.layout.width);
+  }
+
   return (
     <Screen
       onRefresh={isGenerating ? undefined : refresh}
+      overlay={
+        favoriteToast ? (
+          <View style={styles.toast}>
+            <Ionicons
+              color={palette.goldSoft}
+              name={favoriteToast.isFavorite ? 'star' : 'star-outline'}
+              size={18}
+            />
+            <Text numberOfLines={1} style={styles.toastText}>
+              {favoriteToast.isFavorite ? 'Added to favorites' : 'Removed from favorites'}
+            </Text>
+            <Text onPress={handleUndoFavoriteToast} style={styles.toastAction}>
+              Undo
+            </Text>
+            <Pressable
+              accessibilityLabel="Dismiss favorite message"
+              onPress={() => setFavoriteToast(null)}
+              style={styles.toastClose}>
+              <Ionicons color="#fff" name="close" size={18} />
+            </Pressable>
+          </View>
+        ) : null
+      }
       refreshing={isRefreshing}
       title="Meals You Can Make"
       subtitle="Generate meal ideas from your real pantry items.">
@@ -155,8 +330,8 @@ export default function RecipesScreen() {
               : 'Add pantry items before generating recipes.'}
         </Text>
         {message ? <Text style={styles.message}>{message}</Text> : null}
-        <Button icon="sparkles-outline" onPress={handleGenerate}>
-          {isGenerating ? 'Generating...' : generated.length ? 'Regenerate Recipes' : 'Generate Recipes'}
+        <Button disabled={isGenerating} icon="sparkles-outline" onPress={handleGenerate}>
+          {isGenerating ? 'Generating...' : suggested.length ? 'Regenerate Recipes' : 'Generate Recipes'}
         </Button>
         {isGenerating ? (
           <View style={styles.progressBox}>
@@ -186,19 +361,55 @@ export default function RecipesScreen() {
           />
         ))}
       </View>
-      {!isGenerating ? (
-        <Text style={styles.note}>
-          {generated.length
-            ? 'Generated recipes are saved to your account and will stay available here.'
-            : 'Sample suggestions are shown until you generate recipes from your pantry.'}
-        </Text>
-      ) : null}
       <View style={styles.list}>
-        {isLoadingRecipes && !isGenerating ? (
-          <RecipeSkeleton index={0} />
-        ) : isGenerating
-          ? [0, 1, 2].map((item) => <RecipeSkeleton key={item} index={item} />)
-          : sortedRecipes.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} />)}
+        {favorites.length ? (
+          <View style={styles.section}>
+            <SectionTitle>Favorites</SectionTitle>
+            <ScrollView
+              contentContainerStyle={styles.favoriteRail}
+              horizontal
+              onContentSizeChange={(width) => setFavoriteContentWidth(width)}
+              onLayout={handleFavoriteRailLayout}
+              onScroll={handleFavoriteScroll}
+              scrollEventThrottle={16}
+              showsHorizontalScrollIndicator={false}>
+              {favorites.map((recipe) => (
+                <FavoriteRecipeCard
+                  key={recipe.id}
+                  onToggleFavorite={() => handleToggleFavorite(recipe)}
+                  recipe={recipe}
+                />
+              ))}
+            </ScrollView>
+            {favoriteCanScroll ? (
+              <View style={styles.favoriteTrack}>
+                <View style={[styles.favoriteTrackThumb, { marginLeft: `${favoriteScrollProgress * 70}%` }]} />
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+        <View style={styles.section}>
+          <SectionTitle>Suggested Recipes</SectionTitle>
+          {isLoadingRecipes && !isGenerating ? (
+            <RecipeSkeleton index={0} />
+          ) : isGenerating ? (
+            [0, 1, 2].map((item) => <RecipeSkeleton key={item} index={item} />)
+          ) : suggestedView.length ? (
+            suggestedView.map((recipe) => (
+              <RecipeRowCard key={recipe.id} onToggleFavorite={() => handleToggleFavorite(recipe)} recipe={recipe} />
+            ))
+          ) : (
+            <Card style={styles.emptyCard}>
+              <Ionicons color={palette.green} name="restaurant-outline" size={24} />
+              <Text style={styles.emptyTitle}>{pantryItems.length ? "Let's use up your pantry" : 'Add to your pantry first'}</Text>
+              <Text style={styles.emptyCopy}>
+                {pantryItems.length
+                  ? 'Generate recipes to see what you can make with what you have right now.'
+                  : 'Add pantry items first, then generate recipes to see ideas here.'}
+              </Text>
+            </Card>
+          )}
+        </View>
       </View>
     </Screen>
   );
@@ -308,35 +519,101 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
-  note: {
-    backgroundColor: palette.blueSoft,
-    borderColor: palette.line,
-    borderRadius: 8,
-    borderWidth: 1,
-    color: palette.graphite,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
-    padding: 12,
-  },
   list: {
     gap: 10,
   },
-  skeletonCard: {
-    gap: 0,
+  section: {
+    gap: 10,
+  },
+  emptyCard: {
+    alignItems: 'flex-start',
+    backgroundColor: palette.surface,
+    gap: 8,
+  },
+  emptyTitle: {
+    color: palette.ink,
+    fontFamily: typography.display,
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  emptyCopy: {
+    color: palette.muted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  favoriteRail: {
+    gap: 10,
+    paddingRight: 2,
+  },
+  favoriteTrack: {
+    backgroundColor: palette.line,
+    borderRadius: 999,
+    height: 5,
+    marginBottom: 10,
     overflow: 'hidden',
-    padding: 0,
+    width: '100%',
+  },
+  favoriteTrackThumb: {
+    backgroundColor: palette.blue,
+    borderRadius: 999,
+    height: '100%',
+    width: '30%',
+  },
+  toast: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: palette.graphite,
+    borderRadius: 14,
+    bottom: 10,
+    flexDirection: 'row',
+    gap: 9,
+    left: 22,
+    maxWidth: 476,
+    minHeight: 52,
+    paddingHorizontal: 14,
+    position: 'absolute',
+    right: 22,
+  },
+  toastText: {
+    color: '#fff',
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  toastAction: {
+    color: palette.goldSoft,
+    fontSize: 14,
+    fontWeight: '900',
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  toastClose: {
+    alignItems: 'center',
+    borderRadius: 999,
+    height: 40,
+    justifyContent: 'center',
+    opacity: 0.8,
+    width: 40,
+  },
+  skeletonCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    padding: 12,
   },
   skeletonImage: {
     alignItems: 'center',
+    alignSelf: 'stretch',
     backgroundColor: palette.greenSoft,
-    height: 118,
+    borderRadius: 12,
     justifyContent: 'center',
-    width: '100%',
+    minHeight: 112,
+    width: 96,
   },
   skeletonBody: {
-    gap: 10,
-    padding: 14,
+    flex: 1,
+    gap: 9,
+    minWidth: 0,
   },
   skeletonHeader: {
     alignItems: 'center',
@@ -346,12 +623,12 @@ const styles = StyleSheet.create({
   skeletonLine: {
     backgroundColor: palette.line,
     borderRadius: 999,
-    height: 14,
+    height: 13,
   },
   skeletonTag: {
     backgroundColor: palette.blush,
-    height: 30,
-    width: 140,
+    height: 24,
+    width: 120,
   },
   skeletonNumber: {
     color: palette.muted,
@@ -359,13 +636,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   skeletonTitle: {
-    height: 22,
-    width: '68%',
+    height: 18,
+    width: '70%',
   },
   skeletonCopy: {
     width: '92%',
   },
   skeletonCopyShort: {
-    width: '56%',
+    width: '55%',
   },
 });

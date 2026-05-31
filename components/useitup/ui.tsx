@@ -53,6 +53,7 @@ type ScreenProps = PropsWithChildren<{
   headerAction?: ReactNode;
   keyboardAware?: boolean;
   onRefresh?: () => void;
+  overlay?: ReactNode;
   refreshing?: boolean;
   style?: StyleProp<ViewStyle>;
 }>;
@@ -64,6 +65,7 @@ export function Screen({
   headerAction,
   keyboardAware,
   onRefresh,
+  overlay,
   refreshing,
   style,
 }: ScreenProps) {
@@ -105,6 +107,7 @@ export function Screen({
       ) : (
         content
       )}
+      {overlay}
     </SafeAreaView>
   );
 }
@@ -120,18 +123,30 @@ type ButtonProps = {
   onPress?: () => void;
   secondary?: boolean;
   compact?: boolean;
+  disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
-export function Button({ children, href, icon, onPress, secondary, compact, style }: ButtonProps) {
+type RecipeCardActionProps = {
+  onToggleFavorite?: () => void;
+};
+
+export function Button({ children, href, icon, onPress, secondary, compact, disabled, style }: ButtonProps) {
   const content = (
-    <View style={[styles.button, secondary && styles.secondaryButton, compact && styles.compactButton, style]}>
+    <View
+      style={[
+        styles.button,
+        secondary && styles.secondaryButton,
+        compact && styles.compactButton,
+        disabled && styles.disabledButton,
+        style,
+      ]}>
       {icon ? <Ionicons color={secondary ? palette.blue : '#fff'} name={icon} size={18} /> : null}
       <Text style={[styles.buttonText, secondary && styles.secondaryButtonText]}>{children}</Text>
     </View>
   );
 
-  if (href) {
+  if (href && !disabled) {
     return (
       <Link asChild href={href as Href}>
         <Pressable>{content}</Pressable>
@@ -139,7 +154,7 @@ export function Button({ children, href, icon, onPress, secondary, compact, styl
     );
   }
 
-  return <Pressable onPress={onPress}>{content}</Pressable>;
+  return <Pressable disabled={disabled} onPress={onPress}>{content}</Pressable>;
 }
 
 export function SectionTitle({ children }: PropsWithChildren) {
@@ -229,7 +244,10 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
       <View style={styles.recipeBody}>
         <View style={styles.tagRow}>
           {recipe.usesExpiringItems ? <Text style={styles.tag}>Uses expiring food</Text> : <View />}
-          <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} min</Text>
+          <View style={styles.recipeMetaRow}>
+            {recipe.isFavorite ? <Ionicons color={palette.gold} name="star" size={15} /> : null}
+            <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} min</Text>
+          </View>
         </View>
         <Text numberOfLines={2} style={styles.itemTitle}>{recipe.title}</Text>
         <Text numberOfLines={2} style={styles.description}>{recipe.description}</Text>
@@ -242,6 +260,86 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
         </Button>
       </View>
     </Card>
+  );
+}
+
+export function RecipeRowCard({ onToggleFavorite, recipe }: { recipe: Recipe } & RecipeCardActionProps) {
+  const available = recipe.ingredients
+    .filter((ingredient) => ingredient.isAvailable)
+    .map((ingredient) => ingredient.name)
+    .slice(0, 3)
+    .join(', ');
+
+  return (
+    <Card style={styles.recipeRowCard}>
+      <Link asChild href={`/recipe/${recipe.id}`}>
+        <Pressable style={styles.recipeRowLink}>
+          <View style={styles.recipeRowImage}>
+            <Ionicons color={palette.green} name="restaurant-outline" size={25} />
+          </View>
+          <View style={styles.recipeRowBody}>
+            <View style={styles.tagRow}>
+              {recipe.usesExpiringItems ? <Text style={styles.tag}>Uses expiring food</Text> : <View />}
+              <View style={styles.recipeMetaRow}>
+                {recipe.isFavorite ? <Ionicons color={palette.gold} name="star" size={15} /> : null}
+                <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} min</Text>
+              </View>
+            </View>
+            <Text numberOfLines={2} style={styles.itemTitle}>
+              {recipe.title}
+            </Text>
+            <Text numberOfLines={2} style={styles.description}>
+              {recipe.description}
+            </Text>
+            <Text numberOfLines={1} style={styles.meta}>
+              Uses: {available}
+            </Text>
+          </View>
+          <Ionicons color={palette.muted} name="chevron-forward" size={20} />
+        </Pressable>
+      </Link>
+      {onToggleFavorite ? (
+        <FavoriteToggleButton isFavorite={Boolean(recipe.isFavorite)} onPress={onToggleFavorite} />
+      ) : null}
+    </Card>
+  );
+}
+
+export function FavoriteRecipeCard({ onToggleFavorite, recipe }: { recipe: Recipe } & RecipeCardActionProps) {
+  return (
+    <Card style={styles.favoriteRecipeCard}>
+      <Link asChild href={`/recipe/${recipe.id}`}>
+        <Pressable style={styles.favoriteRecipePressable}>
+          <View style={styles.favoriteRecipeImage}>
+            <Ionicons color={palette.green} name="restaurant-outline" size={24} />
+          </View>
+          <View style={styles.favoriteRecipeBody}>
+            <Text numberOfLines={2} style={styles.itemTitle}>
+              {recipe.title}
+            </Text>
+            <View style={styles.recipeMetaRow}>
+              <Ionicons color={palette.blue} name="time-outline" size={14} />
+              <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} min</Text>
+            </View>
+          </View>
+        </Pressable>
+      </Link>
+      {onToggleFavorite ? (
+        <FavoriteToggleButton isFavorite={Boolean(recipe.isFavorite)} onPress={onToggleFavorite} />
+      ) : null}
+    </Card>
+  );
+}
+
+function FavoriteToggleButton({ isFavorite, onPress }: { isFavorite: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+      hitSlop={8}
+      onPress={onPress}
+      style={styles.favoriteToggleButton}>
+      <Ionicons color={isFavorite ? palette.gold : palette.muted} name={isFavorite ? 'star' : 'star-outline'} size={18} />
+    </Pressable>
   );
 }
 
@@ -353,6 +451,9 @@ const styles = StyleSheet.create({
     minHeight: 38,
     paddingHorizontal: 11,
     paddingVertical: 7,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   sectionTitle: {
     color: palette.ink,
@@ -479,6 +580,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
+  recipeMetaRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 5,
+  },
   description: {
     color: palette.muted,
     fontSize: 14,
@@ -486,5 +592,67 @@ const styles = StyleSheet.create({
   },
   recipeButton: {
     marginTop: 2,
+  },
+  recipeRowCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    padding: 0,
+    position: 'relative',
+  },
+  recipeRowLink: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 12,
+    paddingRight: 50,
+  },
+  recipeRowImage: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    backgroundColor: palette.greenSoft,
+    borderRadius: 12,
+    justifyContent: 'center',
+    minHeight: 112,
+    width: 96,
+  },
+  recipeRowBody: {
+    flex: 1,
+    gap: 7,
+    minWidth: 0,
+  },
+  favoriteRecipePressable: {
+    width: '100%',
+  },
+  favoriteRecipeCard: {
+    gap: 0,
+    overflow: 'hidden',
+    padding: 0,
+    position: 'relative',
+    width: 170,
+  },
+  favoriteRecipeImage: {
+    alignItems: 'center',
+    backgroundColor: palette.greenSoft,
+    height: 94,
+    justifyContent: 'center',
+  },
+  favoriteToggleButton: {
+    alignItems: 'center',
+    backgroundColor: palette.card,
+    borderRadius: 999,
+    height: 34,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    width: 34,
+    zIndex: 2,
+  },
+  favoriteRecipeBody: {
+    gap: 8,
+    minHeight: 92,
+    padding: 12,
   },
 });

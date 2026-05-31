@@ -30,6 +30,7 @@ export type Recipe = {
   description?: string;
   prepTimeMinutes?: number;
   usesExpiringItems?: boolean;
+  isFavorite?: boolean;
   ingredients: RecipeIngredient[];
   missingIngredients: string[];
   instructions: string[];
