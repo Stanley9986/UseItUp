@@ -7,7 +7,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, ExpirationText, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
-import { recipes } from '@/data/mock-useitup';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getErrorMessage, getPantryItems } from '@/lib/pantry';
 import { getSavedRecipes } from '@/lib/recipes';
@@ -17,12 +16,6 @@ const foodImages: Record<string, string> = {
   steak: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=240&q=80',
   spinach: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=240&q=80',
   milk: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=240&q=80',
-};
-
-const recipeImages: Record<string, string> = {
-  'steak-rice-bowl': 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=400&q=80',
-  'spinach-omelet': 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=400&q=80',
-  'egg-fried-rice': 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=400&q=80',
 };
 
 export default function HomeScreen() {
@@ -95,7 +88,7 @@ export default function HomeScreen() {
   const freezerCount = pantryItems.filter((item) => item.storageLocation === 'freezer').length;
   const pantryCount = pantryItems.filter((item) => item.storageLocation === 'pantry').length;
   const displayName = user?.user_metadata?.name ?? user?.email?.split('@')[0] ?? 'there';
-  const suggestedRecipes = savedRecipes.length ? savedRecipes : recipes;
+  const suggestedRecipes = savedRecipes;
 
   return (
     <Screen onRefresh={refresh} refreshing={isRefreshing}>
@@ -209,33 +202,38 @@ export default function HomeScreen() {
             </Pressable>
           </Link>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.mealRow}>
-            {suggestedRecipes.slice(0, 6).map((recipe) => (
-              <Link asChild href={`/recipe/${recipe.id}`} key={recipe.id}>
-                <Pressable style={styles.mealCard}>
-                  {recipeImages[recipe.id] ? (
-                    <Image source={{ uri: recipeImages[recipe.id] }} style={styles.mealImage} />
-                  ) : (
+        {suggestedRecipes.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.mealRow}>
+              {suggestedRecipes.slice(0, 6).map((recipe) => (
+                <Link asChild href={`/recipe/${recipe.id}`} key={recipe.id}>
+                  <Pressable style={styles.mealCard}>
                     <View style={styles.mealImageFallback}>
                       <Ionicons color={palette.green} name="restaurant-outline" size={24} />
                     </View>
-                  )}
-                  <View style={styles.timePill}>
-                    <Ionicons color={palette.ink} name="time-outline" size={12} />
-                    <Text style={styles.timePillText}>{recipe.prepTimeMinutes} min</Text>
-                  </View>
-                  <Text numberOfLines={2} style={styles.mealTitle}>
-                    {recipe.title}
-                  </Text>
-                  <Text style={styles.mealTag}>
-                    {recipe.usesExpiringItems ? 'High Protein' : 'Quick & Easy'}
-                  </Text>
-                </Pressable>
-              </Link>
-            ))}
-          </View>
-        </ScrollView>
+                    <View style={styles.timePill}>
+                      <Ionicons color={palette.ink} name="time-outline" size={12} />
+                      <Text style={styles.timePillText}>{recipe.prepTimeMinutes ?? '--'} min</Text>
+                    </View>
+                    <Text numberOfLines={2} style={styles.mealTitle}>
+                      {recipe.title}
+                    </Text>
+                    <Text style={styles.mealTag}>
+                      {recipe.usesExpiringItems ? 'High Protein' : 'Quick & Easy'}
+                    </Text>
+                  </Pressable>
+                </Link>
+              ))}
+            </View>
+          </ScrollView>
+        ) : (
+          <Card style={styles.expiringCard}>
+            <View style={styles.emptyExpiring}>
+              <Text style={styles.emptyTitle}>No suggested meals yet</Text>
+              <Text style={styles.emptyCopy}>Generate recipes from your pantry to see meal ideas here.</Text>
+            </View>
+          </Card>
+        )}
       </View>
 
       <View style={styles.section}>
@@ -544,11 +542,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingBottom: 10,
     width: 142,
-  },
-  mealImage: {
-    backgroundColor: palette.surface,
-    height: 88,
-    width: '100%',
   },
   mealImageFallback: {
     alignItems: 'center',

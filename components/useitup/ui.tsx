@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { Href, Link } from 'expo-router';
 import { ComponentProps, PropsWithChildren, ReactNode } from 'react';
 import {
@@ -19,12 +18,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PantryItem, Recipe } from '@/types/useitup';
-
-const recipeImages: Record<string, string> = {
-  'steak-rice-bowl': 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=400&q=80',
-  'spinach-omelet': 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=400&q=80',
-  'egg-fried-rice': 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=400&q=80',
-};
 
 export const palette = {
   background: '#f8f2e9',
@@ -183,15 +176,21 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  function handleCancel() {
+    if (!busy) {
+      onCancel();
+    }
+  }
+
   return (
-    <Modal animationType="fade" onRequestClose={onCancel} transparent visible={visible}>
-      <Pressable onPress={onCancel} style={styles.dialogBackdrop}>
+    <Modal animationType="fade" onRequestClose={handleCancel} transparent visible={visible}>
+      <Pressable onPress={handleCancel} style={styles.dialogBackdrop}>
         <Pressable onPress={() => {}} style={styles.dialogCard}>
           <Text style={styles.dialogTitle}>{title}</Text>
           <Text style={styles.dialogMessage}>{message}</Text>
           <View style={styles.dialogActions}>
             <View style={styles.dialogActionItem}>
-              <Button icon="close-outline" onPress={onCancel} secondary>
+              <Button disabled={busy} icon="close-outline" onPress={handleCancel} secondary>
                 {cancelLabel}
               </Button>
             </View>
@@ -276,44 +275,6 @@ export function PantryCard({ item, showEdit = false }: { item: PantryItem; showE
         </Card>
       </Pressable>
     </Link>
-  );
-}
-
-export function RecipeCard({ recipe }: { recipe: Recipe }) {
-  const available = recipe.ingredients
-    .filter((ingredient) => ingredient.isAvailable)
-    .map((ingredient) => ingredient.name)
-    .slice(0, 3)
-    .join(', ');
-
-  return (
-    <Card style={styles.recipeCard}>
-      {recipeImages[recipe.id] ? (
-        <Image source={{ uri: recipeImages[recipe.id] }} style={styles.recipeImage} />
-      ) : (
-        <View style={styles.recipeImageFallback}>
-          <Ionicons color={palette.green} name="restaurant-outline" size={24} />
-        </View>
-      )}
-      <View style={styles.recipeBody}>
-        <View style={styles.tagRow}>
-          {recipe.usesExpiringItems ? <Text style={styles.tag}>Uses expiring food</Text> : <View />}
-          <View style={styles.recipeMetaRow}>
-            {recipe.isFavorite ? <Ionicons color={palette.gold} name="star" size={15} /> : null}
-            <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} min</Text>
-          </View>
-        </View>
-        <Text numberOfLines={2} style={styles.itemTitle}>{recipe.title}</Text>
-        <Text numberOfLines={2} style={styles.description}>{recipe.description}</Text>
-        <Text numberOfLines={1} style={styles.meta}>Uses: {available}</Text>
-        <Text numberOfLines={1} style={styles.meta}>
-          Missing: {recipe.missingIngredients.length ? recipe.missingIngredients.join(', ') : 'nothing essential'}
-        </Text>
-        <Button compact href={`/recipe/${recipe.id}`} icon="restaurant-outline" style={styles.recipeButton}>
-          View Recipe
-        </Button>
-      </View>
-    </Card>
   );
 }
 
@@ -588,30 +549,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  recipeCard: {
-    alignItems: 'stretch',
-    flexDirection: 'row',
-    overflow: 'hidden',
-    padding: 0,
-  },
-  recipeImage: {
-    backgroundColor: palette.surface,
-    height: '100%',
-    minHeight: 160,
-    width: 112,
-  },
-  recipeImageFallback: {
-    alignItems: 'center',
-    backgroundColor: palette.goldSoft,
-    minHeight: 160,
-    justifyContent: 'center',
-    width: 112,
-  },
-  recipeBody: {
-    flex: 1,
-    gap: 8,
-    padding: 14,
-  },
   tagRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -643,9 +580,6 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 14,
     lineHeight: 20,
-  },
-  recipeButton: {
-    marginTop: 2,
   },
   recipeRowCard: {
     alignItems: 'center',

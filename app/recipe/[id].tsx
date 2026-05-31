@@ -5,7 +5,6 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { Button, Card, ConfirmDialog, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
-import { findRecipe } from '@/data/mock-useitup';
 import { useRefresh } from '@/hooks/use-refresh';
 import {
   addFavoriteRecipe,
@@ -32,13 +31,13 @@ export default function RecipeDetailScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [message, setMessage] = useState('');
-  const recipe = useMemo(() => savedRecipe ?? findGeneratedRecipe(id) ?? findRecipe(id), [id, savedRecipe]);
-  const canUpdatePantry = !isFavoriteSource && Boolean(savedRecipe ?? findGeneratedRecipe(id));
-  const canManageRecipe = Boolean(user && id && isUuid(id) && (savedRecipe ?? findGeneratedRecipe(id)));
-  const availableIngredients = recipe.ingredients.filter((ingredient) => ingredient.isAvailable);
+  const recipe = useMemo(() => savedRecipe ?? findGeneratedRecipe(id) ?? null, [id, savedRecipe]);
+  const canUpdatePantry = !isFavoriteSource && Boolean(recipe);
+  const canManageRecipe = Boolean(user && id && isUuid(id) && recipe);
+  const availableIngredients = recipe?.ingredients.filter((ingredient) => ingredient.isAvailable) ?? [];
   // Only pantry-linked ingredients are decremented when cooking, so they define
   // the recipe's real pantry impact.
-  const pantryIngredients = recipe.ingredients.filter((ingredient) => ingredient.pantryItemId);
+  const pantryIngredients = recipe?.ingredients.filter((ingredient) => ingredient.pantryItemId) ?? [];
 
   const loadRecipe = useCallback(
     async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
@@ -86,7 +85,7 @@ export default function RecipeDetailScreen() {
   }, [loadRecipe]);
 
   async function handleToggleFavorite() {
-    if (!user || !canManageRecipe || isSavingFavorite) {
+    if (!user || !canManageRecipe || isSavingFavorite || !recipe) {
       return;
     }
 
@@ -110,7 +109,7 @@ export default function RecipeDetailScreen() {
   }
 
   async function handleDeleteRecipe() {
-    if (!user || !canManageRecipe || isDeleting) {
+    if (!user || !canManageRecipe || isDeleting || !recipe) {
       return;
     }
 
@@ -129,6 +128,29 @@ export default function RecipeDetailScreen() {
       setMessage(getErrorMessage(error, 'Unable to delete this recipe.'));
       setIsDeleting(false);
     }
+  }
+
+  if (!recipe) {
+    return (
+      <Screen
+        title={isLoading ? 'Loading recipe' : 'Recipe not found'}
+        subtitle={isLoading ? 'Fetching this recipe from your library.' : undefined}
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">Back</Button>}>
+        <Card style={styles.loadingCard}>
+          {isLoading ? (
+            <>
+              <ActivityIndicator color={palette.blue} />
+              <Text style={styles.body}>Loading recipe...</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons color={palette.green} name="information-circle-outline" size={18} />
+              <Text style={styles.body}>This recipe could not be found. It may have been removed.</Text>
+            </>
+          )}
+        </Card>
+      </Screen>
+    );
   }
 
   return (
