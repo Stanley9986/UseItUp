@@ -9,6 +9,7 @@ import { useRefresh } from '@/hooks/use-refresh';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
 import { getCookHistory } from '@/lib/cook-history';
 import { CookHistoryItem } from '@/lib/cook-history-mappers';
+import { getErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 
 const settingsRows = [
@@ -51,7 +52,7 @@ export default function ProfileScreen() {
       setHistoryMessage('');
       setCookHistory(await getCookHistory(user.id));
     } catch (error) {
-      setHistoryMessage(getMessage(error, 'Unable to load cooked recipe history.'));
+      setHistoryMessage(getErrorMessage(error, 'Unable to load cooked recipe history.'));
     }
   }, [user]);
   const { isRefreshing, refresh } = useRefresh(async () => {
@@ -434,16 +435,4 @@ function formatCookedAt(value: string) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(value));
-}
-
-function getMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    return String(error.message);
-  }
-
-  return fallback;
 }

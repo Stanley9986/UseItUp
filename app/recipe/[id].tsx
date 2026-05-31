@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Button, Card, ConfirmDialog, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import { getErrorMessage } from '@/lib/errors';
 import {
   addFavoriteRecipe,
   getFavoriteRecipeById,
@@ -398,18 +399,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    return String(error.message);
-  }
-
-  return fallback;
-}
 
 function isUuid(value?: string) {
   return Boolean(

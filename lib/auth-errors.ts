@@ -1,3 +1,5 @@
+import { getErrorMessage } from '@/lib/errors';
+
 export function getFriendlyAuthError(error: unknown, fallback: string) {
   const message = getErrorMessage(error).toLowerCase();
 
@@ -22,16 +24,4 @@ export function getFriendlyAuthError(error: unknown, fallback: string) {
   }
 
   return getErrorMessage(error) || fallback;
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    return String(error.message);
-  }
-
-  return '';
 }

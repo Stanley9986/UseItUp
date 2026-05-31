@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
+import { getErrorMessage } from '@/lib/errors';
 import {
-  getErrorMessage,
   isDuplicatePantryItemError,
   mapPantryItemInput,
   mapPantryItemRow,

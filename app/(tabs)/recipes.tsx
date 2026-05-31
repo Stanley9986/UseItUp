@@ -26,6 +26,7 @@ import {
 } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import { getErrorMessage } from '@/lib/errors';
 import { addFavoriteRecipe, getFavoriteRecipes, removeFavoriteRecipeByTitle } from '@/lib/favorite-recipes';
 import { setGeneratedRecipes } from '@/lib/generated-recipes';
 import { getPantryItems } from '@/lib/pantry';
@@ -38,6 +39,10 @@ type RecipeSort = 'expiring' | 'quick' | 'missing';
 type FavoriteToast = {
   isFavorite: boolean;
   recipe: Recipe;
+};
+type ScreenMessage = {
+  tone: 'error' | 'info';
+  text: string;
 };
 
 const sorts: { label: string; value: RecipeSort }[] = [
@@ -76,7 +81,7 @@ export default function RecipesScreen() {
   const [favoriteRailWidth, setFavoriteRailWidth] = useState(0);
   const [favoriteContentWidth, setFavoriteContentWidth] = useState(0);
   const [favoriteToast, setFavoriteToast] = useState<FavoriteToast | null>(null);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState<ScreenMessage | null>(null);
   // Suggestions are pantry-derived; favorites are a separate permanent list. A
   // suggested recipe is rendered with a star when it also lives in favorites.
   const suggestedView = useMemo(
@@ -101,7 +106,7 @@ export default function RecipesScreen() {
       setSuggested(suggestedRecipes);
       setGeneratedRecipes(suggestedRecipes);
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to load suggested recipes.'));
+      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to load suggested recipes.') });
     } finally {
       setIsLoadingRecipes(false);
     }
@@ -116,7 +121,7 @@ export default function RecipesScreen() {
       const favoriteRecipes = await getFavoriteRecipes(user.id);
       setFavorites(favoriteRecipes);
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to load favorite recipes.'));
+      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to load favorite recipes.') });
     }
   }, [user]);
 
@@ -131,7 +136,7 @@ export default function RecipesScreen() {
       const nextItems = await getPantryItems(user.id);
       setPantryItems(nextItems);
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to load pantry items for recipe generation.'));
+      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to load pantry items for recipe generation.') });
     } finally {
       setIsLoadingPantry(false);
     }
@@ -180,12 +185,12 @@ export default function RecipesScreen() {
     }
 
     if (!pantryItems.length) {
-      setMessage('Add pantry items first, then generate recipes to see ideas here.');
+      setMessage({ tone: 'info', text: 'Add pantry items first, then generate recipes to see ideas here.' });
       return;
     }
 
     setIsGenerating(true);
-    setMessage('');
+    setMessage(null);
 
     try {
       const nextRecipes = await generateRecipes({
@@ -198,7 +203,7 @@ export default function RecipesScreen() {
 
       if (!nextRecipes.length) {
         // Keep the current suggestions rather than replacing them with nothing.
-        setMessage('The generator did not return any recipes. Try adding more pantry items.');
+        setMessage({ tone: 'info', text: 'The generator did not return any recipes. Try adding more pantry items.' });
         return;
       }
 
@@ -207,7 +212,7 @@ export default function RecipesScreen() {
       setSuggested(savedRecipes);
       setGeneratedRecipes(savedRecipes);
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to generate recipes yet. Try again.'));
+      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to generate recipes yet. Try again.') });
     } finally {
       setIsGenerating(false);
     }
@@ -243,7 +248,7 @@ export default function RecipesScreen() {
     } catch (error) {
       setFavorites(previousFavorites);
       setFavoriteToast(null);
-      setMessage(getErrorMessage(error, 'Unable to update favorite status.'));
+      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to update favorite status.') });
     }
   }
 
@@ -271,7 +276,7 @@ export default function RecipesScreen() {
         ]);
       }
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to undo favorite change.'));
+      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to undo favorite change.') });
     }
   }
 
@@ -329,7 +334,18 @@ export default function RecipesScreen() {
               ? `${pantryItems.length} pantry items ready for recipe generation.`
               : 'Add pantry items before generating recipes.'}
         </Text>
-        {message ? <Text style={styles.message}>{message}</Text> : null}
+        {message ? (
+          <View style={[styles.messageBox, message.tone === 'error' ? styles.errorMessageBox : styles.infoMessageBox]}>
+            <Ionicons
+              color={message.tone === 'error' ? palette.red : palette.blue}
+              name={message.tone === 'error' ? 'alert-circle-outline' : 'information-circle-outline'}
+              size={18}
+            />
+            <Text style={[styles.messageText, message.tone === 'error' ? styles.errorMessageText : styles.infoMessageText]}>
+              {message.text}
+            </Text>
+          </View>
+        ) : null}
         <Button disabled={isGenerating} icon="sparkles-outline" onPress={handleGenerate}>
           {isGenerating ? 'Generating...' : suggested.length ? 'Regenerate Recipes' : 'Generate Recipes'}
         </Button>
@@ -448,18 +464,6 @@ function sortRecipes(nextRecipes: Recipe[], sort: RecipeSort) {
   });
 }
 
-function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    return String(error.message);
-  }
-
-  return fallback;
-}
-
 const styles = StyleSheet.create({
   generatorCard: {
     backgroundColor: palette.surface,
@@ -475,11 +479,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  message: {
-    color: palette.red,
+  messageBox: {
+    alignItems: 'flex-start',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    padding: 10,
+  },
+  errorMessageBox: {
+    backgroundColor: '#fff4f1',
+    borderColor: '#f1c8bd',
+  },
+  infoMessageBox: {
+    backgroundColor: palette.blueSoft,
+    borderColor: '#c7d8ff',
+  },
+  messageText: {
+    flex: 1,
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 20,
+  },
+  errorMessageText: {
+    color: palette.red,
+  },
+  infoMessageText: {
+    color: palette.blue,
   },
   progressBox: {
     alignItems: 'center',

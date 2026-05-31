@@ -35,18 +35,6 @@ export function isDuplicatePantryItemError(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505';
 }
 
-export function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    return String(error.message);
-  }
-
-  return fallback;
-}
-
 export function mapPantryItemRow(row: PantryItemRow): PantryItem {
   return {
     id: row.id,

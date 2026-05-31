@@ -17,6 +17,7 @@ import {
 } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import { getErrorMessage } from '@/lib/errors';
 import { getPantryItems } from '@/lib/pantry';
 import { PantryItem, StorageLocation } from '@/types/useitup';
 
@@ -50,7 +51,7 @@ export default function PantryScreen() {
       const nextItems = await getPantryItems(user.id);
       setItems(nextItems);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(getErrorMessage(error, 'Unable to load pantry items.'));
     } finally {
       setIsLoading(false);
     }
@@ -199,18 +200,6 @@ function titleCase(value: string) {
     .split(' ')
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
     .join(' ');
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    return String(error.message);
-  }
-
-  return 'Unable to load pantry items.';
 }
 
 const styles = StyleSheet.create({

@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getCookHistory } from '@/lib/cook-history';
 import { CookHistoryItem } from '@/lib/cook-history-mappers';
+import { getErrorMessage } from '@/lib/errors';
 import { safeBack } from '@/lib/navigation';
 
 export default function CookHistoryScreen() {
@@ -30,7 +31,7 @@ export default function CookHistoryScreen() {
       try {
         setHistory(await getCookHistory(user.id));
       } catch (error) {
-        setMessage(getMessage(error, 'Unable to load cooked recipe history.'));
+        setMessage(getErrorMessage(error, 'Unable to load cooked recipe history.'));
       } finally {
         if (showLoading) {
           setIsLoading(false);
@@ -107,18 +108,6 @@ function formatCookedAt(value: string) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(value));
-}
-
-function getMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    return String(error.message);
-  }
-
-  return fallback;
 }
 
 const styles = StyleSheet.create({
