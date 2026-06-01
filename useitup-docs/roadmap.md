@@ -14,6 +14,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - Dietary preferences are saved in Supabase and included in recipe generation.
 - Shopping list items can be created from a recipe's missing ingredients.
 - Expiry reminder settings and local scheduled notifications are wired to the Home bell.
+- Data-access tests cover the core Supabase modules for pantry, recipes, favorites, and cooking.
 
 ## Section 2 - Tech Debt / Cleanup
 
@@ -31,7 +32,6 @@ This file tracks the working backlog for UseItUp so project direction survives c
 
 ## Section 4 - Quality / Robustness
 
-- Add data-access tests with a mocked Supabase client for `recipes.ts`, `favorite-recipes.ts`, `pantry.ts`, and `cooking.ts`.
 - Add pagination for suggested recipes and favorites.
 - Harden the Edge Function with rate limiting, provider fallback, and generation caching.
 - Improve duplicate handling for generated recipes, beyond title-based favorite dedupe.
