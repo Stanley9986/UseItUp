@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { Link } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { Link, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import {
@@ -33,6 +33,7 @@ const filters: { label: string; value: PantryFilter }[] = [
 
 export default function PantryScreen() {
   const { user } = useAuth();
+  const params = useLocalSearchParams<{ filter?: string }>();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PantryFilter>('all');
   const [items, setItems] = useState<PantryItem[]>([]);
@@ -62,6 +63,12 @@ export default function PantryScreen() {
       loadPantryItems();
     }, [loadPantryItems]),
   );
+
+  useEffect(() => {
+    if (isPantryFilter(params.filter)) {
+      setFilter(params.filter);
+    }
+  }, [params.filter]);
 
   const { isRefreshing, refresh } = useRefresh(loadPantryItems);
 
@@ -200,6 +207,10 @@ function titleCase(value: string) {
     .split(' ')
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
     .join(' ');
+}
+
+function isPantryFilter(value: string | undefined): value is PantryFilter {
+  return value === 'all' || value === 'fridge' || value === 'freezer' || value === 'pantry' || value === 'expiring';
 }
 
 const styles = StyleSheet.create({

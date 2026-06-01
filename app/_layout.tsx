@@ -1,8 +1,9 @@
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import { Href, Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
 import { palette } from '@/components/useitup/ui';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
@@ -10,6 +11,17 @@ import { AuthProvider, useAuth } from '@/contexts/auth-context';
 export const unstable_settings = {
   anchor: '(tabs)',
 };
+
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export default function RootLayout() {
   return (
@@ -68,6 +80,8 @@ function RootStack() {
       <Stack.Screen name="shopping-list" options={{ headerShown: false }} />
       <Stack.Screen name="cook-history" options={{ headerShown: false }} />
       <Stack.Screen name="dietary-preferences" options={{ headerShown: false }} />
+      <Stack.Screen name="expiration-reminders" options={{ headerShown: false }} />
+      <Stack.Screen name="expiring-soon" options={{ headerShown: false }} />
       <Stack.Screen name="update-pantry" options={{ headerShown: false }} />
     </Stack>
   );

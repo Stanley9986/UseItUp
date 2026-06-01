@@ -1,13 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
+import { Href, Link, router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, ExpirationText, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import {
+  buildExpiryReminderPlan,
+  defaultExpiryReminderSettings,
+  ExpiryReminderSettings,
+  getExpiryReminderSettings,
+  getExpiringReminderItems,
+} from '@/lib/expiry-reminders';
 import { getErrorMessage, getPantryItems } from '@/lib/pantry';
 import { getSavedRecipes } from '@/lib/recipes';
 import { PantryItem, Recipe } from '@/types/useitup';
@@ -22,6 +29,8 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
+  const [reminderSettings, setReminderSettings] = useState<ExpiryReminderSettings>(defaultExpiryReminderSettings);
+  const [isBellOpen, setIsBellOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -56,49 +65,47 @@ export default function HomeScreen() {
     }
   }, [user]);
 
+  const loadReminderSettings = useCallback(async () => {
+    setReminderSettings(await getExpiryReminderSettings());
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadPantryItems();
       loadSavedRecipes();
-    }, [loadPantryItems, loadSavedRecipes]),
+      loadReminderSettings();
+    }, [loadPantryItems, loadReminderSettings, loadSavedRecipes]),
   );
 
   const { isRefreshing, refresh } = useRefresh(async () => {
-    await Promise.all([loadPantryItems(), loadSavedRecipes()]);
+    await Promise.all([loadPantryItems(), loadSavedRecipes(), loadReminderSettings()]);
   });
 
-  const expiringItems = useMemo(() => {
-    const today = startOfDay(new Date());
-    const limit = new Date(today);
-    limit.setDate(limit.getDate() + 7);
-
-    return pantryItems
-      .filter((item) => {
-        if (!item.expirationDate) {
-          return false;
-        }
-
-        const expiry = new Date(`${item.expirationDate}T12:00:00`);
-        return expiry <= limit;
-      })
-      .slice(0, 3);
-  }, [pantryItems]);
+  const expiringItems = useMemo(
+    () => getExpiringReminderItems(pantryItems, reminderSettings),
+    [pantryItems, reminderSettings],
+  );
+  const expiringPreviewItems = expiringItems.slice(0, 3);
 
   const fridgeCount = pantryItems.filter((item) => item.storageLocation === 'fridge').length;
   const freezerCount = pantryItems.filter((item) => item.storageLocation === 'freezer').length;
   const pantryCount = pantryItems.filter((item) => item.storageLocation === 'pantry').length;
   const displayName = user?.user_metadata?.name ?? user?.email?.split('@')[0] ?? 'there';
   const suggestedRecipes = savedRecipes;
+  const reminderPlan = useMemo(
+    () => buildExpiryReminderPlan(pantryItems, { ...reminderSettings, enabled: true }),
+    [pantryItems, reminderSettings],
+  );
 
   return (
     <Screen onRefresh={refresh} refreshing={isRefreshing}>
       <View style={styles.appHeader}>
         <Text style={styles.logo}>UseItUp</Text>
         <View style={styles.headerActions}>
-          <View style={styles.iconButton}>
-            <Ionicons color={palette.ink} name="notifications-outline" size={20} />
-            <View style={styles.notificationDot} />
-          </View>
+          <Pressable accessibilityLabel="Open expiring soon alerts" onPress={() => setIsBellOpen(true)} style={styles.iconButton}>
+            <Ionicons color={palette.ink} name={reminderPlan.length ? 'notifications' : 'notifications-outline'} size={20} />
+            {reminderPlan.length > 0 ? <View style={styles.notificationDot} /> : null}
+          </Pressable>
           <View style={styles.iconButton}>
             <Ionicons color={palette.ink} name="options-outline" size={20} />
           </View>
@@ -148,7 +155,7 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <SectionTitle>Expiring Soon</SectionTitle>
-          <Link asChild href="/(tabs)/pantry">
+          <Link asChild href="/expiring-soon">
             <Pressable hitSlop={10}>
               <Text style={styles.viewAll}>View all</Text>
             </Pressable>
@@ -164,8 +171,8 @@ export default function HomeScreen() {
             <View style={styles.emptyExpiring}>
               <Text style={styles.emptyTitle}>Loading expiring items...</Text>
             </View>
-          ) : expiringItems.length ? (
-            expiringItems.map((item, index) => (
+          ) : expiringPreviewItems.length ? (
+            expiringPreviewItems.map((item, index) => (
               <View key={item.id} style={index > 0 && styles.withDivider}>
                 <Link asChild href={`/pantry-item/${item.id}`}>
                   <Pressable style={styles.expiringRow}>
@@ -245,8 +252,108 @@ export default function HomeScreen() {
           <StatTile icon="storefront-outline" label="Pantry" value={pantryCount} />
         </Card>
       </View>
+      <BellPreviewModal
+        onClose={() => setIsBellOpen(false)}
+        reminders={reminderPlan}
+        settings={reminderSettings}
+        visible={isBellOpen}
+      />
     </Screen>
   );
+}
+
+function BellPreviewModal({
+  onClose,
+  reminders,
+  settings,
+  visible,
+}: {
+  onClose: () => void;
+  reminders: ReturnType<typeof buildExpiryReminderPlan>;
+  settings: ExpiryReminderSettings;
+  visible: boolean;
+}) {
+  const previewReminders = reminders.slice(0, 3);
+
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
+      <Pressable onPress={onClose} style={styles.bellBackdrop}>
+        <Pressable onPress={() => {}} style={styles.bellCard}>
+          <View style={styles.bellHeader}>
+            <View>
+              <Text style={styles.bellTitle}>Expiring Soon</Text>
+              <Text style={styles.bellSubtitle}>
+                Within {settings.daysAhead} day{settings.daysAhead === 1 ? '' : 's'}
+              </Text>
+            </View>
+            <Pressable accessibilityLabel="Close expiring soon alerts" hitSlop={10} onPress={onClose}>
+              <Ionicons color={palette.muted} name="close" size={22} />
+            </Pressable>
+          </View>
+
+          {previewReminders.length ? (
+            <View style={styles.bellList}>
+              {previewReminders.map((reminder, index) => (
+                <Pressable
+                  key={reminder.identifier}
+                  onPress={() => {
+                    onClose();
+                    router.push(`/pantry-item/${reminder.itemId}` as Href);
+                  }}
+                  style={[styles.bellRow, index > 0 && styles.bellDivider]}>
+                  <View style={styles.bellItemIcon}>
+                    <Ionicons color={palette.green} name="leaf-outline" size={18} />
+                  </View>
+                  <View style={styles.bellRowCopy}>
+                    <Text numberOfLines={1} style={styles.bellItemName}>{reminder.itemName}</Text>
+                    <Text style={styles.bellItemDetail}>Expires {formatReminderExpiration(reminder.daysUntilExpiration)}</Text>
+                  </View>
+                  <Ionicons color={palette.muted} name="chevron-forward" size={18} />
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.bellEmpty}>
+              <Text style={styles.bellEmptyTitle}>No items need attention</Text>
+              <Text style={styles.bellEmptyCopy}>Nothing expires within your current reminder window.</Text>
+            </View>
+          )}
+
+          <View style={styles.bellActions}>
+            <Pressable
+              onPress={() => {
+                onClose();
+                router.push('/expiring-soon' as Href);
+              }}
+              style={styles.bellPrimaryAction}>
+              <Text style={styles.bellPrimaryActionText}>More</Text>
+              <Ionicons color="#fff" name="arrow-forward" size={16} />
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                onClose();
+                router.push('/expiration-reminders' as Href);
+              }}
+              style={styles.bellSecondaryAction}>
+              <Text style={styles.bellSecondaryActionText}>Reminder Settings</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function formatReminderExpiration(daysUntilExpiration: number) {
+  if (daysUntilExpiration <= 0) {
+    return 'today';
+  }
+
+  if (daysUntilExpiration === 1) {
+    return 'tomorrow';
+  }
+
+  return `in ${daysUntilExpiration} days`;
 }
 
 function FoodThumb({ item }: { item: PantryItem }) {
@@ -279,12 +386,6 @@ function StatTile({
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
-}
-
-function startOfDay(date: Date) {
-  const nextDate = new Date(date);
-  nextDate.setHours(0, 0, 0, 0);
-  return nextDate;
 }
 
 function formatShortDate(expirationDate?: string) {
@@ -354,6 +455,135 @@ const styles = StyleSheet.create({
     right: 10,
     top: 9,
     width: 8,
+  },
+  bellBackdrop: {
+    backgroundColor: 'rgba(52, 42, 34, 0.28)',
+    flex: 1,
+    paddingHorizontal: 18,
+    paddingTop: 84,
+  },
+  bellCard: {
+    alignSelf: 'center',
+    backgroundColor: palette.card,
+    borderColor: palette.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12,
+    maxWidth: 430,
+    padding: 14,
+    width: '100%',
+  },
+  bellHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  bellTitle: {
+    color: palette.ink,
+    fontFamily: typography.display,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  bellSubtitle: {
+    color: palette.muted,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  bellList: {
+    borderColor: palette.line,
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  bellRow: {
+    alignItems: 'center',
+    backgroundColor: palette.card,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 62,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  bellDivider: {
+    borderTopColor: palette.line,
+    borderTopWidth: 1,
+  },
+  bellItemIcon: {
+    alignItems: 'center',
+    backgroundColor: palette.greenSoft,
+    borderRadius: 8,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  bellRowCopy: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  bellItemName: {
+    color: palette.ink,
+    fontFamily: typography.display,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  bellItemDetail: {
+    color: palette.red,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  bellEmpty: {
+    backgroundColor: palette.surface,
+    borderRadius: 10,
+    gap: 4,
+    padding: 12,
+  },
+  bellEmptyTitle: {
+    color: palette.ink,
+    fontFamily: typography.display,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  bellEmptyCopy: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  bellActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  bellPrimaryAction: {
+    alignItems: 'center',
+    backgroundColor: palette.blue,
+    borderRadius: 10,
+    flexDirection: 'row',
+    flexGrow: 1,
+    gap: 6,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 14,
+  },
+  bellPrimaryActionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  bellSecondaryAction: {
+    alignItems: 'center',
+    backgroundColor: palette.blueSoft,
+    borderRadius: 10,
+    flexGrow: 1,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 14,
+  },
+  bellSecondaryActionText: {
+    color: palette.blue,
+    fontSize: 14,
+    fontWeight: '900',
   },
   greetingCard: {
     alignItems: 'center',

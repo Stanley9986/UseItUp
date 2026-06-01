@@ -17,7 +17,7 @@ import { UserPreferences } from '@/types/useitup';
 
 type SettingsRow = {
   detail: string;
-  href?: '/cook-history' | '/dietary-preferences' | '/shopping-list';
+  href?: '/cook-history' | '/dietary-preferences' | '/expiration-reminders' | '/shopping-list';
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
 };
@@ -31,9 +31,10 @@ const kitchenRows: SettingsRow[] = [
 ];
 const preferenceRows: SettingsRow[] = [
   {
+    href: '/expiration-reminders',
     icon: 'notifications-outline',
     title: 'Expiration Reminders',
-    detail: 'Notification-ready data later',
+    detail: 'Local alerts for food expiring soon',
   },
   {
     icon: 'shield-checkmark-outline',
