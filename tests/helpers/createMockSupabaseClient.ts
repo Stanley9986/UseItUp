@@ -21,6 +21,7 @@ export type MockSupabaseQuery = PromiseLike<MockSupabaseResult> & {
   limit: ReturnType<typeof vi.fn>;
   maybeSingle: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
+  range: ReturnType<typeof vi.fn>;
   select: ReturnType<typeof vi.fn>;
   single: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
@@ -75,6 +76,10 @@ function createQuery(table: string, nextResult: () => MockSupabaseResult): MockS
     }),
     order: vi.fn((...args: unknown[]) => {
       calls.push({ method: 'order', args });
+      return query;
+    }),
+    range: vi.fn((...args: unknown[]) => {
+      calls.push({ method: 'range', args });
       return query;
     }),
     select: vi.fn((...args: unknown[]) => {

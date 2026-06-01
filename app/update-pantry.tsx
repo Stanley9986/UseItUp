@@ -9,7 +9,8 @@ import { PantryUpdateChoice, buildPantryUpdate, cookRecipeAndUpdatePantry, defau
 import { useRefresh } from '@/hooks/use-refresh';
 import { safeBack } from '@/lib/navigation';
 import { getErrorMessage, getPantryItemById } from '@/lib/pantry';
-import { getSavedRecipeById } from '@/lib/recipes';
+import { getFavoriteRecipeById } from '@/lib/favorite-recipes';
+import { createSavedRecipeFromSnapshot, getSavedRecipeById } from '@/lib/recipes';
 import { UpdateChoiceKey, choiceToKey, getRemainingText, keyToChoice } from '@/lib/update-pantry-ui';
 import { PantryItem, Recipe } from '@/types/useitup';
 
@@ -29,7 +30,7 @@ const levelChoices: { label: string; value: UpdateChoiceKey }[] = [
 ];
 
 export default function UpdatePantryScreen() {
-  const { recipeId } = useLocalSearchParams<{ recipeId?: string }>();
+  const { favoriteId, recipeId } = useLocalSearchParams<{ favoriteId?: string; recipeId?: string }>();
   const { user } = useAuth();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
@@ -40,7 +41,7 @@ export default function UpdatePantryScreen() {
 
   const loadCookData = useCallback(
     async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
-      if (!user || !recipeId) {
+      if (!user || (!recipeId && !favoriteId)) {
         return;
       }
 
@@ -50,7 +51,11 @@ export default function UpdatePantryScreen() {
       setMessage('');
 
       try {
-        const nextRecipe = await getSavedRecipeById(user.id, recipeId);
+        const nextRecipe = recipeId
+          ? await getSavedRecipeById(user.id, recipeId)
+          : favoriteId
+            ? await getFavoriteRecipeById(user.id, favoriteId)
+            : null;
 
         if (!nextRecipe) {
           setRecipe(null);
@@ -82,7 +87,7 @@ export default function UpdatePantryScreen() {
         }
       }
     },
-    [recipeId, user],
+    [favoriteId, recipeId, user],
   );
 
   const { isRefreshing, refresh } = useRefresh(() => loadCookData({ showLoading: false }));
@@ -109,10 +114,12 @@ export default function UpdatePantryScreen() {
     setMessage('');
 
     try {
+      const cookableRecipe = favoriteId ? await createSavedRecipeFromSnapshot(user.id, recipe) : recipe;
+
       await cookRecipeAndUpdatePantry({
         choices,
         pantryItems,
-        recipe,
+        recipe: cookableRecipe,
         userId: user.id,
       });
 
@@ -124,7 +131,7 @@ export default function UpdatePantryScreen() {
     }
   }
 
-  if (!recipeId) {
+  if (!recipeId && !favoriteId) {
     return (
       <Screen
         title="Update Your Pantry"

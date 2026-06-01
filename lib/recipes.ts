@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase';
+import { buildPaginatedResult, getPageRange, PaginationOptions } from '@/lib/pagination';
 import {
   mapRecipeRow,
+  mapRecipeIngredientInsert,
+  mapRecipeInsert,
   mapSuggestedRecipesPayload,
   RecipeIngredientRow,
   RecipeRow,
@@ -8,22 +11,31 @@ import {
 import { Recipe } from '@/types/useitup';
 
 export async function getSavedRecipes(userId: string) {
+  const page = await getSavedRecipesPage(userId);
+  return page.items;
+}
+
+export async function getSavedRecipesPage(userId: string, options: PaginationOptions = {}) {
+  const range = getPageRange(options);
   const { data: recipeRows, error: recipeError } = await supabase
     .from('recipes')
     .select('*')
     .eq('user_id', userId)
     .eq('is_suggested', true)
     .order('created_at', { ascending: false })
-    .limit(25);
+    .range(range.from, range.to);
 
   if (recipeError) {
     throw recipeError;
   }
 
-  const recipes = (recipeRows as RecipeRow[]) ?? [];
-  const ingredients = await getIngredientsForRecipeIds(recipes.map((recipe) => recipe.id));
+  const page = buildPaginatedResult((recipeRows as RecipeRow[]) ?? [], options);
+  const ingredients = await getIngredientsForRecipeIds(page.items.map((recipe) => recipe.id));
 
-  return recipes.map((recipe) => mapRecipeRow(recipe, ingredients.filter((ingredient) => ingredient.recipe_id === recipe.id)));
+  return {
+    ...page,
+    items: page.items.map((recipe) => mapRecipeRow(recipe, ingredients.filter((ingredient) => ingredient.recipe_id === recipe.id))),
+  };
 }
 
 export async function getSavedRecipeById(userId: string, recipeId: string) {
@@ -76,6 +88,48 @@ export async function dismissSuggestedRecipe(userId: string, recipeId: string) {
   if (error) {
     throw error;
   }
+}
+
+export async function createSavedRecipeFromSnapshot(userId: string, recipe: Recipe) {
+  const { data: recipeRow, error: recipeError } = await supabase
+    .from('recipes')
+    .insert({
+      ...mapRecipeInsert(userId, recipe),
+      created_by_ai: false,
+      is_suggested: false,
+      source: 'user_saved',
+    })
+    .select('*')
+    .single();
+
+  if (recipeError) {
+    throw recipeError;
+  }
+
+  const savedRecipeRow = recipeRow as RecipeRow;
+
+  if (recipe.ingredients.length) {
+    const { error: ingredientError } = await supabase
+      .from('recipe_ingredients')
+      .insert(recipe.ingredients.map((ingredient, index) => mapRecipeIngredientInsert(savedRecipeRow.id, ingredient, index)));
+
+    if (ingredientError) {
+      throw ingredientError;
+    }
+  }
+
+  return mapRecipeRow(savedRecipeRow, recipe.ingredients.map((ingredient, index) => ({
+    id: `${savedRecipeRow.id}-${index}`,
+    recipe_id: savedRecipeRow.id,
+    pantry_item_id: ingredient.pantryItemId ?? null,
+    name: ingredient.name,
+    quantity_value: ingredient.quantityValue ?? null,
+    quantity_unit: ingredient.quantityUnit ?? null,
+    is_available: ingredient.isAvailable,
+    is_optional: Boolean(ingredient.isOptional),
+    sort_order: index,
+    created_at: savedRecipeRow.created_at,
+  })));
 }
 
 async function getIngredientsForRecipeIds(recipeIds: string[]) {

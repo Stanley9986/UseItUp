@@ -26,7 +26,7 @@ type ScreenMessage = {
 };
 
 export default function RecipeDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, source } = useLocalSearchParams<{ id: string; source?: string }>();
   const { user } = useAuth();
   const [savedRecipe, setSavedRecipe] = useState<Recipe | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -41,7 +41,8 @@ export default function RecipeDetailScreen() {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [message, setMessage] = useState<ScreenMessage | null>(null);
   const recipe = useMemo(() => savedRecipe ?? findGeneratedRecipe(id) ?? null, [id, savedRecipe]);
-  const canUpdatePantry = !isFavoriteSource && Boolean(recipe);
+  const isHistorySource = source === 'history';
+  const canUpdatePantry = !isHistorySource && Boolean(recipe);
   const canManageRecipe = Boolean(user && id && isUuid(id) && recipe);
   const availableIngredients = recipe?.ingredients.filter((ingredient) => ingredient.isAvailable) ?? [];
   // Only pantry-linked ingredients are decremented when cooking, so they define
@@ -205,7 +206,11 @@ export default function RecipeDetailScreen() {
       refreshing={isRefreshing}
       title={recipe.title}
       subtitle={recipe.description}
-      headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">Back</Button>}>
+      headerAction={
+        <Button compact onPress={() => safeBack(isHistorySource ? '/cook-history' : '/(tabs)/recipes')} secondary icon="arrow-back">
+          Back
+        </Button>
+      }>
       {isLoading ? (
         <Card style={styles.loadingCard}>
           <ActivityIndicator color={palette.blue} />
@@ -249,6 +254,11 @@ export default function RecipeDetailScreen() {
             style={[styles.starButton, isSavingFavorite && styles.disabledButton]}>
             <Ionicons color={isFavorite ? palette.gold : palette.muted} name={isFavorite ? 'star' : 'star-outline'} size={28} />
           </Pressable>
+          {isFavoriteSource ? (
+            <Button compact href={`/edit-recipe/${recipe.id}`} icon="create-outline" secondary>
+              Edit
+            </Button>
+          ) : null}
           <Button compact icon="trash-outline" onPress={() => setIsConfirmingDelete(true)} secondary>
             Delete
           </Button>
@@ -328,9 +338,11 @@ export default function RecipeDetailScreen() {
                   detail={[ingredient.quantityValue, ingredient.quantityUnit].filter(Boolean).join(' ') || 'amount varies'}
                 />
               ))}
-              <Text style={styles.body}>
-                Tap “I Cooked This” to review and confirm exactly how each item’s quantity changes.
-              </Text>
+              {!isHistorySource ? (
+                <Text style={styles.body}>
+                  Tap “I Cooked This” to review and confirm exactly how each item’s quantity changes.
+                </Text>
+              ) : null}
             </>
           ) : (
             <Text style={styles.body}>This recipe has no pantry-linked ingredients to update.</Text>
@@ -339,15 +351,17 @@ export default function RecipeDetailScreen() {
       </View>
 
       {canUpdatePantry ? (
-        <Button href={`/update-pantry?recipeId=${recipe.id}`} icon="checkmark-circle-outline">
+        <Button
+          href={isFavoriteSource ? `/update-pantry?favoriteId=${recipe.id}` : `/update-pantry?recipeId=${recipe.id}`}
+          icon="checkmark-circle-outline">
           I Cooked This
         </Button>
-      ) : (
+      ) : !isHistorySource ? (
         <Card style={styles.loadingCard}>
           <Ionicons color={palette.green} name="information-circle-outline" size={18} />
           <Text style={styles.body}>Generate and save recipes from your pantry before updating quantities.</Text>
         </Card>
-      )}
+      ) : null}
     </Screen>
   );
 }

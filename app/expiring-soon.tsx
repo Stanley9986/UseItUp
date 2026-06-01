@@ -15,6 +15,7 @@ import {
 } from '@/lib/expiry-reminders';
 import { getErrorMessage } from '@/lib/errors';
 import { safeBack } from '@/lib/navigation';
+import { buildVisibleItemsPage, defaultPageSize } from '@/lib/pagination';
 import { getPantryItems } from '@/lib/pantry';
 import { PantryItem } from '@/types/useitup';
 
@@ -22,6 +23,7 @@ export default function ExpiringSoonScreen() {
   const { user } = useAuth();
   const [items, setItems] = useState<PantryItem[]>([]);
   const [settings, setSettings] = useState<ExpiryReminderSettings>(defaultExpiryReminderSettings);
+  const [expiringPage, setExpiringPage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -44,6 +46,7 @@ export default function ExpiringSoonScreen() {
 
         setSettings(nextSettings);
         setItems(nextItems);
+        setExpiringPage(0);
       } catch (error) {
         setErrorMessage(getErrorMessage(error, 'Unable to load expiring items.'));
       } finally {
@@ -65,9 +68,13 @@ export default function ExpiringSoonScreen() {
     () => getExpiringReminderItems(items, settings),
     [items, settings],
   );
+  const visibleExpiringPage = useMemo(
+    () => buildVisibleItemsPage(expiringItems, { page: expiringPage, pageSize: defaultPageSize }),
+    [expiringItems, expiringPage],
+  );
   const expiringGroups = useMemo(
-    () => groupExpiringReminderItems(expiringItems),
-    [expiringItems],
+    () => groupExpiringReminderItems(visibleExpiringPage.items),
+    [visibleExpiringPage.items],
   );
 
   return (
@@ -128,6 +135,15 @@ export default function ExpiringSoonScreen() {
               </Card>
             </View>
           ))}
+          {visibleExpiringPage.hasMore ? (
+            <Button
+              compact
+              icon="add-circle-outline"
+              onPress={() => setExpiringPage(visibleExpiringPage.nextPage)}
+              secondary>
+              Load More Expiring Items
+            </Button>
+          ) : null}
         </View>
       ) : (
         <Card style={styles.listCard}>

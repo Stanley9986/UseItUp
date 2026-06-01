@@ -71,7 +71,7 @@ export default function CookHistoryScreen() {
         ) : history.length ? (
           <Card style={styles.listCard}>
             {history.map((item, index) => (
-              <Link asChild href={`/recipe/${item.recipeId}`} key={item.id}>
+              <Link asChild href={`/recipe/${item.recipeId}?source=history`} key={item.id}>
                 <Pressable style={styles.linkRow}>
                   <View style={[styles.row, index > 0 && styles.withDivider]}>
                     <View style={styles.rowIcon}>

@@ -27,12 +27,13 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getErrorMessage } from '@/lib/errors';
-import { addFavoriteRecipe, getFavoriteRecipes, removeFavoriteRecipeByTitle } from '@/lib/favorite-recipes';
+import { addFavoriteRecipe, getFavoriteRecipesPage, removeFavoriteRecipeByTitle } from '@/lib/favorite-recipes';
 import { setGeneratedRecipes } from '@/lib/generated-recipes';
+import { appendPageItems, defaultPageSize } from '@/lib/pagination';
 import { getPantryItems } from '@/lib/pantry';
 import { generateRecipes } from '@/lib/recipe-generator';
 import { isRecipeFavorited, normalizeRecipeTitle } from '@/lib/recipe-list';
-import { getSavedRecipes, replaceSuggestedRecipes } from '@/lib/recipes';
+import { getSavedRecipesPage, replaceSuggestedRecipes } from '@/lib/recipes';
 import { defaultUserPreferences, getUserPreferences } from '@/lib/user-preferences';
 import { PantryItem, Recipe, UserPreferences } from '@/types/useitup';
 
@@ -74,9 +75,15 @@ export default function RecipesScreen() {
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [suggested, setSuggested] = useState<Recipe[]>([]);
   const [favorites, setFavorites] = useState<Recipe[]>([]);
+  const [suggestedNextPage, setSuggestedNextPage] = useState(0);
+  const [favoritesNextPage, setFavoritesNextPage] = useState(0);
+  const [hasMoreSuggested, setHasMoreSuggested] = useState(false);
+  const [hasMoreFavorites, setHasMoreFavorites] = useState(false);
   const [preferences, setPreferences] = useState<UserPreferences>(defaultUserPreferences);
   const [isLoadingPantry, setIsLoadingPantry] = useState(true);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
+  const [isLoadingMoreFavorites, setIsLoadingMoreFavorites] = useState(false);
+  const [isLoadingMoreSuggested, setIsLoadingMoreSuggested] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStepIndex, setGenerationStepIndex] = useState(0);
   const [favoriteScrollProgress, setFavoriteScrollProgress] = useState(0);
@@ -96,34 +103,57 @@ export default function RecipesScreen() {
   );
   const favoriteCanScroll = favoriteContentWidth > favoriteRailWidth + 1;
 
-  const loadSuggestedRecipes = useCallback(async () => {
+  const loadSuggestedRecipes = useCallback(async ({ page = 0, reset = true }: { page?: number; reset?: boolean } = {}) => {
     if (!user) {
       return;
     }
 
-    setIsLoadingRecipes(true);
+    if (reset) {
+      setIsLoadingRecipes(true);
+    } else {
+      setIsLoadingMoreSuggested(true);
+    }
 
     try {
-      const suggestedRecipes = await getSavedRecipes(user.id);
-      setSuggested(suggestedRecipes);
-      setGeneratedRecipes(suggestedRecipes);
+      const suggestedRecipes = await getSavedRecipesPage(user.id, { page, pageSize: defaultPageSize });
+      setSuggested((current) => {
+        const nextSuggested = reset ? suggestedRecipes.items : appendPageItems(current, suggestedRecipes.items);
+        setGeneratedRecipes(nextSuggested);
+        return nextSuggested;
+      });
+      setSuggestedNextPage(suggestedRecipes.nextPage);
+      setHasMoreSuggested(suggestedRecipes.hasMore);
     } catch (error) {
       setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to load suggested recipes.') });
     } finally {
-      setIsLoadingRecipes(false);
+      if (reset) {
+        setIsLoadingRecipes(false);
+      } else {
+        setIsLoadingMoreSuggested(false);
+      }
     }
   }, [user]);
 
-  const loadFavorites = useCallback(async () => {
+  const loadFavorites = useCallback(async ({ page = 0, reset = true }: { page?: number; reset?: boolean } = {}) => {
     if (!user) {
       return;
     }
 
+    if (!reset) {
+      setIsLoadingMoreFavorites(true);
+    }
+
     try {
-      const favoriteRecipes = await getFavoriteRecipes(user.id);
-      setFavorites(favoriteRecipes);
+      const favoriteRecipes = await getFavoriteRecipesPage(user.id, { page, pageSize: defaultPageSize });
+      setFavorites((current) => (reset ? favoriteRecipes.items : appendPageItems(current, favoriteRecipes.items)));
+      setFavoritesNextPage(favoriteRecipes.nextPage);
+      setHasMoreFavorites(favoriteRecipes.hasMore);
     } catch (error) {
       setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to load favorite recipes.') });
+    } finally {
+      if (!reset) {
+        setIsLoadingMoreFavorites(false);
+      }
     }
   }, [user]);
 
@@ -159,14 +189,14 @@ export default function RecipesScreen() {
   useFocusEffect(
     useCallback(() => {
       loadPantry();
-      loadSuggestedRecipes();
-      loadFavorites();
+      loadSuggestedRecipes({ reset: true });
+      loadFavorites({ reset: true });
       loadPreferences();
     }, [loadFavorites, loadPantry, loadPreferences, loadSuggestedRecipes]),
   );
 
   const { isRefreshing, refresh } = useRefresh(async () => {
-    await Promise.all([loadPantry(), loadSuggestedRecipes(), loadFavorites(), loadPreferences()]);
+    await Promise.all([loadPantry(), loadSuggestedRecipes({ reset: true }), loadFavorites({ reset: true }), loadPreferences()]);
   });
 
   useEffect(() => {
@@ -226,6 +256,8 @@ export default function RecipesScreen() {
       const savedRecipes = await replaceSuggestedRecipes(user.id, nextRecipes);
       setSuggested(savedRecipes);
       setGeneratedRecipes(savedRecipes);
+      setSuggestedNextPage(1);
+      setHasMoreSuggested(false);
     } catch (error) {
       setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to generate recipes yet. Try again.') });
     } finally {
@@ -418,6 +450,16 @@ export default function RecipesScreen() {
                 <View style={[styles.favoriteTrackThumb, { marginLeft: `${favoriteScrollProgress * 70}%` }]} />
               </View>
             ) : null}
+            {hasMoreFavorites ? (
+              <Button
+                compact
+                disabled={isLoadingMoreFavorites}
+                icon="add-circle-outline"
+                  onPress={() => loadFavorites({ page: favoritesNextPage, reset: false })}
+                secondary>
+                {isLoadingMoreFavorites ? 'Loading...' : 'Load More Favorites'}
+              </Button>
+            ) : null}
           </View>
         ) : null}
         <View style={styles.section}>
@@ -427,9 +469,21 @@ export default function RecipesScreen() {
           ) : isGenerating ? (
             [0, 1, 2].map((item) => <RecipeSkeleton key={item} index={item} />)
           ) : suggestedView.length ? (
-            suggestedView.map((recipe) => (
-              <RecipeRowCard key={recipe.id} onToggleFavorite={() => handleToggleFavorite(recipe)} recipe={recipe} />
-            ))
+            <>
+              {suggestedView.map((recipe) => (
+                <RecipeRowCard key={recipe.id} onToggleFavorite={() => handleToggleFavorite(recipe)} recipe={recipe} />
+              ))}
+              {hasMoreSuggested ? (
+                <Button
+                  compact
+                  disabled={isLoadingMoreSuggested}
+                  icon="add-circle-outline"
+                  onPress={() => loadSuggestedRecipes({ page: suggestedNextPage, reset: false })}
+                  secondary>
+                  {isLoadingMoreSuggested ? 'Loading...' : 'Load More Recipes'}
+                </Button>
+              ) : null}
+            </>
           ) : (
             <Card style={styles.emptyCard}>
               <Ionicons color={palette.green} name="restaurant-outline" size={24} />

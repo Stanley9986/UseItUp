@@ -11,8 +11,10 @@ vi.mock('@/lib/supabase', async () => {
 });
 
 import {
+  createSavedRecipeFromSnapshot,
   dismissSuggestedRecipe,
   getSavedRecipeById,
+  getSavedRecipesPage,
   getSavedRecipes,
   replaceSuggestedRecipes,
 } from '@/lib/recipes';
@@ -71,25 +73,23 @@ describe('recipe data access', () => {
     db().reset();
   });
 
-  it('loads suggested recipes with their ordered ingredients', async () => {
-    db().pushQueryResult({ data: [recipeRow], error: null });
+  it('loads suggested recipes with their ordered ingredients and pagination', async () => {
+    db().pushQueryResult({ data: [recipeRow, { ...recipeRow, id: 'recipe-2' }], error: null });
     db().pushQueryResult({ data: [ingredientRow], error: null });
 
-    const recipes = await getSavedRecipes('user-1');
+    const page = await getSavedRecipesPage('user-1', { pageSize: 1 });
 
-    expect(recipes).toMatchObject([
-      {
-        id: 'recipe-1',
-        title: 'Spinach Omelet',
-        ingredients: [{ name: 'Spinach', pantryItemId: 'pantry-1' }],
-      },
-    ]);
+    expect(page).toMatchObject({
+      hasMore: true,
+      items: [{ id: 'recipe-1', title: 'Spinach Omelet', ingredients: [{ name: 'Spinach', pantryItemId: 'pantry-1' }] }],
+      nextPage: 1,
+    });
     expect(db().queries[0].calls).toEqual([
       { method: 'select', args: ['*'] },
       { method: 'eq', args: ['user_id', 'user-1'] },
       { method: 'eq', args: ['is_suggested', true] },
       { method: 'order', args: ['created_at', { ascending: false }] },
-      { method: 'limit', args: [25] },
+      { method: 'range', args: [0, 1] },
     ]);
     expect(db().queries[1]).toMatchObject({ table: 'recipe_ingredients' });
     expect(db().queries[1].calls).toEqual([
@@ -97,6 +97,13 @@ describe('recipe data access', () => {
       { method: 'in', args: ['recipe_id', ['recipe-1']] },
       { method: 'order', args: ['sort_order', { ascending: true }] },
     ]);
+  });
+
+  it('keeps the legacy saved recipe helper returning only items', async () => {
+    db().pushQueryResult({ data: [recipeRow], error: null });
+    db().pushQueryResult({ data: [ingredientRow], error: null });
+
+    await expect(getSavedRecipes('user-1')).resolves.toMatchObject([{ id: 'recipe-1' }]);
   });
 
   it('does not fetch ingredients when a recipe lookup misses', async () => {
@@ -160,6 +167,69 @@ describe('recipe data access', () => {
       { method: 'update', args: [{ is_suggested: false, updated_at: expect.any(String) }] },
       { method: 'eq', args: ['user_id', 'user-1'] },
       { method: 'eq', args: ['id', 'recipe-1'] },
+    ]);
+  });
+
+  it('creates a non-suggested saved recipe from a favorite snapshot', async () => {
+    db().pushQueryResult({
+      data: {
+        ...recipeRow,
+        id: 'recipe-copy-1',
+        title: 'Rice Bowl',
+        description: null,
+        instructions: ['Cook rice.'],
+        prep_time_minutes: 20,
+        is_suggested: false,
+        created_by_ai: false,
+        source: 'user_saved',
+      },
+      error: null,
+    });
+    db().pushQueryResult({ data: null, error: null });
+
+    await expect(createSavedRecipeFromSnapshot('user-1', generatedRecipe)).resolves.toMatchObject({
+      id: 'recipe-copy-1',
+      title: 'Rice Bowl',
+    });
+
+    expect(db().queries[0].calls).toEqual([
+      {
+        method: 'insert',
+        args: [
+          {
+            user_id: 'user-1',
+            title: 'Rice Bowl',
+            description: null,
+            instructions: ['Cook rice.'],
+            prep_time_minutes: 20,
+            uses_expiring_items: true,
+            is_suggested: false,
+            created_by_ai: false,
+            source: 'user_saved',
+          },
+        ],
+      },
+      { method: 'select', args: ['*'] },
+      { method: 'single', args: [] },
+    ]);
+    expect(db().queries[1].calls).toEqual([
+      {
+        method: 'insert',
+        args: [
+          [
+            {
+              recipe_id: 'recipe-copy-1',
+              pantry_item_id: 'pantry-1',
+              name: 'Eggs',
+              quantity_value: 2,
+              quantity_unit: 'count',
+              is_available: true,
+              is_optional: false,
+              sort_order: 0,
+            },
+          ],
+        ],
+      },
     ]);
   });
 
