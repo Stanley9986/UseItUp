@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, ConfirmDialog, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
+import { Button, Card, ConfirmDialog, palette, RecipeArtworkImage, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getErrorMessage } from '@/lib/errors';
@@ -239,6 +239,8 @@ export default function RecipeDetailScreen() {
         </View>
       ) : null}
 
+      <RecipeArtworkImage recipe={recipe} style={styles.recipeHeroImage} />
+
       <View style={styles.summary}>
         <Meta icon="time-outline" label={`${recipe.prepTimeMinutes ?? '--'} min`} />
         {recipe.usesExpiringItems ? <Meta icon="leaf-outline" label="Uses expiring items" /> : null}
@@ -344,7 +346,7 @@ export default function RecipeDetailScreen() {
               ))}
               {!isHistorySource ? (
                 <Text style={styles.body}>
-                  Tap “I Cooked This” to review and confirm exactly how each item’s quantity changes.
+                  After cooking, tap “I Cooked This” and we’ll help update what’s left in your pantry.
                 </Text>
               ) : null}
             </>
@@ -398,6 +400,13 @@ function ImpactRow({ detail, item }: { detail: string; item: string }) {
 }
 
 const styles = StyleSheet.create({
+  recipeHeroImage: {
+    backgroundColor: palette.greenSoft,
+    borderRadius: 14,
+    height: 190,
+    overflow: 'hidden',
+    width: '100%',
+  },
   summary: {
     flexDirection: 'row',
     flexWrap: 'wrap',

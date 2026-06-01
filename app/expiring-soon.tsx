@@ -3,7 +3,7 @@ import { Link } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, palette, QuantityText, Screen, SectionTitle, typography } from '@/components/useitup/ui';
+import { Button, Card, palette, PantryArtworkImage, QuantityText, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import {
@@ -117,9 +117,7 @@ export default function ExpiringSoonScreen() {
                   <View key={item.id} style={index > 0 && styles.withDivider}>
                     <Link asChild href={`/pantry-item/${item.id}`}>
                       <Pressable style={styles.itemRow}>
-                        <View style={styles.itemIcon}>
-                          <Ionicons color={palette.green} name={getCategoryIcon(item.category)} size={22} />
-                        </View>
+                        <PantryArtworkImage item={item} style={styles.itemIcon} />
                         <View style={styles.itemCopy}>
                           <Text numberOfLines={1} style={styles.itemName}>{item.name}</Text>
                           <View style={styles.itemMeta}>
@@ -170,26 +168,6 @@ function formatShortDate(expirationDate?: string) {
     day: 'numeric',
     month: 'short',
   }).format(new Date(`${expirationDate}T12:00:00`));
-}
-
-function getCategoryIcon(category?: string) {
-  if (category === 'meat') {
-    return 'restaurant-outline' as const;
-  }
-
-  if (category === 'produce') {
-    return 'leaf-outline' as const;
-  }
-
-  if (category === 'dairy') {
-    return 'water-outline' as const;
-  }
-
-  if (category === 'grain') {
-    return 'grid-outline' as const;
-  }
-
-  return 'basket-outline' as const;
 }
 
 const styles = StyleSheet.create({
@@ -252,6 +230,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     height: 52,
     justifyContent: 'center',
+    overflow: 'hidden',
     width: 52,
   },
   itemCopy: {

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { Href, Link } from 'expo-router';
-import { ComponentProps, PropsWithChildren, ReactNode } from 'react';
+import { ComponentProps, PropsWithChildren, ReactNode, useEffect, useState } from 'react';
 import {
   Pressable,
   KeyboardAvoidingView,
@@ -18,6 +19,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PantryItem, Recipe } from '@/types/useitup';
+import { getRemoteRecipeArtworkForQuery } from '@/lib/recipe-image';
+import { getPantryArtwork, getPantryImageSearchQuery, PantryArtwork } from '@/lib/pantry-artwork';
+import { getRecipeArtwork, getRecipeImageSearchQuery, RecipeArtwork } from '@/lib/recipe-artwork';
 
 export const palette = {
   background: '#f8f2e9',
@@ -258,9 +262,7 @@ export function PantryCard({ item, showEdit = false }: { item: PantryItem; showE
       <Pressable>
         <Card style={styles.itemCard}>
           <View style={styles.itemRow}>
-            <View style={styles.itemIcon}>
-              <Ionicons color={palette.green} name={getStorageIcon(item.storageLocation)} size={21} />
-            </View>
+            <PantryArtworkImage item={item} style={styles.itemIcon} />
             <View style={styles.itemCopy}>
               <Text style={styles.itemTitle}>{item.name}</Text>
               <View style={styles.inlineMeta}>
@@ -289,9 +291,7 @@ export function RecipeRowCard({ onToggleFavorite, recipe }: { recipe: Recipe } &
     <Card style={styles.recipeRowCard}>
       <Link asChild href={`/recipe/${recipe.id}`}>
         <Pressable style={styles.recipeRowLink}>
-          <View style={styles.recipeRowImage}>
-            <Ionicons color={palette.green} name="restaurant-outline" size={25} />
-          </View>
+          <RecipeArtworkImage recipe={recipe} style={styles.recipeRowImage} />
           <View style={styles.recipeRowBody}>
             <View style={styles.tagRow}>
               {recipe.usesExpiringItems ? <Text style={styles.tag}>Uses expiring food</Text> : <View />}
@@ -325,9 +325,7 @@ export function FavoriteRecipeCard({ onToggleFavorite, recipe }: { recipe: Recip
     <Card style={styles.favoriteRecipeCard}>
       <Link asChild href={`/recipe/${recipe.id}`}>
         <Pressable style={styles.favoriteRecipePressable}>
-          <View style={styles.favoriteRecipeImage}>
-            <Ionicons color={palette.green} name="restaurant-outline" size={24} />
-          </View>
+          <RecipeArtworkImage recipe={recipe} style={styles.favoriteRecipeImage} />
           <View style={styles.favoriteRecipeBody}>
             <Text numberOfLines={2} style={styles.itemTitle}>
               {recipe.title}
@@ -343,6 +341,113 @@ export function FavoriteRecipeCard({ onToggleFavorite, recipe }: { recipe: Recip
         <FavoriteToggleButton isFavorite={Boolean(recipe.isFavorite)} onPress={onToggleFavorite} />
       ) : null}
     </Card>
+  );
+}
+
+export function RecipeArtworkImage({ recipe, style }: { recipe: Recipe; style?: StyleProp<ViewStyle> }) {
+  const fallbackArtwork = getRecipeArtwork(recipe);
+  const [artwork, setArtwork] = useState<RecipeArtwork>(fallbackArtwork);
+  const searchQuery = getRecipeImageSearchQuery(recipe);
+
+  useEffect(() => {
+    let isMounted = true;
+    setArtwork(fallbackArtwork);
+
+    getRemoteRecipeArtworkForQuery(searchQuery, recipe.title)
+      .then((remoteArtwork) => {
+        if (isMounted && remoteArtwork) {
+          setArtwork(remoteArtwork);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fallbackArtwork, recipe.title, searchQuery]);
+
+  return (
+    <View style={[styles.recipeArtworkFrame, style]}>
+      {artwork.imageUrl ? (
+        <Image
+          accessibilityLabel={artwork.label}
+          contentFit="cover"
+          source={{ uri: artwork.imageUrl }}
+          style={styles.recipeArtworkImage}
+        />
+      ) : (
+        <ArtworkPlaceholder icon={getRecipeArtworkIcon(artwork.category)} label={artwork.label} />
+      )}
+      {artwork.provider === 'pexels' ? (
+        <Text numberOfLines={1} style={styles.recipeArtworkCredit}>
+          Pexels
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+export function PantryArtworkImage({ item, style }: { item: PantryItem; style?: StyleProp<ViewStyle> }) {
+  const fallbackArtwork = getPantryArtwork(item);
+  const [artwork, setArtwork] = useState<PantryArtwork>(fallbackArtwork);
+  const searchQuery = getPantryImageSearchQuery(item);
+
+  useEffect(() => {
+    let isMounted = true;
+    setArtwork(fallbackArtwork);
+
+    getRemoteRecipeArtworkForQuery(searchQuery, item.name)
+      .then((remoteArtwork) => {
+        if (isMounted && remoteArtwork) {
+          setArtwork({
+            ...fallbackArtwork,
+            imageUrl: remoteArtwork.imageUrl,
+            label: remoteArtwork.label,
+            photographer: remoteArtwork.photographer,
+            photographerUrl: remoteArtwork.photographerUrl,
+            provider: remoteArtwork.provider,
+          });
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fallbackArtwork, item.name, searchQuery]);
+
+  return (
+    <View style={[styles.recipeArtworkFrame, style]}>
+      {artwork.imageUrl ? (
+        <Image
+          accessibilityLabel={artwork.label}
+          contentFit="cover"
+          source={{ uri: artwork.imageUrl }}
+          style={styles.recipeArtworkImage}
+        />
+      ) : (
+        <ArtworkPlaceholder icon={getPantryArtworkIcon(artwork.category)} label={artwork.label} />
+      )}
+      {artwork.provider === 'pexels' ? (
+        <Text numberOfLines={1} style={styles.recipeArtworkCredit}>
+          Pexels
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function ArtworkPlaceholder({
+  icon,
+  label,
+}: {
+  icon: ComponentProps<typeof Ionicons>['name'];
+  label: string;
+}) {
+  return (
+    <View accessibilityLabel={label} style={styles.artworkPlaceholder}>
+      <Ionicons color={palette.green} name={icon} size={24} />
+    </View>
   );
 }
 
@@ -362,16 +467,44 @@ function titleCase(value: string) {
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
-function getStorageIcon(location: PantryItem['storageLocation']) {
-  if (location === 'freezer') {
-    return 'snow-outline' as const;
+function getRecipeArtworkIcon(category: RecipeArtwork['category']) {
+  if (category === 'beef' || category === 'seafood') {
+    return 'restaurant-outline' as const;
   }
 
-  if (location === 'pantry') {
-    return 'storefront-outline' as const;
+  if (category === 'egg') {
+    return 'egg-outline' as const;
   }
 
-  return 'file-tray-outline' as const;
+  if (category === 'grain' || category === 'pasta') {
+    return 'grid-outline' as const;
+  }
+
+  if (category === 'soup') {
+    return 'water-outline' as const;
+  }
+
+  return 'leaf-outline' as const;
+}
+
+function getPantryArtworkIcon(category: PantryArtwork['category']) {
+  if (category === 'meat') {
+    return 'restaurant-outline' as const;
+  }
+
+  if (category === 'dairy') {
+    return 'water-outline' as const;
+  }
+
+  if (category === 'grain') {
+    return 'grid-outline' as const;
+  }
+
+  if (category === 'produce') {
+    return 'leaf-outline' as const;
+  }
+
+  return 'basket-outline' as const;
 }
 
 const styles = StyleSheet.create({
@@ -516,6 +649,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     height: 44,
     justifyContent: 'center',
+    overflow: 'hidden',
     width: 44,
   },
   itemCopy: {
@@ -603,7 +737,34 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     minHeight: 112,
+    overflow: 'hidden',
     width: 96,
+  },
+  recipeArtworkFrame: {
+    position: 'relative',
+  },
+  recipeArtworkImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  artworkPlaceholder: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    backgroundColor: palette.greenSoft,
+    justifyContent: 'center',
+  },
+  recipeArtworkCredit: {
+    backgroundColor: 'rgba(52, 42, 34, 0.72)',
+    borderRadius: 6,
+    bottom: 6,
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
+    left: 6,
+    maxWidth: 72,
+    overflow: 'hidden',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    position: 'absolute',
   },
   recipeRowBody: {
     flex: 1,
@@ -625,6 +786,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.greenSoft,
     height: 94,
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   favoriteToggleButton: {
     alignItems: 'center',

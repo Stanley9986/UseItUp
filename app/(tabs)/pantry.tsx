@@ -10,6 +10,7 @@ import {
   Chip,
   ExpirationText,
   palette,
+  PantryArtworkImage,
   QuantityText,
   Screen,
   SectionTitle,
@@ -179,11 +180,14 @@ function PantryListItem({ item }: { item: PantryItem }) {
     <Link asChild href={`/pantry-item/${item.id}`}>
       <Pressable>
         <Card style={styles.pantryItem}>
-          <Text style={styles.itemName}>{item.name}</Text>
-          <View style={styles.itemMeta}>
-            <QuantityText item={item} />
-            <Text style={styles.metaDot}>.</Text>
-            <ExpirationText expirationDate={item.expirationDate} />
+          <PantryArtworkImage item={item} style={styles.itemImage} />
+          <View style={styles.itemCopy}>
+            <Text numberOfLines={1} style={styles.itemName}>{item.name}</Text>
+            <View style={styles.itemMeta}>
+              <QuantityText item={item} />
+              <Text style={styles.metaDot}>.</Text>
+              <ExpirationText expirationDate={item.expirationDate} />
+            </View>
           </View>
         </Card>
       </Pressable>
@@ -257,10 +261,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pantryItem: {
-    gap: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
     minHeight: 82,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  itemImage: {
+    backgroundColor: palette.greenSoft,
+    borderRadius: 10,
+    height: 58,
+    overflow: 'hidden',
+    width: 58,
+  },
+  itemCopy: {
+    flex: 1,
+    gap: 6,
+    minWidth: 0,
   },
   itemName: {
     color: palette.ink,

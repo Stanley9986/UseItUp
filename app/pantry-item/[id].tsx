@@ -9,6 +9,7 @@ import {
   ConfirmDialog,
   ExpirationText,
   palette,
+  PantryArtworkImage,
   QuantityText,
   Screen,
   SectionTitle,
@@ -123,9 +124,7 @@ export default function PantryItemDetailScreen() {
       subtitle="Pantry item detail from your Supabase inventory."
       headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
       <Card style={styles.heroCard}>
-        <View style={styles.itemIconLarge}>
-          <Ionicons color={palette.green} name={getCategoryIcon(item.category)} size={32} />
-        </View>
+        <PantryArtworkImage item={item} style={styles.itemImageLarge} />
         <View style={styles.heroCopy}>
           <Text style={styles.itemName}>{item.name}</Text>
           <Text style={styles.category}>{titleCase(item.category ?? 'other')}</Text>
@@ -208,26 +207,6 @@ function DetailRow({
   );
 }
 
-function getCategoryIcon(category?: string) {
-  if (category === 'meat') {
-    return 'restaurant-outline' as const;
-  }
-
-  if (category === 'produce') {
-    return 'leaf-outline' as const;
-  }
-
-  if (category === 'dairy') {
-    return 'water-outline' as const;
-  }
-
-  if (category === 'grain') {
-    return 'grid-outline' as const;
-  }
-
-  return 'basket-outline' as const;
-}
-
 function titleCase(value: string) {
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
@@ -238,12 +217,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 14,
   },
-  itemIconLarge: {
-    alignItems: 'center',
+  itemImageLarge: {
     backgroundColor: palette.greenSoft,
-    borderRadius: 8,
+    borderRadius: 12,
     height: 72,
-    justifyContent: 'center',
+    overflow: 'hidden',
     width: 72,
   },
   heroCopy: {

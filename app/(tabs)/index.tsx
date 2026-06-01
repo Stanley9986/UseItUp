@@ -1,11 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { Image } from 'expo-image';
 import { Href, Link, router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, ExpirationText, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
+import { Button, Card, ExpirationText, palette, PantryArtworkImage, RecipeArtworkImage, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import {
@@ -19,12 +18,6 @@ import { getErrorMessage, getPantryItems } from '@/lib/pantry';
 import { getSavedRecipes } from '@/lib/recipes';
 import { getWasteReductionStats, WasteReductionStats } from '@/lib/waste-stats';
 import { PantryItem, Recipe } from '@/types/useitup';
-
-const foodImages: Record<string, string> = {
-  steak: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=240&q=80',
-  spinach: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=240&q=80',
-  milk: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=240&q=80',
-};
 
 const emptyWasteStats: WasteReductionStats = {
   mealsCooked: 0,
@@ -221,7 +214,7 @@ export default function HomeScreen() {
               <View key={item.id} style={index > 0 && styles.withDivider}>
                 <Link asChild href={`/pantry-item/${item.id}`}>
                   <Pressable style={styles.expiringRow}>
-                    <FoodThumb item={item} />
+                    <PantryArtworkImage item={item} style={styles.foodThumb} />
                     <View style={styles.expiringCopy}>
                       <Text numberOfLines={1} style={styles.foodName}>
                         {item.name}
@@ -260,9 +253,7 @@ export default function HomeScreen() {
               {suggestedRecipes.slice(0, 6).map((recipe) => (
                 <Link asChild href={`/recipe/${recipe.id}`} key={recipe.id}>
                   <Pressable style={styles.mealCard}>
-                    <View style={styles.mealImageFallback}>
-                      <Ionicons color={palette.green} name="restaurant-outline" size={24} />
-                    </View>
+                    <MealArtwork recipe={recipe} />
                     <View style={styles.timePill}>
                       <Ionicons color={palette.ink} name="time-outline" size={12} />
                       <Text style={styles.timePillText}>{recipe.prepTimeMinutes ?? '--'} min</Text>
@@ -401,18 +392,8 @@ function formatReminderExpiration(daysUntilExpiration: number) {
   return `in ${daysUntilExpiration} days`;
 }
 
-function FoodThumb({ item }: { item: PantryItem }) {
-  const imageUrl = foodImages[item.normalizedName ?? item.id];
-
-  if (imageUrl) {
-    return <Image source={{ uri: imageUrl }} style={styles.foodThumb} />;
-  }
-
-  return (
-    <View style={styles.foodThumbFallback}>
-      <Ionicons color={palette.green} name={getCategoryIcon(item.category)} size={22} />
-    </View>
-  );
+function MealArtwork({ recipe }: { recipe: Recipe }) {
+  return <RecipeArtworkImage recipe={recipe} style={styles.mealArtwork} />;
 }
 
 function StatTile({
@@ -472,26 +453,6 @@ function formatShortDate(expirationDate?: string) {
     day: 'numeric',
     month: 'short',
   }).format(new Date(`${expirationDate}T12:00:00`));
-}
-
-function getCategoryIcon(category?: string) {
-  if (category === 'meat') {
-    return 'restaurant-outline' as const;
-  }
-
-  if (category === 'produce') {
-    return 'leaf-outline' as const;
-  }
-
-  if (category === 'dairy') {
-    return 'water-outline' as const;
-  }
-
-  if (category === 'grain') {
-    return 'grid-outline' as const;
-  }
-
-  return 'basket-outline' as const;
 }
 
 const styles = StyleSheet.create({
@@ -830,14 +791,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
     borderRadius: 8,
     height: 52,
-    width: 52,
-  },
-  foodThumbFallback: {
-    alignItems: 'center',
-    backgroundColor: palette.greenSoft,
-    borderRadius: 8,
-    height: 52,
-    justifyContent: 'center',
+    overflow: 'hidden',
     width: 52,
   },
   expiringCopy: {
@@ -893,11 +847,9 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     width: 142,
   },
-  mealImageFallback: {
-    alignItems: 'center',
+  mealArtwork: {
     backgroundColor: palette.greenSoft,
     height: 88,
-    justifyContent: 'center',
     width: '100%',
   },
   timePill: {
