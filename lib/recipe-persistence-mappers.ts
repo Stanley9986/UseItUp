@@ -91,6 +91,24 @@ export function mapSuggestedRecipesPayload(userId: string, recipes: Recipe[]) {
   });
 }
 
+export function mapSavedRecipeUpdatePayload(userId: string, recipe: Recipe) {
+  const { user_id, is_suggested, created_by_ai, source, ...recipePayload } = mapRecipeInsert(userId, recipe);
+  void user_id;
+  void is_suggested;
+  void created_by_ai;
+  void source;
+
+  return {
+    ...recipePayload,
+    ingredients: recipe.ingredients.map((ingredient, index) => {
+      const { recipe_id, ...ingredientInsert } = mapRecipeIngredientInsert('', ingredient, index);
+      void recipe_id;
+
+      return ingredientInsert;
+    }),
+  };
+}
+
 function mapRecipeIngredientRow(row: RecipeIngredientRow): RecipeIngredient {
   return {
     name: row.name,

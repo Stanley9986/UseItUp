@@ -4,6 +4,7 @@ import {
   mapRecipeRow,
   mapRecipeIngredientInsert,
   mapRecipeInsert,
+  mapSavedRecipeUpdatePayload,
   mapSuggestedRecipesPayload,
   RecipeIngredientRow,
   RecipeRow,
@@ -130,6 +131,19 @@ export async function createSavedRecipeFromSnapshot(userId: string, recipe: Reci
     sort_order: index,
     created_at: savedRecipeRow.created_at,
   })));
+}
+
+export async function updateSavedRecipe(userId: string, recipeId: string, recipe: Recipe) {
+  const { error } = await supabase.rpc('update_saved_recipe', {
+    p_recipe_id: recipeId,
+    p_recipe: mapSavedRecipeUpdatePayload(userId, recipe),
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return getSavedRecipeById(userId, recipeId);
 }
 
 async function getIngredientsForRecipeIds(recipeIds: string[]) {

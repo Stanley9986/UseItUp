@@ -17,6 +17,7 @@ import {
   getSavedRecipesPage,
   getSavedRecipes,
   replaceSuggestedRecipes,
+  updateSavedRecipe,
 } from '@/lib/recipes';
 import type { RecipeIngredientRow, RecipeRow } from '@/lib/recipe-persistence-mappers';
 import type { Recipe } from '@/types/useitup';
@@ -229,6 +230,44 @@ describe('recipe data access', () => {
             },
           ],
         ],
+      },
+    ]);
+  });
+
+  it('updates a saved recipe through the transactional RPC and reloads it', async () => {
+    db().pushRpcResult({ data: null, error: null });
+    db().pushQueryResult({ data: recipeRow, error: null });
+    db().pushQueryResult({ data: [ingredientRow], error: null });
+
+    await expect(updateSavedRecipe('user-1', 'recipe-1', generatedRecipe)).resolves.toMatchObject({
+      id: 'recipe-1',
+      title: 'Spinach Omelet',
+    });
+
+    expect(db().rpcCalls).toEqual([
+      {
+        functionName: 'update_saved_recipe',
+        args: {
+          p_recipe_id: 'recipe-1',
+          p_recipe: {
+            title: 'Rice Bowl',
+            description: null,
+            instructions: ['Cook rice.'],
+            prep_time_minutes: 20,
+            uses_expiring_items: true,
+            ingredients: [
+              {
+                pantry_item_id: 'pantry-1',
+                name: 'Eggs',
+                quantity_value: 2,
+                quantity_unit: 'count',
+                is_available: true,
+                is_optional: false,
+                sort_order: 0,
+              },
+            ],
+          },
+        },
       },
     ]);
   });

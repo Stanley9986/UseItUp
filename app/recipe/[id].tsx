@@ -255,10 +255,14 @@ export default function RecipeDetailScreen() {
             <Ionicons color={isFavorite ? palette.gold : palette.muted} name={isFavorite ? 'star' : 'star-outline'} size={28} />
           </Pressable>
           {isFavoriteSource ? (
-            <Button compact href={`/edit-recipe/${recipe.id}`} icon="create-outline" secondary>
+            <Button compact href={`/edit-recipe/${recipe.id}?type=favorite`} icon="create-outline" secondary>
               Edit
             </Button>
-          ) : null}
+          ) : (
+            <Button compact href={`/edit-recipe/${recipe.id}?type=suggested`} icon="create-outline" secondary>
+              Edit
+            </Button>
+          )}
           <Button compact icon="trash-outline" onPress={() => setIsConfirmingDelete(true)} secondary>
             Delete
           </Button>

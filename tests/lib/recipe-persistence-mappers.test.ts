@@ -4,6 +4,7 @@ import {
   mapRecipeIngredientInsert,
   mapRecipeInsert,
   mapRecipeRow,
+  mapSavedRecipeUpdatePayload,
   mapSuggestedRecipesPayload,
   RecipeIngredientRow,
   RecipeRow,
@@ -187,5 +188,39 @@ describe('mapSuggestedRecipesPayload', () => {
         ],
       },
     ]);
+  });
+});
+
+describe('mapSavedRecipeUpdatePayload', () => {
+  it('builds an RPC update payload without insert-only recipe keys', () => {
+    expect(
+      mapSavedRecipeUpdatePayload('user-1', {
+        id: 'recipe-1',
+        title: 'Rice Bowl',
+        description: '  Quick lunch. ',
+        prepTimeMinutes: 18,
+        usesExpiringItems: true,
+        ingredients: [{ name: 'Rice', isAvailable: true }],
+        missingIngredients: [],
+        instructions: ['Warm rice.'],
+      }),
+    ).toEqual({
+      title: 'Rice Bowl',
+      description: 'Quick lunch.',
+      instructions: ['Warm rice.'],
+      prep_time_minutes: 18,
+      uses_expiring_items: true,
+      ingredients: [
+        {
+          pantry_item_id: null,
+          name: 'Rice',
+          quantity_value: null,
+          quantity_unit: null,
+          is_available: true,
+          is_optional: false,
+          sort_order: 0,
+        },
+      ],
+    });
   });
 });

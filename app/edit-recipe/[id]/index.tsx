@@ -7,6 +7,7 @@ import { Button, Card, palette, Screen, SectionTitle } from '@/components/useitu
 import { useAuth } from '@/contexts/auth-context';
 import { getErrorMessage } from '@/lib/errors';
 import { getFavoriteRecipeById, updateFavoriteRecipe } from '@/lib/favorite-recipes';
+import { getSavedRecipeById, updateSavedRecipe } from '@/lib/recipes';
 import {
   buildEditedFavoriteRecipe,
   FavoriteRecipeEditInput,
@@ -26,8 +27,10 @@ const emptyInput: FavoriteRecipeEditInput = {
 };
 
 export default function EditRecipeScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
   const { user } = useAuth();
+  const editType = type === 'suggested' ? 'suggested' : 'favorite';
+  const isSuggestedEdit = editType === 'suggested';
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [input, setInput] = useState<FavoriteRecipeEditInput>(emptyInput);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,21 +46,23 @@ export default function EditRecipeScreen() {
     setMessage('');
 
     try {
-      const favorite = await getFavoriteRecipeById(user.id, id);
+      const nextRecipe = isSuggestedEdit
+        ? await getSavedRecipeById(user.id, id)
+        : await getFavoriteRecipeById(user.id, id);
 
-      if (!favorite) {
-        setMessage('This favorite recipe could not be found.');
+      if (!nextRecipe) {
+        setMessage(isSuggestedEdit ? 'This saved recipe could not be found.' : 'This favorite recipe could not be found.');
         return;
       }
 
-      setRecipe(favorite);
-      setInput(getFavoriteRecipeEditInput(favorite));
+      setRecipe(nextRecipe);
+      setInput(getFavoriteRecipeEditInput(nextRecipe));
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to load this favorite recipe.'));
+      setMessage(getErrorMessage(error, isSuggestedEdit ? 'Unable to load this saved recipe.' : 'Unable to load this favorite recipe.'));
     } finally {
       setIsLoading(false);
     }
-  }, [id, user]);
+  }, [id, isSuggestedEdit, user]);
 
   useEffect(() => {
     loadRecipe();
@@ -83,10 +88,19 @@ export default function EditRecipeScreen() {
     setMessage('');
 
     try {
-      const updatedRecipe = await updateFavoriteRecipe(user.id, recipe.id, buildEditedFavoriteRecipe(recipe, input));
+      const editedRecipe = buildEditedFavoriteRecipe(recipe, input);
+      const updatedRecipe = isSuggestedEdit
+        ? await updateSavedRecipe(user.id, recipe.id, editedRecipe)
+        : await updateFavoriteRecipe(user.id, recipe.id, editedRecipe);
+
+      if (!updatedRecipe) {
+        setMessage('Recipe saved, but it could not be reloaded.');
+        return;
+      }
+
       router.replace(`/recipe/${updatedRecipe.id}`);
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to save this favorite recipe.'));
+      setMessage(getErrorMessage(error, isSuggestedEdit ? 'Unable to save this recipe.' : 'Unable to save this favorite recipe.'));
     } finally {
       setIsSaving(false);
     }
@@ -95,13 +109,13 @@ export default function EditRecipeScreen() {
   return (
     <Screen
       keyboardAware
-      title="Edit Favorite"
-      subtitle="Update your saved recipe snapshot."
+      title={isSuggestedEdit ? 'Edit Recipe' : 'Edit Favorite'}
+      subtitle={isSuggestedEdit ? 'Update this saved recipe.' : 'Update your saved recipe snapshot.'}
       headerAction={<Button compact href={`/recipe/${id}`} secondary icon="arrow-back">Back</Button>}>
       {isLoading ? (
         <Card style={styles.loadingCard}>
           <ActivityIndicator color={palette.blue} />
-          <Text style={styles.body}>Loading favorite recipe...</Text>
+          <Text style={styles.body}>{isSuggestedEdit ? 'Loading saved recipe...' : 'Loading favorite recipe...'}</Text>
         </Card>
       ) : null}
 
@@ -204,7 +218,7 @@ export default function EditRecipeScreen() {
           </View>
 
           <Button disabled={isSaving} icon="save-outline" onPress={handleSave}>
-            {isSaving ? 'Saving...' : 'Save Favorite'}
+            {isSaving ? 'Saving...' : isSuggestedEdit ? 'Save Recipe' : 'Save Favorite'}
           </Button>
         </>
       ) : null}
