@@ -17,6 +17,7 @@ import {
 } from '@/lib/expiry-reminders';
 import { getErrorMessage, getPantryItems } from '@/lib/pantry';
 import { getSavedRecipes } from '@/lib/recipes';
+import { getWasteReductionStats, WasteReductionStats } from '@/lib/waste-stats';
 import { PantryItem, Recipe } from '@/types/useitup';
 
 const foodImages: Record<string, string> = {
@@ -25,10 +26,17 @@ const foodImages: Record<string, string> = {
   milk: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=240&q=80',
 };
 
+const emptyWasteStats: WasteReductionStats = {
+  mealsCooked: 0,
+  pantryItemsUsed: 0,
+  portionsUsed: 0,
+};
+
 export default function HomeScreen() {
   const { user } = useAuth();
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
+  const [wasteStats, setWasteStats] = useState<WasteReductionStats>(emptyWasteStats);
   const [reminderSettings, setReminderSettings] = useState<ExpiryReminderSettings>(defaultExpiryReminderSettings);
   const [isBellOpen, setIsBellOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,16 +77,29 @@ export default function HomeScreen() {
     setReminderSettings(await getExpiryReminderSettings());
   }, []);
 
+  const loadWasteStats = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    try {
+      setWasteStats(await getWasteReductionStats(user.id));
+    } catch {
+      setWasteStats(emptyWasteStats);
+    }
+  }, [user]);
+
   useFocusEffect(
     useCallback(() => {
       loadPantryItems();
       loadSavedRecipes();
       loadReminderSettings();
-    }, [loadPantryItems, loadReminderSettings, loadSavedRecipes]),
+      loadWasteStats();
+    }, [loadPantryItems, loadReminderSettings, loadSavedRecipes, loadWasteStats]),
   );
 
   const { isRefreshing, refresh } = useRefresh(async () => {
-    await Promise.all([loadPantryItems(), loadSavedRecipes(), loadReminderSettings()]);
+    await Promise.all([loadPantryItems(), loadSavedRecipes(), loadReminderSettings(), loadWasteStats()]);
   });
 
   const expiringItems = useMemo(
@@ -150,6 +171,30 @@ export default function HomeScreen() {
         <Button href="/(tabs)/recipes" icon="sparkles-outline">
           Cook What I Have
         </Button>
+      </View>
+
+      <View style={styles.section}>
+        <SectionTitle>Waste Less This Month</SectionTitle>
+        <Card style={styles.impactCard}>
+          <ImpactStat
+            icon="restaurant-outline"
+            label="meals cooked"
+            tone="green"
+            value={wasteStats.mealsCooked}
+          />
+          <ImpactStat
+            icon="leaf-outline"
+            label="items used"
+            tone="gold"
+            value={wasteStats.pantryItemsUsed}
+          />
+          <ImpactStat
+            icon="scale-outline"
+            label="portions used"
+            tone="blue"
+            value={formatPortionsUsed(wasteStats.portionsUsed)}
+          />
+        </Card>
       </View>
 
       <View style={styles.section}>
@@ -386,6 +431,36 @@ function StatTile({
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
+}
+
+function ImpactStat({
+  icon,
+  label,
+  tone,
+  value,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  tone: 'blue' | 'gold' | 'green';
+  value: number | string;
+}) {
+  return (
+    <View style={styles.impactStat}>
+      <View style={[styles.impactIcon, styles[`${tone}ImpactIcon`]]}>
+        <Ionicons color={tone === 'green' ? palette.green : tone === 'gold' ? palette.gold : palette.blue} name={icon} size={18} />
+      </View>
+      <Text style={styles.impactValue}>{value}</Text>
+      <Text numberOfLines={2} style={styles.impactLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function formatPortionsUsed(value: number) {
+  if (Number.isInteger(value)) {
+    return value;
+  }
+
+  return value.toFixed(1);
 }
 
 function formatShortDate(expirationDate?: string) {
@@ -683,6 +758,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  impactCard: {
+    flexDirection: 'row',
+    gap: 8,
+    padding: 10,
+  },
+  impactStat: {
+    alignItems: 'center',
+    backgroundColor: palette.surface,
+    borderRadius: 8,
+    flex: 1,
+    gap: 4,
+    minHeight: 104,
+    paddingHorizontal: 6,
+    paddingVertical: 10,
+  },
+  impactIcon: {
+    alignItems: 'center',
+    borderRadius: 8,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  greenImpactIcon: {
+    backgroundColor: palette.greenSoft,
+  },
+  goldImpactIcon: {
+    backgroundColor: palette.goldSoft,
+  },
+  blueImpactIcon: {
+    backgroundColor: palette.blueSoft,
+  },
+  impactValue: {
+    color: palette.ink,
+    fontSize: 21,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  impactLabel: {
+    color: palette.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    lineHeight: 14,
+    minHeight: 28,
+    textAlign: 'center',
   },
   viewAll: {
     color: palette.blue,

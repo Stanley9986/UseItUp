@@ -15,6 +15,7 @@ export type MockSupabaseQuery = PromiseLike<MockSupabaseResult> & {
   calls: MockSupabaseQueryCall[];
   delete: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
+  gte: ReturnType<typeof vi.fn>;
   in: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
   limit: ReturnType<typeof vi.fn>;
@@ -50,6 +51,10 @@ function createQuery(table: string, nextResult: () => MockSupabaseResult): MockS
     }),
     eq: vi.fn((...args: unknown[]) => {
       calls.push({ method: 'eq', args });
+      return query;
+    }),
+    gte: vi.fn((...args: unknown[]) => {
+      calls.push({ method: 'gte', args });
       return query;
     }),
     in: vi.fn((...args: unknown[]) => {

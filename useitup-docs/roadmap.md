@@ -15,6 +15,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - Shopping list items can be created from a recipe's missing ingredients.
 - Expiry reminder settings and local scheduled notifications are wired to the Home bell.
 - Data-access tests cover the core Supabase modules for pantry, recipes, favorites, and cooking.
+- Home shows monthly waste-reduction stats from cook history and pantry updates.
 
 ## Section 2 - Tech Debt / Cleanup
 
@@ -26,7 +27,6 @@ This file tracks the working backlog for UseItUp so project direction survives c
 
 - Upgrade expiry reminders from local scheduled notifications to remote push if the app needs server-driven alerts later.
 - Add barcode scanning to make pantry item entry faster.
-- Add waste-reduction stats on Home using cook history.
 - Add editing for saved/favorite recipes.
 - Add a recipe image strategy for generated recipes. Prefer simple category artwork first; generated/API images can come later.
 
