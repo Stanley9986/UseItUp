@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { Button, Screen } from '@/components/useitup/ui';
@@ -11,11 +11,19 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { safeBack } from '@/lib/navigation';
 import { createPantryItem, getErrorMessage, isDuplicatePantryItemError, normalizePantryName } from '@/lib/pantry';
+import { deleteShoppingListItem } from '@/lib/shopping-list';
+import { getSingleSearchParam } from '@/lib/shopping-list-mappers';
 
 export default function AddItemScreen() {
+  const { itemName, shoppingItemId } = useLocalSearchParams<{
+    itemName?: string | string[];
+    shoppingItemId?: string | string[];
+  }>();
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const initialItemName = getSingleSearchParam(itemName);
+  const sourceShoppingItemId = getSingleSearchParam(shoppingItemId);
 
   async function handleSave(values: PantryItemFormValues) {
     if (!user || isSaving) {
@@ -58,16 +66,32 @@ export default function AddItemScreen() {
         expirationDate,
         notes: values.notes,
       });
-
-      router.replace('/(tabs)/pantry');
     } catch (error) {
       if (isDuplicatePantryItemError(error)) {
         setMessage(`You already have ${titleCase(normalizedName)} in ${titleCase(values.location)}.`);
       } else {
         setMessage(getErrorMessage(error, 'Unable to save item.'));
       }
-    } finally {
       setIsSaving(false);
+      return;
+    }
+
+    if (sourceShoppingItemId) {
+      try {
+        await deleteShoppingListItem(user.id, sourceShoppingItemId);
+      } catch (error) {
+        setMessage(getErrorMessage(error, 'Item was added to your pantry, but it could not be removed from your shopping list.'));
+        setIsSaving(false);
+        return;
+      }
+    }
+
+    setIsSaving(false);
+
+    if (sourceShoppingItemId) {
+      router.dismissTo('/shopping-list');
+    } else {
+      router.replace('/(tabs)/pantry');
     }
   }
 
@@ -76,8 +100,22 @@ export default function AddItemScreen() {
       keyboardAware
       title="Add Item"
       subtitle="Add a real pantry item to your Supabase-backed inventory."
-      headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="close">Close</Button>}>
-      <PantryItemForm isSaving={isSaving} message={message} onSubmit={handleSave} submitLabel="Save Item" />
+      headerAction={
+        <Button
+          compact
+          onPress={() => safeBack(sourceShoppingItemId ? '/shopping-list' : '/(tabs)/pantry')}
+          secondary
+          icon="close">
+          Close
+        </Button>
+      }>
+      <PantryItemForm
+        initialValues={initialItemName ? { name: initialItemName } : undefined}
+        isSaving={isSaving}
+        message={message}
+        onSubmit={handleSave}
+        submitLabel="Save Item"
+      />
     </Screen>
   );
 }

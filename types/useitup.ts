@@ -41,3 +41,14 @@ export type UserPreferences = {
   avoidedIngredients: string[];
   maxPrepTimeMinutes?: number;
 };
+
+export type ShoppingListItem = {
+  id: string;
+  name: string;
+  normalizedName: string;
+  sourceRecipeId?: string;
+  sourceRecipeTitle?: string;
+  isChecked: boolean;
+  createdAt: string;
+  updatedAt: string;
+};

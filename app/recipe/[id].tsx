@@ -16,7 +16,14 @@ import {
 import { findGeneratedRecipe, removeGeneratedRecipe } from '@/lib/generated-recipes';
 import { safeBack } from '@/lib/navigation';
 import { dismissSuggestedRecipe, getSavedRecipeById } from '@/lib/recipes';
+import { addShoppingListItemsFromRecipe } from '@/lib/shopping-list';
+import { getShoppingListSourceRecipeId } from '@/lib/shopping-list-mappers';
 import { Recipe } from '@/types/useitup';
+
+type ScreenMessage = {
+  tone: 'error' | 'success' | 'info';
+  text: string;
+};
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -29,9 +36,10 @@ export default function RecipeDetailScreen() {
   const [isFavoriteSource, setIsFavoriteSource] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSavingFavorite, setIsSavingFavorite] = useState(false);
+  const [isAddingShoppingList, setIsAddingShoppingList] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState<ScreenMessage | null>(null);
   const recipe = useMemo(() => savedRecipe ?? findGeneratedRecipe(id) ?? null, [id, savedRecipe]);
   const canUpdatePantry = !isFavoriteSource && Boolean(recipe);
   const canManageRecipe = Boolean(user && id && isUuid(id) && recipe);
@@ -50,7 +58,7 @@ export default function RecipeDetailScreen() {
         if (showLoading) {
           setIsLoading(true);
         }
-        setMessage('');
+        setMessage(null);
 
         const suggestedRecipe = await getSavedRecipeById(user.id, id);
         const favoriteRecipe = suggestedRecipe ? null : await getFavoriteRecipeById(user.id, id);
@@ -69,7 +77,10 @@ export default function RecipeDetailScreen() {
           setIsFavorite(false);
         }
       } catch (error) {
-        setMessage(getErrorMessage(error, 'Unable to load saved recipe. Showing sample recipe instead.'));
+        setMessage({
+          tone: 'error',
+          text: getErrorMessage(error, 'Unable to load saved recipe. Showing sample recipe instead.'),
+        });
       } finally {
         if (showLoading) {
           setIsLoading(false);
@@ -93,7 +104,7 @@ export default function RecipeDetailScreen() {
     const nextFavorite = !isFavorite;
 
     setIsSavingFavorite(true);
-    setMessage('');
+    setMessage(null);
 
     try {
       if (nextFavorite) {
@@ -103,7 +114,7 @@ export default function RecipeDetailScreen() {
       }
       setIsFavorite(nextFavorite);
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to update favorite status.'));
+      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to update favorite status.') });
     } finally {
       setIsSavingFavorite(false);
     }
@@ -115,7 +126,7 @@ export default function RecipeDetailScreen() {
     }
 
     setIsDeleting(true);
-    setMessage('');
+    setMessage(null);
 
     try {
       if (isFavoriteSource) {
@@ -126,8 +137,42 @@ export default function RecipeDetailScreen() {
       removeGeneratedRecipe(recipe.id);
       router.replace('/(tabs)/recipes');
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to delete this recipe.'));
+      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to delete this recipe.') });
       setIsDeleting(false);
+    }
+  }
+
+  async function handleAddMissingToShoppingList() {
+    if (!user || !recipe || isAddingShoppingList || !recipe.missingIngredients.length) {
+      return;
+    }
+
+    setIsAddingShoppingList(true);
+    setMessage(null);
+
+    try {
+      const addedItems = await addShoppingListItemsFromRecipe({
+        ingredients: recipe.missingIngredients,
+        recipeId: getShoppingListSourceRecipeId({
+          isFavoriteSource,
+          recipeId: isUuid(recipe.id) ? recipe.id : undefined,
+        }),
+        recipeTitle: recipe.title,
+        userId: user.id,
+      });
+      setMessage({
+        tone: addedItems.length ? 'success' : 'info',
+        text: addedItems.length
+          ? `${addedItems.length} item${addedItems.length === 1 ? '' : 's'} added to your shopping list.`
+          : 'No missing ingredients to add.',
+      });
+    } catch (error) {
+      setMessage({
+        tone: 'error',
+        text: getErrorMessage(error, 'Unable to add missing ingredients to your shopping list.'),
+      });
+    } finally {
+      setIsAddingShoppingList(false);
     }
   }
 
@@ -167,7 +212,27 @@ export default function RecipeDetailScreen() {
           <Text style={styles.body}>Loading saved recipe...</Text>
         </Card>
       ) : null}
-      {message ? <Text style={styles.message}>{message}</Text> : null}
+      {message ? (
+        <View
+          style={[
+            styles.messageBox,
+            message.tone === 'error' ? styles.errorMessageBox : styles.successMessageBox,
+          ]}>
+          <Ionicons
+            color={message.tone === 'error' ? palette.red : palette.green}
+            name={message.tone === 'error' ? 'alert-circle-outline' : 'checkmark-circle-outline'}
+            size={18}
+          />
+          <Text style={[styles.messageText, message.tone === 'error' ? styles.errorMessageText : styles.successMessageText]}>
+            {message.text}
+          </Text>
+          {message.tone === 'success' ? (
+            <Text onPress={() => router.push('/shopping-list')} style={styles.messageAction}>
+              View List
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
 
       <View style={styles.summary}>
         <Meta icon="time-outline" label={`${recipe.prepTimeMinutes ?? '--'} min`} />
@@ -226,6 +291,16 @@ export default function RecipeDetailScreen() {
               ? recipe.missingIngredients.join(', ')
               : 'Nothing essential is missing for this recipe.'}
           </Text>
+          {recipe.missingIngredients.length ? (
+            <Button
+              compact
+              disabled={isAddingShoppingList}
+              icon="cart-outline"
+              onPress={handleAddMissingToShoppingList}
+              secondary>
+              {isAddingShoppingList ? 'Adding...' : 'Add Missing to Shopping List'}
+            </Button>
+          ) : null}
         </Card>
       </View>
 
@@ -392,11 +467,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  message: {
-    color: palette.red,
+  messageBox: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    padding: 10,
+  },
+  errorMessageBox: {
+    backgroundColor: '#fff4f1',
+    borderColor: '#f1c8bd',
+  },
+  successMessageBox: {
+    backgroundColor: palette.greenSoft,
+    borderColor: '#d7d0b8',
+  },
+  messageText: {
+    flex: 1,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     lineHeight: 20,
+  },
+  errorMessageText: {
+    color: palette.red,
+  },
+  successMessageText: {
+    color: palette.green,
+  },
+  messageAction: {
+    color: palette.blue,
+    fontSize: 14,
+    fontWeight: '900',
+    paddingVertical: 6,
   },
 });
 

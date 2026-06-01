@@ -339,7 +339,8 @@ export default function RecipesScreen() {
       }
       refreshing={isRefreshing}
       title="Meals You Can Make"
-      subtitle="Generate meal ideas from your real pantry items.">
+      subtitle="Generate meal ideas from your real pantry items."
+      headerAction={<Button compact href="/shopping-list" icon="cart-outline" secondary>List</Button>}>
       <Card style={styles.generatorCard}>
         <Text style={styles.generatorTitle}>Cook from your pantry</Text>
         <Text style={styles.generatorCopy}>

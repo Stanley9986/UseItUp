@@ -12,6 +12,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - Cook history and pantry updates exist.
 - Most mock data wiring has been removed.
 - Dietary preferences are saved in Supabase and included in recipe generation.
+- Shopping list items can be created from a recipe's missing ingredients.
 
 ## Section 2 - Tech Debt / Cleanup
 
@@ -22,7 +23,6 @@ This file tracks the working backlog for UseItUp so project direction survives c
 ## Section 3 - Core Features / Product Value
 
 - Add expiry push notifications so the bell becomes functional.
-- Add a shopping list from a recipe's missing ingredients.
 - Add barcode scanning to make pantry item entry faster.
 - Add waste-reduction stats on Home using cook history.
 - Add editing for saved/favorite recipes.

@@ -15,7 +15,21 @@ import { defaultUserPreferences, getUserPreferences } from '@/lib/user-preferenc
 import { summarizeUserPreferences } from '@/lib/user-preferences-mappers';
 import { UserPreferences } from '@/types/useitup';
 
-const settingsRows = [
+type SettingsRow = {
+  detail: string;
+  href?: '/cook-history' | '/dietary-preferences' | '/shopping-list';
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+};
+const kitchenRows: SettingsRow[] = [
+  {
+    href: '/shopping-list',
+    icon: 'cart-outline',
+    title: 'Shopping List',
+    detail: 'Missing ingredients to buy',
+  },
+];
+const preferenceRows: SettingsRow[] = [
   {
     icon: 'notifications-outline',
     title: 'Expiration Reminders',
@@ -26,7 +40,7 @@ const settingsRows = [
     title: 'Account Security',
     detail: 'Email/password login active',
   },
-] as const;
+];
 
 export default function ProfileScreen() {
   const { signOut, user } = useAuth();
@@ -144,8 +158,20 @@ export default function ProfileScreen() {
     setIsEditingName(false);
   }
 
+  const latestCookedRecipe = cookHistory[0];
+  const recentlyCookedRow: SettingsRow = {
+    href: '/cook-history',
+    icon: 'checkmark-circle-outline',
+    title: 'Recently Cooked',
+    detail: historyMessage
+      ? historyMessage
+      : latestCookedRecipe
+        ? latestCookedRecipe.recipeTitle
+        : 'Cook a saved recipe to see it here',
+  };
+
   return (
-    <Screen onRefresh={refresh} refreshing={isRefreshing} title="More" subtitle="Manage your UseItUp account and preferences.">
+    <Screen onRefresh={refresh} refreshing={isRefreshing} title="More" subtitle="Manage your kitchen tools and account.">
       <Card style={styles.profileCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initial}</Text>
@@ -195,79 +221,38 @@ export default function ProfileScreen() {
       </Card>
 
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <SectionTitle>Recently Cooked</SectionTitle>
-          <Link asChild href="/cook-history">
-            <Pressable hitSlop={10}>
-              <Text style={styles.viewAll}>View all</Text>
-            </Pressable>
-          </Link>
-        </View>
+        <SectionTitle>Kitchen</SectionTitle>
         <Card style={styles.listCard}>
-          {historyMessage ? (
-            <View style={styles.emptyHistory}>
-              <Text style={styles.rowDetail}>{historyMessage}</Text>
-            </View>
-          ) : cookHistory.length ? (
-            cookHistory.slice(0, 5).map((item, index) => (
-              <Link asChild href={`/recipe/${item.recipeId}`} key={item.id}>
-                <Pressable style={styles.linkRow}>
-                  <View style={[styles.row, index > 0 && styles.withDivider]}>
-                    <View style={styles.rowIcon}>
-                      <Ionicons color={palette.green} name="checkmark-circle-outline" size={20} />
-                    </View>
-                    <View style={styles.rowCopy}>
-                      <Text numberOfLines={2} style={styles.rowTitle}>{item.recipeTitle}</Text>
-                      <Text numberOfLines={1} style={styles.rowDetail}>{formatCookedAt(item.cookedAt)}</Text>
-                    </View>
-                    <Ionicons color={palette.muted} name="chevron-forward" size={18} />
-                  </View>
-                </Pressable>
-              </Link>
-            ))
-          ) : (
-            <View style={styles.emptyHistory}>
-              <Text style={styles.rowTitle}>No cooked recipes yet</Text>
-              <Text style={styles.rowDetail}>Cook a saved recipe to see it here.</Text>
-            </View>
-          )}
+          {[...kitchenRows, recentlyCookedRow].map((row, index) => (
+            <SettingsRowView
+              key={row.title}
+              row={row}
+              showDivider={index > 0}
+              tone={row.title === 'Recently Cooked' ? 'success' : 'default'}
+            />
+          ))}
         </Card>
       </View>
 
       <View style={styles.section}>
         <SectionTitle>Preferences</SectionTitle>
         <Card style={styles.listCard}>
-          <View style={styles.preferenceBlock}>
-            <Link asChild href="/dietary-preferences">
-              <Pressable style={styles.row}>
-                <View style={styles.rowIcon}>
-                  <Ionicons color={palette.green} name="leaf-outline" size={20} />
-                </View>
-                <View style={styles.rowCopy}>
-                  <Text style={styles.rowTitle}>Dietary Preferences</Text>
-                  <Text numberOfLines={2} style={styles.rowDetail}>{summarizeUserPreferences(preferences)}</Text>
-                </View>
-                <Ionicons color={palette.muted} name="chevron-forward" size={18} />
-              </Pressable>
-            </Link>
-            {preferencesMessage ? (
-              <Text style={[styles.preferenceMessage, styles.errorText]}>
-                {preferencesMessage}
-              </Text>
-            ) : null}
-          </View>
-          {settingsRows.map((row) => (
-            <View key={row.title} style={[styles.row, styles.withDivider]}>
-              <View style={styles.rowIcon}>
-                <Ionicons color={palette.green} name={row.icon} size={20} />
-              </View>
-              <View style={styles.rowCopy}>
-                <Text style={styles.rowTitle}>{row.title}</Text>
-                <Text style={styles.rowDetail}>{row.detail}</Text>
-              </View>
-              <Ionicons color={palette.muted} name="chevron-forward" size={18} />
-            </View>
+          {([
+            {
+              href: '/dietary-preferences',
+              icon: 'leaf-outline',
+              title: 'Dietary Preferences',
+              detail: summarizeUserPreferences(preferences),
+            },
+            ...preferenceRows,
+          ] satisfies SettingsRow[]).map((row, index) => (
+            <SettingsRowView key={row.title} row={row} showDivider={index > 0} />
           ))}
+          {preferencesMessage ? (
+            <Text style={[styles.preferenceMessage, styles.errorText]}>
+              {preferencesMessage}
+            </Text>
+          ) : null}
         </Card>
       </View>
 
@@ -352,16 +337,6 @@ const styles = StyleSheet.create({
   section: {
     gap: 10,
   },
-  sectionHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  viewAll: {
-    color: palette.blue,
-    fontSize: 13,
-    fontWeight: '800',
-  },
   inlineEdit: {
     gap: 9,
     marginTop: 7,
@@ -404,18 +379,12 @@ const styles = StyleSheet.create({
     gap: 0,
     padding: 0,
   },
-  preferenceBlock: {
-    width: '100%',
-  },
   preferenceMessage: {
     fontSize: 13,
     fontWeight: '800',
     lineHeight: 19,
     paddingHorizontal: 14,
     paddingBottom: 12,
-  },
-  linkRow: {
-    width: '100%',
   },
   row: {
     alignItems: 'center',
@@ -438,6 +407,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 40,
   },
+  rowIconSuccess: {
+    backgroundColor: palette.greenSoft,
+  },
   rowCopy: {
     flex: 1,
     gap: 3,
@@ -455,10 +427,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  emptyHistory: {
-    gap: 4,
-    padding: 14,
-  },
   previewCard: {
     backgroundColor: palette.surface,
   },
@@ -475,10 +443,35 @@ const styles = StyleSheet.create({
   },
 });
 
-function formatCookedAt(value: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(value));
+function SettingsRowView({
+  row,
+  showDivider,
+  tone = 'default',
+}: {
+  row: SettingsRow;
+  showDivider?: boolean;
+  tone?: 'default' | 'success';
+}) {
+  const content = (
+    <View style={[styles.row, showDivider && styles.withDivider]}>
+      <View style={[styles.rowIcon, tone === 'success' && styles.rowIconSuccess]}>
+        <Ionicons color={palette.green} name={row.icon} size={20} />
+      </View>
+      <View style={styles.rowCopy}>
+        <Text style={styles.rowTitle}>{row.title}</Text>
+        <Text numberOfLines={2} style={styles.rowDetail}>{row.detail}</Text>
+      </View>
+      <Ionicons color={palette.muted} name="chevron-forward" size={18} />
+    </View>
+  );
+
+  if (row.href) {
+    return (
+      <Link asChild href={row.href}>
+        <Pressable>{content}</Pressable>
+      </Link>
+    );
+  }
+
+  return content;
 }
