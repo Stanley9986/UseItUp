@@ -828,6 +828,7 @@ const es: Partial<Record<TranslationKey, string>> = {
   vegetarian: 'Vegetariano',
   verifyEmail: 'Verifica tu email',
   viewAll: 'Ver todo',
+  viewList: 'Ver lista',
   wasteLessThisMonth: 'Desperdicia menos este mes',
   weSentConfirmationLink: 'Enviamos un enlace de confirmación a tu email. Ábrelo y vuelve aquí para iniciar sesión.',
   welcomeBack: 'Bienvenido de nuevo',
