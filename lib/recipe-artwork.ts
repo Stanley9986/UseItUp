@@ -79,14 +79,9 @@ export function getRecipeArtworkCategory(recipe: Recipe): RecipeArtworkCategory 
 
 export function getRecipeImageSearchQuery(recipe: Recipe) {
   const title = recipe.title.trim();
-  const ingredients = recipe.ingredients
-    .map((ingredient) => ingredient.name.trim())
-    .filter(Boolean)
-    .slice(0, 3)
-    .join(' ');
   const category = getRecipeArtworkCategory(recipe);
 
-  return [title, ingredients, category, 'food']
+  return [title, category, 'cooked plated finished dish recipe food photography']
     .filter(Boolean)
     .join(' ')
     .replace(/\s+/g, ' ')

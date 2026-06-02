@@ -22,6 +22,8 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - Recipe cards and pantry item previews use Pexels image search through a Supabase Edge Function with local icon fallbacks.
 - Pexels image lookups are cached in Supabase to avoid redundant provider API calls.
 - Recipe and pantry image responses are cached on-device to reduce repeated Edge Function calls and placeholder swaps.
+- Fresh local database validation applies migrations cleanly through 012.
+- Supabase CLI workflow for local migration validation and remote migration repair is documented.
 
 ## Section 2 - Tech Debt / Cleanup
 
@@ -42,8 +44,6 @@ This file tracks the working backlog for UseItUp so project direction survives c
 
 ## Section 5 - Infra / Release
 
-- Verify a fresh database applies migrations cleanly through the latest migration.
-- Adopt a Supabase CLI workflow for local migration validation.
 - Keep environment setup and deployment docs current.
 - Add EAS build/submit config for TestFlight and Play Store testing.
 

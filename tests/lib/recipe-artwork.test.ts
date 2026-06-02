@@ -47,7 +47,7 @@ describe('getRecipeArtwork', () => {
 });
 
 describe('getRecipeImageSearchQuery', () => {
-  it('builds a stock image search query from the recipe title and top ingredients', () => {
+  it('builds a stock image search query for the finished cooked dish', () => {
     expect(
       getRecipeImageSearchQuery(
         recipeWith({
@@ -60,6 +60,20 @@ describe('getRecipeImageSearchQuery', () => {
           ],
         }),
       ),
-    ).toBe('Steak Rice Bowl Steak Rice Soy Sauce beef food');
+    ).toBe('Steak Rice Bowl beef cooked plated finished dish recipe food photography');
+  });
+
+  it('does not include ingredient-only terms that can bias results toward raw ingredients', () => {
+    expect(
+      getRecipeImageSearchQuery(
+        recipeWith({
+          title: 'Pan-Seared Steak with Spinach',
+          ingredients: [
+            { name: 'Olive Oil', isAvailable: true },
+            { name: 'Raw Steak', isAvailable: true },
+          ],
+        }),
+      ),
+    ).not.toContain('Olive Oil');
   });
 });
