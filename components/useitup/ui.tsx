@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PantryItem, Recipe } from '@/types/useitup';
+import { useAppLanguage } from '@/contexts/language-context';
 import { getRemoteRecipeArtworkForQuery } from '@/lib/recipe-image';
 import { getPantryArtwork, getPantryImageSearchQuery, PantryArtwork } from '@/lib/pantry-artwork';
 import { getRecipeArtwork, getRecipeImageSearchQuery, RecipeArtwork } from '@/lib/recipe-artwork';
@@ -173,13 +174,15 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel,
-  cancelLabel = 'Cancel',
+  cancelLabel,
   confirmIcon = 'trash-outline',
   destructive,
   busy,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { t } = useAppLanguage();
+
   function handleCancel() {
     if (!busy) {
       onCancel();
@@ -195,7 +198,7 @@ export function ConfirmDialog({
           <View style={styles.dialogActions}>
             <View style={styles.dialogActionItem}>
               <Button disabled={busy} icon="close-outline" onPress={handleCancel} secondary>
-                {cancelLabel}
+                {cancelLabel ?? t('cancel')}
               </Button>
             </View>
             <View style={styles.dialogActionItem}>
@@ -235,28 +238,33 @@ export function Chip({
 }
 
 export function QuantityText({ item }: { item: PantryItem }) {
+  const { t } = useAppLanguage();
   const text =
     item.quantityUnit === 'level'
-      ? `${item.quantityLabel ?? 'unknown'} level`
-      : `${item.quantityValue ?? 0} ${item.quantityUnit}${item.quantityValue === 1 ? '' : 's'}`;
+      ? `${item.quantityLabel ? t(item.quantityLabel) : t('unknown')} ${t('level')}`
+      : `${item.quantityValue ?? 0} ${t(item.quantityUnit)}${item.quantityValue === 1 ? '' : 's'}`;
 
   return <Text style={styles.meta}>{text}</Text>;
 }
 
 export function ExpirationText({ expirationDate }: { expirationDate?: string }) {
+  const { t } = useAppLanguage();
+
   if (!expirationDate) {
-    return <Text style={styles.meta}>No near expiration</Text>;
+    return <Text style={styles.meta}>{t('noNearExpiration')}</Text>;
   }
 
   const today = new Date();
   const expiry = new Date(`${expirationDate}T12:00:00`);
   const days = Math.ceil((expiry.getTime() - today.getTime()) / 86400000);
-  const label = days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+  const label = days <= 0 ? t('today') : days === 1 ? t('tomorrow') : t('inDays', { days });
 
-  return <Text style={styles.expiration}>Expires {label}</Text>;
+  return <Text style={styles.expiration}>{t('expires', { label })}</Text>;
 }
 
 export function PantryCard({ item, showEdit = false }: { item: PantryItem; showEdit?: boolean }) {
+  const { t } = useAppLanguage();
+
   return (
     <Link asChild href={`/pantry-item/${item.id}`}>
       <Pressable>
@@ -268,11 +276,11 @@ export function PantryCard({ item, showEdit = false }: { item: PantryItem; showE
               <View style={styles.inlineMeta}>
                 <QuantityText item={item} />
                 <Text style={styles.dot}>.</Text>
-                <Text style={styles.meta}>{titleCase(item.storageLocation)}</Text>
+                <Text style={styles.meta}>{t(item.storageLocation)}</Text>
               </View>
               <ExpirationText expirationDate={item.expirationDate} />
             </View>
-            {showEdit ? <Button compact href={`/pantry-item/${item.id}`} secondary icon="create-outline">Edit</Button> : null}
+            {showEdit ? <Button compact href={`/pantry-item/${item.id}`} secondary icon="create-outline">{t('edit')}</Button> : null}
           </View>
         </Card>
       </Pressable>
@@ -281,6 +289,7 @@ export function PantryCard({ item, showEdit = false }: { item: PantryItem; showE
 }
 
 export function RecipeRowCard({ onToggleFavorite, recipe }: { recipe: Recipe } & RecipeCardActionProps) {
+  const { t } = useAppLanguage();
   const available = recipe.ingredients
     .filter((ingredient) => ingredient.isAvailable)
     .map((ingredient) => ingredient.name)
@@ -294,10 +303,10 @@ export function RecipeRowCard({ onToggleFavorite, recipe }: { recipe: Recipe } &
           <RecipeArtworkImage recipe={recipe} style={styles.recipeRowImage} />
           <View style={styles.recipeRowBody}>
             <View style={styles.tagRow}>
-              {recipe.usesExpiringItems ? <Text style={styles.tag}>Uses expiring food</Text> : <View />}
+              {recipe.usesExpiringItems ? <Text style={styles.tag}>{t('usesExpiringFood')}</Text> : <View />}
               <View style={styles.recipeMetaRow}>
                 {recipe.isFavorite ? <Ionicons color={palette.gold} name="star" size={15} /> : null}
-                <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} min</Text>
+                <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} {t('min')}</Text>
               </View>
             </View>
             <Text numberOfLines={2} style={styles.itemTitle}>
@@ -307,7 +316,7 @@ export function RecipeRowCard({ onToggleFavorite, recipe }: { recipe: Recipe } &
               {recipe.description}
             </Text>
             <Text numberOfLines={1} style={styles.meta}>
-              Uses: {available}
+              {t('uses', { ingredients: available })}
             </Text>
           </View>
           <Ionicons color={palette.muted} name="chevron-forward" size={20} />
@@ -321,6 +330,8 @@ export function RecipeRowCard({ onToggleFavorite, recipe }: { recipe: Recipe } &
 }
 
 export function FavoriteRecipeCard({ onToggleFavorite, recipe }: { recipe: Recipe } & RecipeCardActionProps) {
+  const { t } = useAppLanguage();
+
   return (
     <Card style={styles.favoriteRecipeCard}>
       <Link asChild href={`/recipe/${recipe.id}`}>
@@ -332,7 +343,7 @@ export function FavoriteRecipeCard({ onToggleFavorite, recipe }: { recipe: Recip
             </Text>
             <View style={styles.recipeMetaRow}>
               <Ionicons color={palette.blue} name="time-outline" size={14} />
-              <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} min</Text>
+              <Text style={styles.time}>{recipe.prepTimeMinutes ?? '--'} {t('min')}</Text>
             </View>
           </View>
         </Pressable>
@@ -452,19 +463,17 @@ function ArtworkPlaceholder({
 }
 
 function FavoriteToggleButton({ isFavorite, onPress }: { isFavorite: boolean; onPress: () => void }) {
+  const { t } = useAppLanguage();
+
   return (
     <Pressable
-      accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+      accessibilityLabel={isFavorite ? t('removeFavorite') : t('addFavorite')}
       hitSlop={8}
       onPress={onPress}
       style={styles.favoriteToggleButton}>
       <Ionicons color={isFavorite ? palette.gold : palette.muted} name={isFavorite ? 'star' : 'star-outline'} size={18} />
     </Pressable>
   );
-}
-
-function titleCase(value: string) {
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
 function getRecipeArtworkIcon(category: RecipeArtwork['category']) {

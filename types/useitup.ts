@@ -40,6 +40,7 @@ export type UserPreferences = {
   dietaryPreferences: string[];
   avoidedIngredients: string[];
   maxPrepTimeMinutes?: number;
+  languageCode?: string;
 };
 
 export type ShoppingListItem = {

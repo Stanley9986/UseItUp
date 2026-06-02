@@ -10,6 +10,7 @@ import {
 } from '@/components/useitup/pantry-item-form';
 import { Button, Card, palette, Screen } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { safeBack } from '@/lib/navigation';
 import {
@@ -22,6 +23,7 @@ import {
 import { PantryItem } from '@/types/useitup';
 
 export default function EditItemScreen() {
+  const { t } = useAppLanguage();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const [item, setItem] = useState<PantryItem | null>(null);
@@ -44,14 +46,14 @@ export default function EditItemScreen() {
         const nextItem = await getPantryItemById(user.id, id);
         setItem(nextItem);
       } catch (error) {
-        setMessage(getErrorMessage(error, 'Unable to load item.'));
+        setMessage(getErrorMessage(error, t('unableToLoadItem')));
       } finally {
         if (showLoading) {
           setIsLoading(false);
         }
       }
     },
-    [id, user],
+    [id, t, user],
   );
 
   const { isRefreshing, refresh } = useRefresh(() => loadItem({ showLoading: false }));
@@ -68,14 +70,14 @@ export default function EditItemScreen() {
     const normalizedName = normalizePantryName(values.name);
 
     if (!normalizedName) {
-      setMessage('Add an item name before saving.');
+      setMessage(t('addItemNameBeforeSaving'));
       return;
     }
 
     const expirationDate = parseExpirationDate(values.expiration);
 
     if (values.expiration.trim() && !expirationDate) {
-      setMessage('Use YYYY-MM-DD, today, tomorrow, or a phrase like "in 3 days".');
+      setMessage(t('useValidExpirationDate'));
       return;
     }
 
@@ -83,7 +85,7 @@ export default function EditItemScreen() {
     const quantityValue = values.quantityType === 'level' ? undefined : parsedAmount;
 
     if (values.quantityType !== 'level' && (!Number.isFinite(parsedAmount) || parsedAmount <= 0)) {
-      setMessage('Enter an amount greater than 0.');
+      setMessage(t('enterAmountGreaterThanZero'));
       return;
     }
 
@@ -105,9 +107,9 @@ export default function EditItemScreen() {
       router.replace(`/pantry-item/${id}`);
     } catch (error) {
       if (isDuplicatePantryItemError(error)) {
-        setMessage(`You already have ${titleCase(normalizedName)} in ${titleCase(values.location)}.`);
+        setMessage(t('duplicatePantryItem', { itemName: titleCase(normalizedName), location: t(values.location) }));
       } else {
-        setMessage(getErrorMessage(error, 'Unable to update item.'));
+        setMessage(getErrorMessage(error, t('unableToUpdateItem')));
       }
     } finally {
       setIsSaving(false);
@@ -119,11 +121,11 @@ export default function EditItemScreen() {
       <Screen
         onRefresh={refresh}
         refreshing={isRefreshing}
-        title="Edit Item"
-        subtitle="Loading item details."
-        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
+        title={t('editItem')}
+        subtitle={t('loadingItemDetails')}
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">{t('back')}</Button>}>
         <Card>
-          <Text style={{ color: palette.muted }}>Loading...</Text>
+          <Text style={{ color: palette.muted }}>{t('loading')}</Text>
         </Card>
       </Screen>
     );
@@ -134,11 +136,11 @@ export default function EditItemScreen() {
       <Screen
         onRefresh={refresh}
         refreshing={isRefreshing}
-        title="Edit Item"
-        subtitle="This item could not be found."
-        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
+        title={t('editItem')}
+        subtitle={t('thisItemCannotBeFound')}
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">{t('back')}</Button>}>
         <Card>
-          <Text style={{ color: palette.muted }}>{message || 'Item not found.'}</Text>
+          <Text style={{ color: palette.muted }}>{message || t('itemNotFound')}</Text>
         </Card>
       </Screen>
     );
@@ -149,16 +151,16 @@ export default function EditItemScreen() {
       keyboardAware
       onRefresh={refresh}
       refreshing={isRefreshing}
-      title={`Edit ${item.name}`}
-      subtitle="Update the details stored in your pantry."
-      headerAction={<Button compact onPress={() => safeBack(`/pantry-item/${item.id}`)} secondary icon="close">Close</Button>}>
+      title={t('editItemTitle', { itemName: item.name })}
+      subtitle={t('updateTheDetailsStored')}
+      headerAction={<Button compact onPress={() => safeBack(`/pantry-item/${item.id}`)} secondary icon="close">{t('close')}</Button>}>
       <PantryItemForm
         initialValues={{
           name: item.name,
-          category: titleCase(item.category ?? 'other'),
+          category: item.category ?? 'other',
           quantityType: item.quantityUnit,
           amount: item.quantityValue ? String(item.quantityValue) : '1',
-          level: titleCase(item.quantityLabel ?? 'medium'),
+          level: item.quantityLabel ?? 'medium',
           location: item.storageLocation,
           expiration: item.expirationDate ?? '',
           notes: item.notes ?? '',
@@ -166,7 +168,7 @@ export default function EditItemScreen() {
         isSaving={isSaving}
         message={message}
         onSubmit={handleSave}
-        submitLabel="Update Item"
+        submitLabel={t('updateItem')}
       />
     </Screen>
   );

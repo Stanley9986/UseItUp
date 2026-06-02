@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button, Card, Chip, palette } from '@/components/useitup/ui';
+import { useAppLanguage } from '@/contexts/language-context';
 import { parseExpirationDate } from '@/lib/date-utils';
 import { QuantityLabel, QuantityUnit, StorageLocation } from '@/types/useitup';
 
@@ -25,18 +26,10 @@ type PantryItemFormProps = {
   onSubmit: (values: PantryItemFormValues) => void;
 };
 
-const categories = ['Produce', 'Meat', 'Dairy', 'Grain', 'Condiment', 'Other'];
-const quantityTypes: { label: string; value: QuantityUnit }[] = [
-  { label: 'Count', value: 'count' },
-  { label: 'Portion', value: 'portion' },
-  { label: 'Level', value: 'level' },
-];
-const locations: { label: string; value: StorageLocation }[] = [
-  { label: 'Fridge', value: 'fridge' },
-  { label: 'Freezer', value: 'freezer' },
-  { label: 'Pantry', value: 'pantry' },
-];
-const levels = ['Low', 'Medium', 'Half', 'Full'];
+const categories = ['produce', 'meat', 'dairy', 'grain', 'condiment', 'other'] as const;
+const quantityTypes: QuantityUnit[] = ['count', 'portion', 'level'];
+const locations: StorageLocation[] = ['fridge', 'freezer', 'pantry'];
+const levels = ['low', 'medium', 'half', 'full'] as const;
 
 export function PantryItemForm({
   initialValues,
@@ -45,52 +38,53 @@ export function PantryItemForm({
   onSubmit,
   submitLabel,
 }: PantryItemFormProps) {
-  const [name, setName] = useState(initialValues?.name ?? 'Steak');
-  const [category, setCategory] = useState(initialValues?.category ?? 'Meat');
+  const { t } = useAppLanguage();
+  const [name, setName] = useState(initialValues?.name ?? '');
+  const [category, setCategory] = useState(initialValues?.category?.toLowerCase() ?? 'meat');
   const [quantityType, setQuantityType] = useState<QuantityUnit>(initialValues?.quantityType ?? 'portion');
   const [amount, setAmount] = useState(initialValues?.amount ?? '2');
-  const [level, setLevel] = useState(initialValues?.level ?? 'Medium');
+  const [level, setLevel] = useState(initialValues?.level?.toLowerCase() ?? 'medium');
   const [location, setLocation] = useState<StorageLocation>(initialValues?.location ?? 'fridge');
-  const [expiration, setExpiration] = useState(initialValues?.expiration ?? 'Tomorrow');
+  const [expiration, setExpiration] = useState(initialValues?.expiration ?? '');
   const [notes, setNotes] = useState(initialValues?.notes ?? '');
 
   return (
     <>
       <Card style={styles.form}>
-        <FieldLabel>Item Name</FieldLabel>
+        <FieldLabel>{t('itemName')}</FieldLabel>
         <TextInput onChangeText={setName} style={styles.input} value={name} />
 
-        <FieldLabel>Category</FieldLabel>
+        <FieldLabel>{t('category')}</FieldLabel>
         <View style={styles.options}>
           {categories.map((value) => (
-            <Chip key={value} label={value} onPress={() => setCategory(value)} selected={category === value} />
+            <Chip key={value} label={t(value)} onPress={() => setCategory(value)} selected={category === value} />
           ))}
         </View>
 
-        <FieldLabel>Quantity Type</FieldLabel>
+        <FieldLabel>{t('quantityType')}</FieldLabel>
         <View style={styles.options}>
           {quantityTypes.map((value) => (
             <Chip
-              key={value.value}
-              label={value.label}
-              onPress={() => setQuantityType(value.value)}
-              selected={quantityType === value.value}
+              key={value}
+              label={t(value)}
+              onPress={() => setQuantityType(value)}
+              selected={quantityType === value}
             />
           ))}
         </View>
 
         {quantityType === 'level' ? (
           <>
-            <FieldLabel>Level</FieldLabel>
+            <FieldLabel>{t('level')}</FieldLabel>
             <View style={styles.options}>
               {levels.map((value) => (
-                <Chip key={value} label={value} onPress={() => setLevel(value)} selected={level === value} />
+                <Chip key={value} label={t(value)} onPress={() => setLevel(value)} selected={level === value} />
               ))}
             </View>
           </>
         ) : (
           <>
-            <FieldLabel>Amount</FieldLabel>
+            <FieldLabel>{t('amount')}</FieldLabel>
             <TextInput
               keyboardType="decimal-pad"
               onChangeText={setAmount}
@@ -100,35 +94,35 @@ export function PantryItemForm({
           </>
         )}
 
-        <FieldLabel>Location</FieldLabel>
+        <FieldLabel>{t('storage')}</FieldLabel>
         <View style={styles.options}>
           {locations.map((value) => (
             <Chip
-              key={value.value}
-              label={value.label}
-              onPress={() => setLocation(value.value)}
-              selected={location === value.value}
+              key={value}
+              label={t(value)}
+              onPress={() => setLocation(value)}
+              selected={location === value}
             />
           ))}
         </View>
 
-        <FieldLabel>Expiration Date</FieldLabel>
+        <FieldLabel>{t('expirationDate')}</FieldLabel>
         <View style={styles.inputRow}>
           <Ionicons color={palette.muted} name="calendar-outline" size={19} />
           <TextInput
             onChangeText={setExpiration}
-            placeholder="YYYY-MM-DD or Tomorrow"
+            placeholder={t('expirationDatePlaceholder')}
             placeholderTextColor={palette.muted}
             style={styles.rowInput}
             value={expiration}
           />
         </View>
 
-        <FieldLabel>Notes</FieldLabel>
+        <FieldLabel>{t('notes')}</FieldLabel>
         <TextInput
           multiline
           onChangeText={setNotes}
-          placeholder="Optional notes"
+          placeholder={t('optionalNotes')}
           placeholderTextColor={palette.muted}
           style={[styles.input, styles.notes]}
           value={notes}
@@ -149,7 +143,7 @@ export function PantryItemForm({
           })
         }
         icon="checkmark">
-        {isSaving ? 'Saving...' : submitLabel}
+        {isSaving ? t('saving') : submitLabel}
       </Button>
     </>
   );

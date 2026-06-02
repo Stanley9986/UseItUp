@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, palette, PantryArtworkImage, QuantityText, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import {
   defaultExpiryReminderSettings,
@@ -21,6 +22,7 @@ import { PantryItem } from '@/types/useitup';
 
 export default function ExpiringSoonScreen() {
   const { user } = useAuth();
+  const { languageCode, t } = useAppLanguage();
   const [items, setItems] = useState<PantryItem[]>([]);
   const [settings, setSettings] = useState<ExpiryReminderSettings>(defaultExpiryReminderSettings);
   const [expiringPage, setExpiringPage] = useState(0);
@@ -48,14 +50,14 @@ export default function ExpiringSoonScreen() {
         setItems(nextItems);
         setExpiringPage(0);
       } catch (error) {
-        setErrorMessage(getErrorMessage(error, 'Unable to load expiring items.'));
+        setErrorMessage(getErrorMessage(error, t('unableToLoadExpiringItems')));
       } finally {
         if (showLoading) {
           setIsLoading(false);
         }
       }
     },
-    [user],
+    [t, user],
   );
 
   const { isRefreshing, refresh } = useRefresh(() => loadExpiringSoon({ showLoading: false }));
@@ -81,37 +83,43 @@ export default function ExpiringSoonScreen() {
     <Screen
       onRefresh={refresh}
       refreshing={isRefreshing}
-      title="Expiring Soon"
-      subtitle={`Food expiring within ${settings.daysAhead} day${settings.daysAhead === 1 ? '' : 's'}.`}
-      headerAction={<Button compact onPress={() => safeBack('/(tabs)')} secondary icon="arrow-back">Back</Button>}>
+      title={t('expiringSoon')}
+      subtitle={t('foodExpiringWithinDays', { days: settings.daysAhead, plural: settings.daysAhead === 1 ? '' : 's' })}
+      headerAction={<Button compact onPress={() => safeBack('/(tabs)')} secondary icon="arrow-back">{t('back')}</Button>}>
       <Card style={styles.summaryCard}>
         <View style={styles.summaryIcon}>
           <Ionicons color={palette.red} name="alert" size={22} />
         </View>
         <View style={styles.summaryCopy}>
-          <Text style={styles.summaryTitle}>{expiringItems.length} item{expiringItems.length === 1 ? '' : 's'} need attention</Text>
-          <Text style={styles.summaryText}>This uses the same window as your expiration reminders.</Text>
+          <Text style={styles.summaryTitle}>
+            {t('itemsNeedAttention', {
+              count: expiringItems.length,
+              plural: expiringItems.length === 1 ? '' : 's',
+              verb: expiringItems.length === 1 ? 'requiere' : 'requieren',
+            })}
+          </Text>
+          <Text style={styles.summaryText}>{t('sameWindowAsReminders')}</Text>
         </View>
       </Card>
 
       {errorMessage ? (
         <Card style={styles.listCard}>
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Could not load items</Text>
+            <Text style={styles.emptyTitle}>{t('couldNotLoadPantry')}</Text>
             <Text style={styles.emptyCopy}>{errorMessage}</Text>
           </View>
         </Card>
       ) : isLoading ? (
         <Card style={styles.listCard}>
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Loading expiring items...</Text>
+            <Text style={styles.emptyTitle}>{t('loadingExpiringItems')}</Text>
           </View>
         </Card>
       ) : expiringGroups.length ? (
         <View style={styles.groups}>
           {expiringGroups.map((group) => (
             <View key={group.key} style={styles.section}>
-              <SectionTitle>{group.title}</SectionTitle>
+              <SectionTitle>{formatExpirationGroupTitle(group.key, t)}</SectionTitle>
               <Card style={styles.listCard}>
                 {group.items.map((item, index) => (
                   <View key={item.id} style={index > 0 && styles.withDivider}>
@@ -124,7 +132,7 @@ export default function ExpiringSoonScreen() {
                             <QuantityText item={item} />
                           </View>
                         </View>
-                        <Text style={styles.itemDate}>{formatShortDate(item.expirationDate)}</Text>
+                        <Text style={styles.itemDate}>{formatShortDate(item.expirationDate, languageCode)}</Text>
                         <Ionicons color={palette.muted} name="chevron-forward" size={18} />
                       </Pressable>
                     </Link>
@@ -139,35 +147,51 @@ export default function ExpiringSoonScreen() {
               icon="add-circle-outline"
               onPress={() => setExpiringPage(visibleExpiringPage.nextPage)}
               secondary>
-              Load More Expiring Items
+              {t('loadMoreExpiringItems')}
             </Button>
           ) : null}
         </View>
       ) : (
         <Card style={styles.listCard}>
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Nothing expiring soon</Text>
-            <Text style={styles.emptyCopy}>No pantry items expire within your current reminder window.</Text>
+            <Text style={styles.emptyTitle}>{t('nothingExpiringSoon')}</Text>
+            <Text style={styles.emptyCopy}>{t('noItemsExpireWithinWindow')}</Text>
           </View>
         </Card>
       )}
 
       <Button href="/expiration-reminders" icon="notifications-outline" secondary>
-        Reminder Settings
+        {t('reminderSettings')}
       </Button>
     </Screen>
   );
 }
 
-function formatShortDate(expirationDate?: string) {
+function formatShortDate(expirationDate: string | undefined, languageCode: string) {
   if (!expirationDate) {
     return '--';
   }
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(languageCode, {
     day: 'numeric',
     month: 'short',
   }).format(new Date(`${expirationDate}T12:00:00`));
+}
+
+function formatExpirationGroupTitle(key: string, t: ReturnType<typeof useAppLanguage>['t']) {
+  const daysUntilExpiration = Number(key.replace('expires-', ''));
+
+  if (!Number.isFinite(daysUntilExpiration)) {
+    return key;
+  }
+
+  const label = daysUntilExpiration <= 0
+    ? t('today')
+    : daysUntilExpiration === 1
+      ? t('tomorrow')
+      : t('inDays', { days: daysUntilExpiration });
+
+  return t('expires', { label });
 }
 
 const styles = StyleSheet.create({

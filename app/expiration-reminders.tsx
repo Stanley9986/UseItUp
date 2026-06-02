@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, Chip, ConfirmDialog, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import {
   buildExpiryReminderPlan,
@@ -15,7 +16,6 @@ import {
   getExpiryReminderSettings,
   requestExpiryReminderPermission,
   saveExpiryReminderSettings,
-  summarizeExpiryReminderSettings,
   syncExpiryReminders,
 } from '@/lib/expiry-reminders';
 import { getErrorMessage } from '@/lib/errors';
@@ -32,6 +32,7 @@ const timeOptions = [
 
 export default function ExpirationRemindersScreen() {
   const { user } = useAuth();
+  const { languageCode, t } = useAppLanguage();
   const params = useLocalSearchParams<{ focus?: string }>();
   const [items, setItems] = useState<PantryItem[]>([]);
   const [settings, setSettings] = useState<ExpiryReminderSettings>(defaultExpiryReminderSettings);
@@ -64,14 +65,14 @@ export default function ExpirationRemindersScreen() {
         setItems(nextItems);
       } catch (error) {
         setMessageType('error');
-        setMessage(getErrorMessage(error, 'Unable to load reminder settings.'));
+        setMessage(getErrorMessage(error, t('unableToUpdateReminders')));
       } finally {
         if (showLoading) {
           setIsLoading(false);
         }
       }
     },
-    [user],
+    [t, user],
   );
 
   const { isRefreshing, refresh } = useRefresh(() => loadReminders({ showLoading: false }));
@@ -102,7 +103,7 @@ export default function ExpirationRemindersScreen() {
       if (nextPermissionStatus !== 'granted') {
         setShowEnableDialog(false);
         setMessageType('error');
-        setMessage('Notifications are not enabled for UseItUp on this device.');
+        setMessage(t('remindersNotEnabled'));
         return;
       }
 
@@ -111,11 +112,11 @@ export default function ExpirationRemindersScreen() {
       setSettings(nextSettings);
       setShowEnableDialog(false);
       setMessageType('success');
-      setMessage(plan.length ? `${plan.length} expiry reminders scheduled.` : 'Reminders are on. Add expiring items to schedule alerts.');
+      setMessage(plan.length ? t('remindersScheduled', { count: plan.length }) : t('remindersOnNoItems'));
     } catch (error) {
       setShowEnableDialog(false);
       setMessageType('error');
-      setMessage(getErrorMessage(error, 'Unable to enable reminders.'));
+      setMessage(getErrorMessage(error, t('unableToEnableReminders')));
     } finally {
       setIsSaving(false);
     }
@@ -134,10 +135,10 @@ export default function ExpirationRemindersScreen() {
       await cancelExpiryReminders();
       setSettings(nextSettings);
       setMessageType('success');
-      setMessage('Expiry reminders turned off.');
+      setMessage(t('remindersTurnedOff'));
     } catch (error) {
       setMessageType('error');
-      setMessage(getErrorMessage(error, 'Unable to disable reminders.'));
+      setMessage(getErrorMessage(error, t('unableToDisableReminders')));
     } finally {
       setIsSaving(false);
     }
@@ -162,10 +163,10 @@ export default function ExpirationRemindersScreen() {
 
       setSettings(savedSettings);
       setMessageType('success');
-      setMessage(savedSettings.enabled ? `${scheduledCount} expiry reminders scheduled.` : 'Reminder preference saved.');
+      setMessage(savedSettings.enabled ? t('remindersScheduled', { count: scheduledCount }) : t('reminderPreferenceSaved'));
     } catch (error) {
       setMessageType('error');
-      setMessage(getErrorMessage(error, 'Unable to update reminders.'));
+      setMessage(getErrorMessage(error, t('unableToUpdateReminders')));
     } finally {
       setIsSaving(false);
     }
@@ -174,10 +175,10 @@ export default function ExpirationRemindersScreen() {
   const alertsSection = (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <SectionTitle>Expiring Soon</SectionTitle>
+        <SectionTitle>{t('expiringSoon')}</SectionTitle>
         <Link asChild href="/expiring-soon">
           <Pressable hitSlop={10}>
-            <Text style={styles.viewAll}>View all</Text>
+              <Text style={styles.viewAll}>{t('viewAll')}</Text>
           </Pressable>
         </Link>
       </View>
@@ -191,15 +192,15 @@ export default function ExpirationRemindersScreen() {
               <View style={styles.alertCopy}>
                 <Text style={styles.alertTitle}>{reminder.itemName}</Text>
                 <Text style={styles.alertDetail}>
-                  {formatReminderDate(reminder.reminderDate)} · expires {formatExpirationDistance(reminder.daysUntilExpiration)}
+                  {formatReminderDate(reminder.reminderDate, languageCode)} · {t('expiresLower', { label: formatExpirationDistance(reminder.daysUntilExpiration, t) })}
                 </Text>
               </View>
             </View>
           ))
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No expiring items in range</Text>
-            <Text style={styles.emptyCopy}>Add expiration dates or widen the reminder window to schedule alerts.</Text>
+            <Text style={styles.emptyTitle}>{t('noExpiringItemsInRange')}</Text>
+            <Text style={styles.emptyCopy}>{t('addExpirationDatesForPriority')}</Text>
           </View>
         )}
       </Card>
@@ -214,9 +215,9 @@ export default function ExpirationRemindersScreen() {
             <Ionicons color={settings.enabled ? palette.green : palette.muted} name="notifications-outline" size={24} />
           </View>
           <View style={styles.statusCopy}>
-            <Text style={styles.statusTitle}>{settings.enabled ? 'Reminders are on' : 'Reminders are off'}</Text>
-            <Text style={styles.statusDetail}>{summarizeExpiryReminderSettings(settings)}</Text>
-            <Text style={styles.permissionText}>Permission: {formatPermissionStatus(permissionStatus)}</Text>
+            <Text style={styles.statusTitle}>{settings.enabled ? t('remindersAreOn') : t('remindersAreOff')}</Text>
+            <Text style={styles.statusDetail}>{formatReminderSettingsStatus(settings, t, languageCode)}</Text>
+            <Text style={styles.permissionText}>{t('permission')}: {formatPermissionStatus(permissionStatus, t)}</Text>
           </View>
         </View>
 
@@ -228,24 +229,24 @@ export default function ExpirationRemindersScreen() {
 
         {settings.enabled ? (
           <Button disabled={isSaving || isLoading} icon="notifications-off-outline" onPress={handleDisableReminders} secondary>
-            {isSaving ? 'Updating...' : 'Turn Off Reminders'}
+            {isSaving ? t('updating') : t('turnOffReminders')}
           </Button>
         ) : (
           <Button disabled={isSaving || isLoading} icon="notifications-outline" onPress={() => setShowEnableDialog(true)}>
-            {isSaving ? 'Updating...' : 'Turn On Reminders'}
+            {isSaving ? t('updating') : t('turnOnReminders')}
           </Button>
         )}
       </Card>
 
       <View style={styles.section}>
-        <SectionTitle>Reminder Window</SectionTitle>
+        <SectionTitle>{t('reminderWindow')}</SectionTitle>
         <Card>
-          <Text style={styles.cardCopy}>Send reminders for food expiring within this many days.</Text>
+          <Text style={styles.cardCopy}>{t('reminderWindowCopy')}</Text>
           <View style={styles.chipWrap}>
             {dayOptions.map((daysAhead) => (
               <Chip
                 key={daysAhead}
-                label={daysAhead === 1 ? '1 day' : `${daysAhead} days`}
+                label={t('withinDays', { days: daysAhead, plural: daysAhead === 1 ? '' : 's' })}
                 onPress={() => handleChangeSettings({ ...settings, daysAhead })}
                 selected={settings.daysAhead === daysAhead}
               />
@@ -255,9 +256,9 @@ export default function ExpirationRemindersScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Reminder Time</SectionTitle>
+        <SectionTitle>{t('reminderTime')}</SectionTitle>
         <Card>
-          <Text style={styles.cardCopy}>Use a simple daily reminder time for now. We can add custom times later.</Text>
+          <Text style={styles.cardCopy}>{t('reminderTimeCopy')}</Text>
           <View style={styles.chipWrap}>
             {timeOptions.map((option) => (
               <Chip
@@ -277,44 +278,44 @@ export default function ExpirationRemindersScreen() {
     <Screen
       onRefresh={refresh}
       refreshing={isRefreshing}
-      title="Expiration Reminders"
-      subtitle="Get local alerts before food slips past its best day."
-      headerAction={<Button compact onPress={() => safeBack('/(tabs)/profile')} secondary icon="arrow-back">Back</Button>}>
+      title={t('expirationReminders')}
+      subtitle={t('expirationRemindersSubtitle')}
+      headerAction={<Button compact onPress={() => safeBack('/(tabs)/profile')} secondary icon="arrow-back">{t('back')}</Button>}>
       {showAlertsFirst ? alertsSection : null}
       {settingsSections}
       {!showAlertsFirst ? alertsSection : null}
       <ConfirmDialog
         busy={isSaving}
         confirmIcon="notifications-outline"
-        confirmLabel="Allow Reminders"
-        message="UseItUp will ask your device for notification permission, then schedule local alerts for pantry items expiring within your reminder window."
+        confirmLabel={t('allowReminders')}
+        message={t('reminderPermissionMessage')}
         onCancel={() => setShowEnableDialog(false)}
         onConfirm={handleConfirmEnableReminders}
-        title="Turn on expiry reminders?"
+        title={t('turnOnExpiryRemindersQuestion')}
         visible={showEnableDialog}
       />
     </Screen>
   );
 }
 
-function formatPermissionStatus(status: string) {
+function formatPermissionStatus(status: string, t: ReturnType<typeof useAppLanguage>['t']) {
   if (status === 'granted') {
-    return 'Allowed';
+    return t('allowed');
   }
 
   if (status === 'denied') {
-    return 'Blocked';
+    return t('blocked');
   }
 
   if (status === 'unsupported') {
-    return 'Mobile only';
+    return t('unsupported');
   }
 
-  return 'Not requested';
+  return t('notRequested');
 }
 
-function formatReminderDate(date: Date) {
-  return new Intl.DateTimeFormat('en-US', {
+function formatReminderDate(date: Date, languageCode: string) {
+  return new Intl.DateTimeFormat(languageCode, {
     hour: 'numeric',
     minute: '2-digit',
     month: 'short',
@@ -322,16 +323,35 @@ function formatReminderDate(date: Date) {
   }).format(date);
 }
 
-function formatExpirationDistance(daysUntilExpiration: number) {
+function formatExpirationDistance(daysUntilExpiration: number, t: ReturnType<typeof useAppLanguage>['t']) {
   if (daysUntilExpiration <= 0) {
-    return 'today';
+    return t('today');
   }
 
   if (daysUntilExpiration === 1) {
-    return 'tomorrow';
+    return t('tomorrow');
   }
 
-  return `in ${daysUntilExpiration} days`;
+  return t('inDays', { days: daysUntilExpiration });
+}
+
+function formatReminderSettingsStatus(
+  settings: ExpiryReminderSettings,
+  t: ReturnType<typeof useAppLanguage>['t'],
+  languageCode: string,
+) {
+  if (!settings.enabled) {
+    return t('remindersAreOff');
+  }
+
+  return `${t('remindersAreOn')} · ${t('withinDays', { days: settings.daysAhead, plural: settings.daysAhead === 1 ? '' : 's' })} · ${formatReminderTime(settings.hour, settings.minute, languageCode)}`;
+}
+
+function formatReminderTime(hour: number, minute: number, languageCode: string) {
+  return new Intl.DateTimeFormat(languageCode, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(2026, 0, 1, hour, minute));
 }
 
 const styles = StyleSheet.create({

@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { Button, Card, ConfirmDialog, palette, RecipeArtworkImage, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getErrorMessage } from '@/lib/errors';
 import {
@@ -28,6 +29,7 @@ type ScreenMessage = {
 export default function RecipeDetailScreen() {
   const { id, source } = useLocalSearchParams<{ id: string; source?: string }>();
   const { user } = useAuth();
+  const { t } = useAppLanguage();
   const [savedRecipe, setSavedRecipe] = useState<Recipe | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   // True when the recipe was loaded from the favorites table rather than the
@@ -80,7 +82,7 @@ export default function RecipeDetailScreen() {
       } catch (error) {
         setMessage({
           tone: 'error',
-          text: getErrorMessage(error, 'Unable to load saved recipe. Showing sample recipe instead.'),
+          text: getErrorMessage(error, t('recipeDetailFallbackLoadError')),
         });
       } finally {
         if (showLoading) {
@@ -88,7 +90,7 @@ export default function RecipeDetailScreen() {
         }
       }
     },
-    [id, user],
+    [id, t, user],
   );
 
   const { isRefreshing, refresh } = useRefresh(() => loadRecipe({ showLoading: false }));
@@ -115,7 +117,7 @@ export default function RecipeDetailScreen() {
       }
       setIsFavorite(nextFavorite);
     } catch (error) {
-      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to update favorite status.') });
+      setMessage({ tone: 'error', text: getErrorMessage(error, t('unableToUpdateFavorite')) });
     } finally {
       setIsSavingFavorite(false);
     }
@@ -138,7 +140,7 @@ export default function RecipeDetailScreen() {
       removeGeneratedRecipe(recipe.id);
       router.replace('/(tabs)/recipes');
     } catch (error) {
-      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to delete this recipe.') });
+      setMessage({ tone: 'error', text: getErrorMessage(error, t('deleteRecipeError')) });
       setIsDeleting(false);
     }
   }
@@ -164,13 +166,13 @@ export default function RecipeDetailScreen() {
       setMessage({
         tone: addedItems.length ? 'success' : 'info',
         text: addedItems.length
-          ? `${addedItems.length} item${addedItems.length === 1 ? '' : 's'} added to your shopping list.`
-          : 'No missing ingredients to add.',
+          ? t('itemsAddedToShoppingList', { count: addedItems.length, plural: addedItems.length === 1 ? '' : 's' })
+          : t('noMissingIngredientsToAdd'),
       });
     } catch (error) {
       setMessage({
         tone: 'error',
-        text: getErrorMessage(error, 'Unable to add missing ingredients to your shopping list.'),
+        text: getErrorMessage(error, t('unableToAddMissingToShoppingList')),
       });
     } finally {
       setIsAddingShoppingList(false);
@@ -180,19 +182,19 @@ export default function RecipeDetailScreen() {
   if (!recipe) {
     return (
       <Screen
-        title={isLoading ? 'Loading recipe' : 'Recipe not found'}
-        subtitle={isLoading ? 'Fetching this recipe from your library.' : undefined}
-        headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">Back</Button>}>
+        title={isLoading ? t('loadingRecipe') : t('recipeNotFound')}
+        subtitle={isLoading ? t('fetchingRecipeFromLibrary') : undefined}
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">{t('back')}</Button>}>
         <Card style={styles.loadingCard}>
           {isLoading ? (
             <>
               <ActivityIndicator color={palette.blue} />
-              <Text style={styles.body}>Loading recipe...</Text>
+              <Text style={styles.body}>{t('loadingRecipe')}</Text>
             </>
           ) : (
             <>
               <Ionicons color={palette.green} name="information-circle-outline" size={18} />
-              <Text style={styles.body}>This recipe could not be found. It may have been removed.</Text>
+              <Text style={styles.body}>{t('recipeNotFoundCopy')}</Text>
             </>
           )}
         </Card>
@@ -208,13 +210,13 @@ export default function RecipeDetailScreen() {
       subtitle={recipe.description}
       headerAction={
         <Button compact onPress={() => safeBack(isHistorySource ? '/cook-history' : '/(tabs)/recipes')} secondary icon="arrow-back">
-          Back
+          {t('back')}
         </Button>
       }>
       {isLoading ? (
         <Card style={styles.loadingCard}>
           <ActivityIndicator color={palette.blue} />
-          <Text style={styles.body}>Loading saved recipe...</Text>
+          <Text style={styles.body}>{t('loadingSavedRecipe')}</Text>
         </Card>
       ) : null}
       {message ? (
@@ -233,7 +235,7 @@ export default function RecipeDetailScreen() {
           </Text>
           {message.tone === 'success' ? (
             <Text onPress={() => router.push('/shopping-list')} style={styles.messageAction}>
-              View List
+              {t('viewList')}
             </Text>
           ) : null}
         </View>
@@ -242,15 +244,15 @@ export default function RecipeDetailScreen() {
       <RecipeArtworkImage recipe={recipe} style={styles.recipeHeroImage} />
 
       <View style={styles.summary}>
-        <Meta icon="time-outline" label={`${recipe.prepTimeMinutes ?? '--'} min`} />
-        {recipe.usesExpiringItems ? <Meta icon="leaf-outline" label="Uses expiring items" /> : null}
-        {isFavorite ? <Meta icon="star" label="Favorite" /> : null}
+        <Meta icon="time-outline" label={`${recipe.prepTimeMinutes ?? '--'} ${t('min')}`} />
+        {recipe.usesExpiringItems ? <Meta icon="leaf-outline" label={t('usesExpiringItems')} /> : null}
+        {isFavorite ? <Meta icon="star" label={t('favorite')} /> : null}
       </View>
 
       {canManageRecipe ? (
         <View style={styles.managementActions}>
           <Pressable
-            accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            accessibilityLabel={isFavorite ? t('removeFavorite') : t('addFavorite')}
             disabled={isSavingFavorite}
             onPress={handleToggleFavorite}
             style={[styles.starButton, isSavingFavorite && styles.disabledButton]}>
@@ -258,36 +260,36 @@ export default function RecipeDetailScreen() {
           </Pressable>
           {isFavoriteSource ? (
             <Button compact href={`/edit-recipe/${recipe.id}?type=favorite`} icon="create-outline" secondary>
-              Edit
+              {t('edit')}
             </Button>
           ) : (
             <Button compact href={`/edit-recipe/${recipe.id}?type=suggested`} icon="create-outline" secondary>
-              Edit
+              {t('edit')}
             </Button>
           )}
           <Button compact icon="trash-outline" onPress={() => setIsConfirmingDelete(true)} secondary>
-            Delete
+            {t('delete')}
           </Button>
         </View>
       ) : null}
 
       <ConfirmDialog
         busy={isDeleting}
-        confirmLabel={isDeleting ? 'Removing...' : isFavoriteSource ? 'Remove Favorite' : 'Remove Recipe'}
+        confirmLabel={isDeleting ? t('removing') : isFavoriteSource ? t('removeFavoriteConfirm') : t('removeRecipeConfirm')}
         destructive
         message={
           isFavoriteSource
-            ? 'This permanently removes it from your favorites.'
-            : 'This removes it from your suggestions. Your cook history stays intact.'
+            ? t('removeRecipeFavoriteMessage')
+            : t('removeRecipeSuggestionMessage')
         }
         onCancel={() => setIsConfirmingDelete(false)}
         onConfirm={handleDeleteRecipe}
-        title={isFavoriteSource ? 'Remove this favorite?' : 'Remove this suggestion?'}
+        title={isFavoriteSource ? t('removeFavoriteQuestion') : t('removeSuggestionQuestion')}
         visible={isConfirmingDelete}
       />
 
       <View style={styles.section}>
-        <SectionTitle>Ingredients</SectionTitle>
+        <SectionTitle>{t('ingredients')}</SectionTitle>
         <Card>
           {availableIngredients.map((ingredient) => (
             <IngredientRow
@@ -300,12 +302,12 @@ export default function RecipeDetailScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Missing Ingredients</SectionTitle>
+        <SectionTitle>{t('missingIngredients')}</SectionTitle>
         <Card>
           <Text style={styles.body}>
             {recipe.missingIngredients.length
               ? recipe.missingIngredients.join(', ')
-              : 'Nothing essential is missing for this recipe.'}
+              : t('nothingEssentialMissing')}
           </Text>
           {recipe.missingIngredients.length ? (
             <Button
@@ -314,14 +316,14 @@ export default function RecipeDetailScreen() {
               icon="cart-outline"
               onPress={handleAddMissingToShoppingList}
               secondary>
-              {isAddingShoppingList ? 'Adding...' : 'Add Missing to Shopping List'}
+              {isAddingShoppingList ? t('adding') : t('addMissingToShoppingList')}
             </Button>
           ) : null}
         </Card>
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Instructions</SectionTitle>
+        <SectionTitle>{t('instructions')}</SectionTitle>
         <Card>
           {recipe.instructions.map((instruction, index) => (
             <View key={instruction} style={styles.step}>
@@ -333,7 +335,7 @@ export default function RecipeDetailScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Pantry Impact</SectionTitle>
+        <SectionTitle>{t('pantryImpact')}</SectionTitle>
         <Card>
           {pantryIngredients.length ? (
             <>
@@ -341,17 +343,17 @@ export default function RecipeDetailScreen() {
                 <ImpactRow
                   key={ingredient.name}
                   item={ingredient.name}
-                  detail={[ingredient.quantityValue, ingredient.quantityUnit].filter(Boolean).join(' ') || 'amount varies'}
+                  detail={[ingredient.quantityValue, ingredient.quantityUnit].filter(Boolean).join(' ') || t('amountVaries')}
                 />
               ))}
               {!isHistorySource ? (
                 <Text style={styles.body}>
-                  After cooking, tap “I Cooked This” and we’ll help update what’s left in your pantry.
+                  {t('afterCookingUpdatePantry')}
                 </Text>
               ) : null}
             </>
           ) : (
-            <Text style={styles.body}>This recipe has no pantry-linked ingredients to update.</Text>
+            <Text style={styles.body}>{t('thisRecipeHasNoPantryIngredients')}</Text>
           )}
         </Card>
       </View>
@@ -360,12 +362,12 @@ export default function RecipeDetailScreen() {
         <Button
           href={isFavoriteSource ? `/update-pantry?favoriteId=${recipe.id}` : `/update-pantry?recipeId=${recipe.id}`}
           icon="checkmark-circle-outline">
-          I Cooked This
+          {t('cookedThis')}
         </Button>
       ) : !isHistorySource ? (
         <Card style={styles.loadingCard}>
           <Ionicons color={palette.green} name="information-circle-outline" size={18} />
-          <Text style={styles.body}>Generate and save recipes from your pantry before updating quantities.</Text>
+          <Text style={styles.body}>{t('generateRecipesToUpdatePantry')}</Text>
         </Card>
       ) : null}
     </Screen>
@@ -382,10 +384,12 @@ function Meta({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: st
 }
 
 function IngredientRow({ label, detail }: { label: string; detail: string }) {
+  const { t } = useAppLanguage();
+
   return (
     <View style={styles.row}>
       <Text style={styles.rowTitle}>{label}</Text>
-      <Text style={styles.body}>{detail || 'to taste'}</Text>
+      <Text style={styles.body}>{detail || t('toTaste')}</Text>
     </View>
   );
 }

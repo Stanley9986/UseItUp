@@ -1,3 +1,4 @@
+import { defaultLanguageCode, normalizeLanguageCode } from '@/lib/languages';
 import { UserPreferences } from '@/types/useitup';
 
 export type UserPreferencesRow = {
@@ -5,6 +6,7 @@ export type UserPreferencesRow = {
   dietary_preferences: string[] | null;
   avoided_ingredients: string[] | null;
   max_prep_time_minutes: number | null;
+  language_code: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -14,6 +16,7 @@ export type UserPreferencesUpsert = {
   dietary_preferences: string[];
   avoided_ingredients: string[];
   max_prep_time_minutes: number | null;
+  language_code: string;
   updated_at: string;
 };
 
@@ -21,6 +24,7 @@ export const defaultUserPreferences: UserPreferences = {
   dietaryPreferences: [],
   avoidedIngredients: [],
   maxPrepTimeMinutes: 30,
+  languageCode: defaultLanguageCode,
 };
 
 export function mapUserPreferencesRow(row: UserPreferencesRow | null): UserPreferences {
@@ -32,6 +36,7 @@ export function mapUserPreferencesRow(row: UserPreferencesRow | null): UserPrefe
     dietaryPreferences: cleanStringList(row.dietary_preferences),
     avoidedIngredients: cleanStringList(row.avoided_ingredients),
     maxPrepTimeMinutes: typeof row.max_prep_time_minutes === 'number' ? row.max_prep_time_minutes : 30,
+    languageCode: normalizeLanguageCode(row.language_code),
   };
 }
 
@@ -42,6 +47,7 @@ export function mapUserPreferencesUpsert(userId: string, preferences: UserPrefer
     avoided_ingredients: cleanStringList(preferences.avoidedIngredients).map(normalizeAvoidedIngredient),
     max_prep_time_minutes:
       typeof preferences.maxPrepTimeMinutes === 'number' ? preferences.maxPrepTimeMinutes : null,
+    language_code: normalizeLanguageCode(preferences.languageCode),
     updated_at: new Date().toISOString(),
   };
 }

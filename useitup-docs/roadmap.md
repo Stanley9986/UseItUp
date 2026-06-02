@@ -24,6 +24,9 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - Recipe and pantry image responses are cached on-device to reduce repeated Edge Function calls and placeholder swaps.
 - Fresh local database validation applies migrations cleanly through 012.
 - Supabase CLI workflow for local migration validation and remote migration repair is documented.
+- Recipe language preferences are saved in Supabase and included in generated recipe prompts.
+- App language can be selected from the More page and drives static copy across app screens.
+- Spanish app copy is filled out across localized screens; other supported languages currently use partial dictionaries with English fallback.
 
 ## Section 2 - Tech Debt / Cleanup
 
@@ -33,6 +36,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 
 ## Section 3 - Core Features / Product Value
 
+- Fill out complete non-Spanish translation dictionaries after deciding which languages to ship first.
 - Upgrade expiry reminders from local scheduled notifications to remote push if the app needs server-driven alerts later.
 - Add barcode scanning to make pantry item entry faster.
 

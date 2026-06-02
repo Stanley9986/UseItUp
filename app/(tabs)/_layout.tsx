@@ -5,9 +5,11 @@ import { useWindowDimensions } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { palette } from '@/components/useitup/ui';
+import { useAppLanguage } from '@/contexts/language-context';
 
 export default function TabLayout() {
   const { width } = useWindowDimensions();
+  const { t } = useAppLanguage();
   const sidePadding = width > 760 ? Math.max((width - 760) / 2, 0) : 0;
 
   return (
@@ -33,7 +35,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('home'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons color={color} name={focused ? 'home' : 'home-outline'} size={23} />
           ),
@@ -42,7 +44,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="pantry"
         options={{
-          title: 'Pantry',
+          title: t('pantry'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons color={color} name={focused ? 'basket' : 'basket-outline'} size={23} />
           ),
@@ -71,7 +73,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="recipes"
         options={{
-          title: 'Recipes',
+          title: t('recipes'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons color={color} name={focused ? 'restaurant' : 'restaurant-outline'} size={23} />
           ),
@@ -80,7 +82,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'More',
+          title: t('more'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons color={color} name={focused ? 'ellipsis-horizontal-circle' : 'ellipsis-horizontal-circle-outline'} size={23} />
           ),

@@ -13,10 +13,12 @@ import {
 } from 'react-native';
 
 import { Card, palette, Screen } from '@/components/useitup/ui';
+import { useAppLanguage } from '@/contexts/language-context';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
 import { supabase } from '@/lib/supabase';
 
 export default function ResetPasswordScreen() {
+  const { t } = useAppLanguage();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,12 +30,12 @@ export default function ResetPasswordScreen() {
     setIsSuccess(false);
 
     if (password.length < 6) {
-      setMessage('Use a password with at least 6 characters.');
+      setMessage(t('usePasswordMinCharacters'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setMessage('The passwords do not match.');
+      setMessage(t('passwordsDoNotMatch'));
       return;
     }
 
@@ -44,10 +46,10 @@ export default function ResetPasswordScreen() {
     });
 
     if (error) {
-      setMessage(getFriendlyAuthError(error, 'Unable to update password.'));
+      setMessage(getFriendlyAuthError(error, t('unableToUpdatePassword')));
     } else {
       setIsSuccess(true);
-      setMessage('Password updated. You can log in with the new password now.');
+      setMessage(t('passwordUpdated'));
       await supabase.auth.signOut();
     }
 
@@ -59,7 +61,7 @@ export default function ResetPasswordScreen() {
       <Screen style={styles.screen}>
         <View style={styles.brandBlock}>
           <Text style={styles.brand}>UseItUp</Text>
-          <Text style={styles.tagline}>Choose a new password for your account.</Text>
+          <Text style={styles.tagline}>{t('chooseNewPassword')}</Text>
         </View>
 
         <Card style={styles.formCard}>
@@ -68,18 +70,18 @@ export default function ResetPasswordScreen() {
               <Ionicons color={palette.green} name="key-outline" size={24} />
             </View>
             <View style={styles.formHeaderCopy}>
-              <Text style={styles.formTitle}>Reset password</Text>
-              <Text style={styles.formSubtitle}>Enter a new password after opening the reset link from your email.</Text>
+              <Text style={styles.formTitle}>{t('resetPassword')}</Text>
+              <Text style={styles.formSubtitle}>{t('enterNewPasswordAfterResetLink')}</Text>
             </View>
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>New Password</Text>
+            <Text style={styles.label}>{t('newPassword')}</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="new-password"
               onChangeText={setPassword}
-              placeholder="At least 6 characters"
+              placeholder={t('passwordMinPlaceholder')}
               placeholderTextColor={palette.muted}
               secureTextEntry
               style={styles.input}
@@ -88,12 +90,12 @@ export default function ResetPasswordScreen() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Confirm Password</Text>
+            <Text style={styles.label}>{t('confirmPassword')}</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="new-password"
               onChangeText={setConfirmPassword}
-              placeholder="Repeat password"
+              placeholder={t('repeatPassword')}
               placeholderTextColor={palette.muted}
               secureTextEntry
               style={styles.input}
@@ -107,12 +109,12 @@ export default function ResetPasswordScreen() {
             disabled={isSubmitting || isSuccess}
             onPress={handleUpdatePassword}
             style={[styles.primaryButton, (isSubmitting || isSuccess) && styles.disabledButton]}>
-            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Update Password</Text>}
+            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{t('updatePassword')}</Text>}
           </Pressable>
 
           {isSuccess ? (
             <Pressable onPress={() => router.replace('/login')} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Back to Login</Text>
+              <Text style={styles.secondaryButtonText}>{t('backToLogin')}</Text>
             </Pressable>
           ) : null}
         </Card>

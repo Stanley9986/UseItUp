@@ -21,10 +21,13 @@ describe('createRecipePrompt', () => {
         avoidedIngredients: ['peanuts'],
         maxPrepTimeMinutes: 20,
         prioritizeExpiringSoon: true,
+        languageCode: 'es',
       },
     });
 
     expect(prompt.systemInstruction).toContain('Respect dietary preferences');
+    expect(prompt.systemInstruction).toContain('requested language');
+    expect(prompt.systemInstruction).toContain('Keep JSON property names in English');
     expect(prompt.systemInstruction).toContain('make instruction 1 inspect those ingredients');
     expect(prompt.systemInstruction).toContain('Never put the freshness inspection step at the end');
     expect(prompt.userPayload).toEqual({
@@ -46,6 +49,8 @@ describe('createRecipePrompt', () => {
         avoidedIngredients: ['peanuts'],
         maxPrepTimeMinutes: 20,
         prioritizeExpiringSoon: true,
+        languageCode: 'es',
+        languageName: 'Spanish',
       },
     });
   });
@@ -58,6 +63,7 @@ describe('createRecipePrompt', () => {
           dietaryPreferences: ['Vegetarian', 123],
           avoidedIngredients: 'peanuts',
           maxPrepTimeMinutes: 'fast',
+          languageCode: 'unsupported',
         },
       }).userPayload.preferences,
     ).toEqual({
@@ -65,6 +71,8 @@ describe('createRecipePrompt', () => {
       avoidedIngredients: [],
       maxPrepTimeMinutes: undefined,
       prioritizeExpiringSoon: undefined,
+      languageCode: 'en',
+      languageName: 'English',
     });
   });
 });

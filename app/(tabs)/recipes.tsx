@@ -25,6 +25,7 @@ import {
   typography,
 } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getErrorMessage } from '@/lib/errors';
 import { addFavoriteRecipe, getFavoriteRecipesPage, removeFavoriteRecipeByTitle } from '@/lib/favorite-recipes';
@@ -47,30 +48,13 @@ type ScreenMessage = {
   text: string;
 };
 
-const sorts: { label: string; value: RecipeSort }[] = [
-  { label: 'Expiring Soon', value: 'expiring' },
-  { label: 'Quick', value: 'quick' },
-  { label: 'Fewest Missing', value: 'missing' },
-];
-
-const generationSteps = [
-  'Reading your pantry...',
-  'Prioritizing expiring items...',
-  'Sketching recipe 1...',
-  'Checking recipe 1 ingredients...',
-  'Sketching recipe 2...',
-  'Checking recipe 2 ingredients...',
-  'Sketching recipe 3...',
-  'Checking recipe 3 ingredients...',
-  'Balancing prep times...',
-  'Plating the best options...',
-  'Finishing the recipe cards...',
-];
+const sortValues: RecipeSort[] = ['expiring', 'quick', 'missing'];
 
 const generationStepIntervalMs = 2000;
 
 export default function RecipesScreen() {
   const { user } = useAuth();
+  const { t } = useAppLanguage();
   const [sort, setSort] = useState<RecipeSort>('expiring');
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [suggested, setSuggested] = useState<Recipe[]>([]);
@@ -102,6 +86,22 @@ export default function RecipesScreen() {
     [favorites, sort, suggested],
   );
   const favoriteCanScroll = favoriteContentWidth > favoriteRailWidth + 1;
+  const generationSteps = useMemo(
+    () => [
+      t('generationStepReadPantry'),
+      t('generationStepPrioritizeExpiring'),
+      t('generationStepSketchRecipe1'),
+      t('generationStepCheckRecipe1'),
+      t('generationStepSketchRecipe2'),
+      t('generationStepCheckRecipe2'),
+      t('generationStepSketchRecipe3'),
+      t('generationStepCheckRecipe3'),
+      t('generationStepBalancePrepTimes'),
+      t('generationStepPlateOptions'),
+      t('generationStepFinishCards'),
+    ],
+    [t],
+  );
 
   const loadSuggestedRecipes = useCallback(async ({ page = 0, reset = true }: { page?: number; reset?: boolean } = {}) => {
     if (!user) {
@@ -124,7 +124,7 @@ export default function RecipesScreen() {
       setSuggestedNextPage(suggestedRecipes.nextPage);
       setHasMoreSuggested(suggestedRecipes.hasMore);
     } catch (error) {
-      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to load suggested recipes.') });
+      setMessage({ tone: 'error', text: getErrorMessage(error, t('unableToLoadSuggestedRecipes')) });
     } finally {
       if (reset) {
         setIsLoadingRecipes(false);
@@ -132,7 +132,7 @@ export default function RecipesScreen() {
         setIsLoadingMoreSuggested(false);
       }
     }
-  }, [user]);
+  }, [t, user]);
 
   const loadFavorites = useCallback(async ({ page = 0, reset = true }: { page?: number; reset?: boolean } = {}) => {
     if (!user) {
@@ -149,13 +149,13 @@ export default function RecipesScreen() {
       setFavoritesNextPage(favoriteRecipes.nextPage);
       setHasMoreFavorites(favoriteRecipes.hasMore);
     } catch (error) {
-      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to load favorite recipes.') });
+      setMessage({ tone: 'error', text: getErrorMessage(error, t('unableToLoadFavoriteRecipes')) });
     } finally {
       if (!reset) {
         setIsLoadingMoreFavorites(false);
       }
     }
-  }, [user]);
+  }, [t, user]);
 
   const loadPantry = useCallback(async () => {
     if (!user) {
@@ -168,11 +168,11 @@ export default function RecipesScreen() {
       const nextItems = await getPantryItems(user.id);
       setPantryItems(nextItems);
     } catch (error) {
-      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to load pantry items for recipe generation.') });
+      setMessage({ tone: 'error', text: getErrorMessage(error, t('unableToLoadPantryForGeneration')) });
     } finally {
       setIsLoadingPantry(false);
     }
-  }, [user]);
+  }, [t, user]);
 
   const loadPreferences = useCallback(async () => {
     if (!user) {
@@ -182,9 +182,9 @@ export default function RecipesScreen() {
     try {
       setPreferences(await getUserPreferences(user.id));
     } catch (error) {
-      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to load dietary preferences for recipe generation.') });
+      setMessage({ tone: 'error', text: getErrorMessage(error, t('unableToLoadDietaryPreferencesForGeneration')) });
     }
-  }, [user]);
+  }, [t, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -210,7 +210,7 @@ export default function RecipesScreen() {
     }, generationStepIntervalMs);
 
     return () => clearInterval(interval);
-  }, [isGenerating]);
+  }, [generationSteps.length, isGenerating]);
 
   useEffect(() => {
     if (!favoriteToast) {
@@ -230,7 +230,7 @@ export default function RecipesScreen() {
     }
 
     if (!pantryItems.length) {
-      setMessage({ tone: 'info', text: 'Add pantry items first, then generate recipes to see ideas here.' });
+      setMessage({ tone: 'info', text: t('addPantryItemsFirstThenGenerate') });
       return;
     }
 
@@ -248,7 +248,7 @@ export default function RecipesScreen() {
 
       if (!nextRecipes.length) {
         // Keep the current suggestions rather than replacing them with nothing.
-        setMessage({ tone: 'info', text: 'The generator did not return any recipes. Try adding more pantry items.' });
+        setMessage({ tone: 'info', text: t('generatorReturnedNoRecipes') });
         return;
       }
 
@@ -259,7 +259,7 @@ export default function RecipesScreen() {
       setSuggestedNextPage(1);
       setHasMoreSuggested(false);
     } catch (error) {
-      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to generate recipes yet. Try again.') });
+      setMessage({ tone: 'error', text: getErrorMessage(error, t('unableToGenerateRecipes')) });
     } finally {
       setIsGenerating(false);
     }
@@ -295,7 +295,7 @@ export default function RecipesScreen() {
     } catch (error) {
       setFavorites(previousFavorites);
       setFavoriteToast(null);
-      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to update favorite status.') });
+      setMessage({ tone: 'error', text: getErrorMessage(error, t('unableToUpdateFavorite')) });
     }
   }
 
@@ -323,7 +323,7 @@ export default function RecipesScreen() {
         ]);
       }
     } catch (error) {
-      setMessage({ tone: 'error', text: getErrorMessage(error, 'Unable to undo favorite change.') });
+      setMessage({ tone: 'error', text: getErrorMessage(error, t('unableToUndoFavorite')) });
     }
   }
 
@@ -355,13 +355,13 @@ export default function RecipesScreen() {
               size={18}
             />
             <Text numberOfLines={1} style={styles.toastText}>
-              {favoriteToast.isFavorite ? 'Added to favorites' : 'Removed from favorites'}
+              {favoriteToast.isFavorite ? t('addedToFavorites') : t('removedFromFavorites')}
             </Text>
             <Text onPress={handleUndoFavoriteToast} style={styles.toastAction}>
-              Undo
+              {t('undo')}
             </Text>
             <Pressable
-              accessibilityLabel="Dismiss favorite message"
+              accessibilityLabel={t('dismissFavoriteMessage')}
               onPress={() => setFavoriteToast(null)}
               style={styles.toastClose}>
               <Ionicons color="#fff" name="close" size={18} />
@@ -370,17 +370,17 @@ export default function RecipesScreen() {
         ) : null
       }
       refreshing={isRefreshing}
-      title="Meals You Can Make"
-      subtitle="Generate meal ideas from your real pantry items."
-      headerAction={<Button compact href="/shopping-list" icon="cart-outline" secondary>List</Button>}>
+      title={t('mealsYouCanMake')}
+      subtitle={t('mealsYouCanMakeSubtitle')}
+      headerAction={<Button compact href="/shopping-list" icon="cart-outline" secondary>{t('list')}</Button>}>
       <Card style={styles.generatorCard}>
-        <Text style={styles.generatorTitle}>Cook from your pantry</Text>
+        <Text style={styles.generatorTitle}>{t('cookFromPantry')}</Text>
         <Text style={styles.generatorCopy}>
           {isLoadingPantry
-            ? 'Loading pantry items...'
+            ? t('loadingPantryItems')
             : pantryItems.length
-              ? `${pantryItems.length} pantry items ready for recipe generation.`
-              : 'Add pantry items before generating recipes.'}
+              ? t('pantryItemsReady', { count: pantryItems.length })
+              : t('addPantryItemsBeforeGenerating')}
         </Text>
         {message ? (
           <View style={[styles.messageBox, message.tone === 'error' ? styles.errorMessageBox : styles.infoMessageBox]}>
@@ -395,7 +395,7 @@ export default function RecipesScreen() {
           </View>
         ) : null}
         <Button disabled={isGenerating} icon="sparkles-outline" onPress={handleGenerate}>
-          {isGenerating ? 'Generating...' : suggested.length ? 'Regenerate Recipes' : 'Generate Recipes'}
+          {isGenerating ? t('generating') : suggested.length ? t('regenerateRecipes') : t('generateRecipes')}
         </Button>
         {isGenerating ? (
           <View style={styles.progressBox}>
@@ -416,19 +416,19 @@ export default function RecipesScreen() {
       </Card>
 
       <View style={styles.filterRow}>
-        {sorts.map((option) => (
+        {sortValues.map((value) => (
           <Chip
-            key={option.value}
-            label={option.label}
-            onPress={() => setSort(option.value)}
-            selected={sort === option.value}
+            key={value}
+            label={value === 'expiring' ? t('expiringSoon') : value === 'quick' ? t('quick') : t('fewestMissing')}
+            onPress={() => setSort(value)}
+            selected={sort === value}
           />
         ))}
       </View>
       <View style={styles.list}>
         {favorites.length ? (
           <View style={styles.section}>
-            <SectionTitle>Favorites</SectionTitle>
+            <SectionTitle>{t('favorites')}</SectionTitle>
             <ScrollView
               contentContainerStyle={styles.favoriteRail}
               horizontal
@@ -457,13 +457,13 @@ export default function RecipesScreen() {
                 icon="add-circle-outline"
                   onPress={() => loadFavorites({ page: favoritesNextPage, reset: false })}
                 secondary>
-                {isLoadingMoreFavorites ? 'Loading...' : 'Load More Favorites'}
+                {isLoadingMoreFavorites ? t('loading') : t('loadMoreFavorites')}
               </Button>
             ) : null}
           </View>
         ) : null}
         <View style={styles.section}>
-          <SectionTitle>Suggested Recipes</SectionTitle>
+          <SectionTitle>{t('suggestedMeals')}</SectionTitle>
           {isLoadingRecipes && !isGenerating ? (
             <RecipeSkeleton index={0} />
           ) : isGenerating ? (
@@ -480,18 +480,18 @@ export default function RecipesScreen() {
                   icon="add-circle-outline"
                   onPress={() => loadSuggestedRecipes({ page: suggestedNextPage, reset: false })}
                   secondary>
-                  {isLoadingMoreSuggested ? 'Loading...' : 'Load More Recipes'}
+                  {isLoadingMoreSuggested ? t('loading') : t('loadMoreRecipes')}
                 </Button>
               ) : null}
             </>
           ) : (
             <Card style={styles.emptyCard}>
               <Ionicons color={palette.green} name="restaurant-outline" size={24} />
-              <Text style={styles.emptyTitle}>{pantryItems.length ? "Let's use up your pantry" : 'Add to your pantry first'}</Text>
+              <Text style={styles.emptyTitle}>{pantryItems.length ? t('useUpPantryEmptyTitle') : t('addToYourPantryFirst')}</Text>
               <Text style={styles.emptyCopy}>
                 {pantryItems.length
-                  ? 'Generate recipes to see what you can make with what you have right now.'
-                  : 'Add pantry items first, then generate recipes to see ideas here.'}
+                  ? t('generateRecipesEmptyCopy')
+                  : t('addPantryItemsFirstThenGenerate')}
               </Text>
             </Card>
           )}
@@ -502,6 +502,8 @@ export default function RecipesScreen() {
 }
 
 function RecipeSkeleton({ index }: { index: number }) {
+  const { t } = useAppLanguage();
+
   return (
     <Card style={styles.skeletonCard}>
       <View style={styles.skeletonImage}>
@@ -510,7 +512,7 @@ function RecipeSkeleton({ index }: { index: number }) {
       <View style={styles.skeletonBody}>
         <View style={styles.skeletonHeader}>
           <View style={[styles.skeletonLine, styles.skeletonTag]} />
-          <Text style={styles.skeletonNumber}>Recipe {index + 1}</Text>
+          <Text style={styles.skeletonNumber}>{t('recipeNumber', { number: index + 1 })}</Text>
         </View>
         <View style={[styles.skeletonLine, styles.skeletonTitle]} />
         <View style={[styles.skeletonLine, styles.skeletonCopy]} />

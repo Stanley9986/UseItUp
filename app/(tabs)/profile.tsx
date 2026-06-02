@@ -3,15 +3,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 
-import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
+import { Button, Card, Chip, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
 import { getCookHistory } from '@/lib/cook-history';
 import { CookHistoryItem } from '@/lib/cook-history-mappers';
 import { getErrorMessage } from '@/lib/errors';
+import { getLanguageOption, supportedLanguages } from '@/lib/languages';
 import { supabase } from '@/lib/supabase';
-import { defaultUserPreferences, getUserPreferences } from '@/lib/user-preferences';
+import { defaultUserPreferences, getUserPreferences, saveUserPreferences } from '@/lib/user-preferences';
 import { summarizeUserPreferences } from '@/lib/user-preferences-mappers';
 import { UserPreferences } from '@/types/useitup';
 
@@ -21,42 +23,22 @@ type SettingsRow = {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
 };
-const kitchenRows: SettingsRow[] = [
-  {
-    href: '/shopping-list',
-    icon: 'cart-outline',
-    title: 'Shopping List',
-    detail: 'Missing ingredients to buy',
-  },
-];
-const preferenceRows: SettingsRow[] = [
-  {
-    href: '/expiration-reminders',
-    icon: 'notifications-outline',
-    title: 'Expiration Reminders',
-    detail: 'Local alerts for food expiring soon',
-  },
-  {
-    icon: 'shield-checkmark-outline',
-    title: 'Account Security',
-    detail: 'Email/password login active',
-  },
-];
-
 export default function ProfileScreen() {
   const { signOut, user } = useAuth();
+  const { languageCode, setLanguageCode, t } = useAppLanguage();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [displayNameInput, setDisplayNameInput] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
+  const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [cookHistory, setCookHistory] = useState<CookHistoryItem[]>([]);
   const [preferences, setPreferences] = useState<UserPreferences>(defaultUserPreferences);
   const [historyMessage, setHistoryMessage] = useState('');
   const [profileMessage, setProfileMessage] = useState('');
   const [profileMessageType, setProfileMessageType] = useState<'error' | 'success'>('success');
   const [preferencesMessage, setPreferencesMessage] = useState('');
-  const email = user?.email ?? 'Signed-in user';
-  const displayName = user?.user_metadata?.name ?? email.split('@')[0] ?? 'UseItUp User';
+  const email = user?.email ?? t('signedInUser');
+  const displayName = user?.user_metadata?.name ?? email.split('@')[0] ?? 'UseItUp';
   const initial = displayName.charAt(0).toUpperCase();
   const loadCookHistory = useCallback(async () => {
     if (!user) {
@@ -67,9 +49,9 @@ export default function ProfileScreen() {
       setHistoryMessage('');
       setCookHistory(await getCookHistory(user.id));
     } catch (error) {
-      setHistoryMessage(getErrorMessage(error, 'Unable to load cooked recipe history.'));
+      setHistoryMessage(getErrorMessage(error, t('unableToLoadCookHistory')));
     }
-  }, [user]);
+  }, [t, user]);
   const loadPreferences = useCallback(async () => {
     if (!user) {
       return;
@@ -80,9 +62,9 @@ export default function ProfileScreen() {
       const nextPreferences = await getUserPreferences(user.id);
       setPreferences(nextPreferences);
     } catch (error) {
-      setPreferencesMessage(getErrorMessage(error, 'Unable to load dietary preferences.'));
+      setPreferencesMessage(getErrorMessage(error, t('unableToLoadRecipePreferences')));
     }
-  }, [user]);
+  }, [t, user]);
   const { isRefreshing, refresh } = useRefresh(async () => {
     await Promise.all([supabase.auth.refreshSession(), loadCookHistory(), loadPreferences()]);
   });
@@ -122,7 +104,7 @@ export default function ProfileScreen() {
 
     if (!nextName) {
       setProfileMessageType('error');
-      setProfileMessage('Enter a display name before saving.');
+      setProfileMessage(t('enterDisplayNameBeforeSaving'));
       return;
     }
 
@@ -137,10 +119,10 @@ export default function ProfileScreen() {
 
     if (error) {
       setProfileMessageType('error');
-      setProfileMessage(getFriendlyAuthError(error, 'Unable to update display name.'));
+      setProfileMessage(getFriendlyAuthError(error, t('updateDisplayNameError')));
     } else {
       setProfileMessageType('success');
-      setProfileMessage('Name updated.');
+      setProfileMessage(t('nameUpdated'));
       setIsEditingName(false);
     }
 
@@ -159,20 +141,65 @@ export default function ProfileScreen() {
     setIsEditingName(false);
   }
 
+  async function handleSelectLanguage(nextLanguageCode: string) {
+    if (!user || isSavingLanguage || nextLanguageCode === languageCode) {
+      return;
+    }
+
+    setIsSavingLanguage(true);
+    setPreferencesMessage('');
+
+    try {
+      const nextPreferences = await saveUserPreferences(user.id, {
+        ...preferences,
+        languageCode: nextLanguageCode,
+      });
+      setPreferences(nextPreferences);
+      setLanguageCode(nextPreferences.languageCode ?? nextLanguageCode);
+      setProfileMessageType('success');
+      setProfileMessage(t('appLanguageSaved'));
+    } catch (error) {
+      setPreferencesMessage(getErrorMessage(error, t('languageSaveError')));
+    } finally {
+      setIsSavingLanguage(false);
+    }
+  }
+
   const latestCookedRecipe = cookHistory[0];
   const recentlyCookedRow: SettingsRow = {
     href: '/cook-history',
     icon: 'checkmark-circle-outline',
-    title: 'Recently Cooked',
+    title: t('recentlyCooked'),
     detail: historyMessage
       ? historyMessage
       : latestCookedRecipe
         ? latestCookedRecipe.recipeTitle
-        : 'Cook a saved recipe to see it here',
+        : t('cookSavedRecipeToSeeItHere'),
   };
+  const kitchenRows: SettingsRow[] = [
+    {
+      href: '/shopping-list',
+      icon: 'cart-outline',
+      title: t('shoppingList'),
+      detail: t('missingIngredientsToBuy'),
+    },
+  ];
+  const preferenceRows: SettingsRow[] = [
+    {
+      href: '/expiration-reminders',
+      icon: 'notifications-outline',
+      title: t('expirationReminders'),
+      detail: t('expirationRemindersDetail'),
+    },
+    {
+      icon: 'shield-checkmark-outline',
+      title: t('accountSecurity'),
+      detail: t('accountSecurityDetail'),
+    },
+  ];
 
   return (
-    <Screen onRefresh={refresh} refreshing={isRefreshing} title="More" subtitle="Manage your kitchen tools and account.">
+    <Screen onRefresh={refresh} refreshing={isRefreshing} title={t('more')} subtitle={t('manageKitchenTools')}>
       <Card style={styles.profileCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initial}</Text>
@@ -182,7 +209,7 @@ export default function ProfileScreen() {
             <Text numberOfLines={2} style={styles.name}>{displayName}</Text>
             {!isEditingName ? (
               <Pressable
-                accessibilityLabel="Edit display name"
+                accessibilityLabel={t('editDisplayName')}
                 hitSlop={10}
                 onPress={handleStartEditingName}
                 style={styles.editIconButton}>
@@ -193,21 +220,21 @@ export default function ProfileScreen() {
           <Text style={styles.email}>{email}</Text>
           {isEditingName ? (
             <View style={styles.inlineEdit}>
-              <Text style={styles.inputLabel}>Edit display name</Text>
+              <Text style={styles.inputLabel}>{t('editDisplayName')}</Text>
               <TextInput
                 autoCapitalize="words"
                 onChangeText={setDisplayNameInput}
-                placeholder="Your name"
+                placeholder={t('yourName')}
                 placeholderTextColor={palette.muted}
                 style={styles.input}
                 value={displayNameInput}
               />
               <View style={styles.editActions}>
                 <Button compact onPress={handleSaveDisplayName} icon="save-outline" style={styles.editAction}>
-                  {isSavingName ? 'Saving...' : 'Save'}
+                  {isSavingName ? t('saving') : t('save')}
                 </Button>
                 <Button compact onPress={handleCancelEditingName} secondary icon="close-outline" style={styles.editAction}>
-                  Cancel
+                  {t('cancel')}
                 </Button>
               </View>
             </View>
@@ -217,32 +244,49 @@ export default function ProfileScreen() {
               {profileMessage}
             </Text>
           ) : null}
-          <Text style={styles.phaseLabel}>Supabase account</Text>
+          <Text style={styles.phaseLabel}>{t('supabaseAccount')}</Text>
         </View>
       </Card>
 
       <View style={styles.section}>
-        <SectionTitle>Kitchen</SectionTitle>
+        <SectionTitle>{t('kitchen')}</SectionTitle>
         <Card style={styles.listCard}>
           {[...kitchenRows, recentlyCookedRow].map((row, index) => (
             <SettingsRowView
               key={row.title}
               row={row}
               showDivider={index > 0}
-              tone={row.title === 'Recently Cooked' ? 'success' : 'default'}
+              tone={row.href === '/cook-history' ? 'success' : 'default'}
             />
           ))}
         </Card>
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Preferences</SectionTitle>
+        <SectionTitle>{t('preferences')}</SectionTitle>
+        <Card style={styles.languageCard}>
+          <Text style={styles.previewTitle}>{t('appLanguage')}</Text>
+          <Text style={styles.previewText}>{t('appLanguageDetail')}</Text>
+          <View style={styles.chipWrap}>
+            {supportedLanguages.map((language) => (
+              <Chip
+                key={language.code}
+                label={language.label}
+                onPress={() => handleSelectLanguage(language.code)}
+                selected={languageCode === language.code}
+              />
+            ))}
+          </View>
+          <Text style={styles.languageDetail}>
+            {getLanguageOption(languageCode).label}
+          </Text>
+        </Card>
         <Card style={styles.listCard}>
           {([
             {
               href: '/dietary-preferences',
               icon: 'leaf-outline',
-              title: 'Dietary Preferences',
+              title: t('recipePreferences'),
               detail: summarizeUserPreferences(preferences),
             },
             ...preferenceRows,
@@ -258,15 +302,14 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Account</SectionTitle>
+        <SectionTitle>{t('account')}</SectionTitle>
         <Card style={styles.previewCard}>
-          <Text style={styles.previewTitle}>Signed in with Supabase Auth</Text>
+          <Text style={styles.previewTitle}>{t('signedInWithSupabaseAuth')}</Text>
           <Text style={styles.previewText}>
-            Pantry items will be connected to this account next, so each user only sees their own
-            food.
+            {t('useItUpAccountCopy')}
           </Text>
           <Button compact onPress={handleSignOut} secondary icon="log-out-outline">
-            {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+            {isSigningOut ? t('signingOut') : t('signOut')}
           </Button>
         </Card>
       </View>
@@ -430,6 +473,19 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     backgroundColor: palette.surface,
+  },
+  languageCard: {
+    backgroundColor: palette.card,
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  languageDetail: {
+    color: palette.blue,
+    fontSize: 13,
+    fontWeight: '800',
   },
   previewTitle: {
     color: palette.ink,

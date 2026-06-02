@@ -7,6 +7,7 @@ import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
 import { palette } from '@/components/useitup/ui';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import { LanguageProvider } from '@/contexts/language-context';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -27,7 +28,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={DefaultTheme}>
       <AuthProvider>
-        <RootStack />
+        <LanguageProvider>
+          <RootStack />
+        </LanguageProvider>
         <StatusBar style="auto" />
       </AuthProvider>
     </ThemeProvider>

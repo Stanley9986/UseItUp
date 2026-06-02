@@ -17,6 +17,7 @@ import {
   typography,
 } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getErrorMessage } from '@/lib/errors';
 import { getPantryItems } from '@/lib/pantry';
@@ -24,16 +25,11 @@ import { PantryItem, StorageLocation } from '@/types/useitup';
 
 type PantryFilter = 'all' | StorageLocation | 'expiring';
 
-const filters: { label: string; value: PantryFilter }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Fridge', value: 'fridge' },
-  { label: 'Freezer', value: 'freezer' },
-  { label: 'Pantry', value: 'pantry' },
-  { label: 'Expiring Soon', value: 'expiring' },
-];
+const filterValues: PantryFilter[] = ['all', 'fridge', 'freezer', 'pantry', 'expiring'];
 
 export default function PantryScreen() {
   const { user } = useAuth();
+  const { t } = useAppLanguage();
   const params = useLocalSearchParams<{ filter?: string }>();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PantryFilter>('all');
@@ -53,11 +49,11 @@ export default function PantryScreen() {
       const nextItems = await getPantryItems(user.id);
       setItems(nextItems);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, 'Unable to load pantry items.'));
+      setErrorMessage(getErrorMessage(error, t('unableToLoadPantryItems')));
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [t, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -92,17 +88,17 @@ export default function PantryScreen() {
     <Screen
       onRefresh={refresh}
       refreshing={isRefreshing}
-      title="My Pantry"
-      subtitle={`${items.length} item${items.length === 1 ? '' : 's'} available`}>
+      title={t('myPantry')}
+      subtitle={t('pantryItemsAvailable', { count: items.length, plural: items.length === 1 ? '' : 's' })}>
       <View style={styles.actionRow}>
         <View style={styles.actionButtonSlot}>
           <Button href="/add-item" icon="add" style={styles.actionButton}>
-            Add Item
+            {t('addItem')}
           </Button>
         </View>
         <View style={styles.actionButtonSlot}>
           <Button href="/(tabs)/recipes" icon="restaurant-outline" secondary style={styles.actionButton}>
-            Get Recipes
+            {t('getRecipes')}
           </Button>
         </View>
       </View>
@@ -110,43 +106,43 @@ export default function PantryScreen() {
       <View style={styles.search}>
         <Ionicons color={palette.muted} name="search" size={18} />
         <TextInput
-          accessibilityLabel="Search pantry"
+          accessibilityLabel={t('searchPantry')}
           onChangeText={setQuery}
-          placeholder="Search items"
+          placeholder={t('searchItems')}
           placeholderTextColor={palette.muted}
           style={styles.searchInput}
           value={query}
         />
       </View>
       <View style={styles.chips}>
-        {filters.map((option) => (
+        {filterValues.map((value) => (
           <Chip
-            key={option.value}
-            label={option.label}
-            onPress={() => setFilter(option.value)}
-            selected={filter === option.value}
+            key={value}
+            label={value === 'expiring' ? t('expiringSoon') : t(value)}
+            onPress={() => setFilter(value)}
+            selected={filter === value}
           />
         ))}
       </View>
       {isLoading ? (
         <Card style={styles.stateCard}>
           <ActivityIndicator color={palette.blue} />
-          <Text style={styles.stateText}>Loading pantry items...</Text>
+          <Text style={styles.stateText}>{t('loadingPantryItems')}</Text>
         </Card>
       ) : errorMessage ? (
         <Card style={styles.stateCard}>
           <Ionicons color={palette.red} name="alert-circle-outline" size={24} />
-          <Text style={styles.stateTitle}>Could not load pantry</Text>
+          <Text style={styles.stateTitle}>{t('couldNotLoadPantry')}</Text>
           <Text style={styles.stateText}>{errorMessage}</Text>
           <Button compact onPress={loadPantryItems} secondary icon="refresh-outline">
-            Try Again
+            {t('retry')}
           </Button>
         </Card>
       ) : visibleItems.length ? (
         <View style={styles.groups}>
           {groupedItems.map((group) => (
             <View key={group.title} style={styles.group}>
-              <SectionTitle>{group.title}</SectionTitle>
+              <SectionTitle>{t(group.title)}</SectionTitle>
               <View style={styles.groupList}>
                 {group.items.map((item) => (
                   <PantryListItem item={item} key={item.id} />
@@ -158,15 +154,15 @@ export default function PantryScreen() {
       ) : (
         <Card style={styles.stateCard}>
           <Ionicons color={palette.green} name="basket-outline" size={24} />
-          <Text style={styles.stateTitle}>{items.length ? 'No matching items' : 'Your pantry is empty'}</Text>
+          <Text style={styles.stateTitle}>{items.length ? t('noMatchingItems') : t('yourPantryIsEmpty')}</Text>
           <Text style={styles.stateText}>
             {items.length
-              ? 'Try a different search or filter.'
-              : 'Add your first item so UseItUp can start tracking what should be used soon.'}
+              ? t('tryDifferentSearchOrFilter')
+              : t('addFirstItemForTracking')}
           </Text>
           {!items.length ? (
             <Button compact href="/add-item" icon="add">
-              Add Item
+              {t('addItem')}
             </Button>
           ) : null}
         </Card>
@@ -195,22 +191,33 @@ function PantryListItem({ item }: { item: PantryItem }) {
   );
 }
 
+type PantryCategoryKey = 'produce' | 'meat' | 'dairy' | 'grain' | 'condiment' | 'other';
+
 function groupItemsByCategory(items: PantryItem[]) {
-  const groups = new Map<string, PantryItem[]>();
+  const groups = new Map<PantryCategoryKey, PantryItem[]>();
 
   items.forEach((item) => {
-    const title = titleCase(item.category || 'Other');
+    const title = getCategoryKey(item.category);
     groups.set(title, [...(groups.get(title) ?? []), item]);
   });
 
   return [...groups.entries()].map(([title, groupItems]) => ({ title, items: groupItems }));
 }
 
-function titleCase(value: string) {
-  return value
-    .split(' ')
-    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-    .join(' ');
+function getCategoryKey(value: string | undefined): PantryCategoryKey {
+  const category = value?.toLowerCase();
+
+  if (
+    category === 'produce' ||
+    category === 'meat' ||
+    category === 'dairy' ||
+    category === 'grain' ||
+    category === 'condiment'
+  ) {
+    return category;
+  }
+
+  return 'other';
 }
 
 function isPantryFilter(value: string | undefined): value is PantryFilter {

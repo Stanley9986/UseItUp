@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getErrorMessage } from '@/lib/errors';
 import { safeBack } from '@/lib/navigation';
@@ -18,6 +19,7 @@ import { ShoppingListItem } from '@/types/useitup';
 
 export default function ShoppingListScreen() {
   const { user } = useAuth();
+  const { t } = useAppLanguage();
   const [items, setItems] = useState<ShoppingListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export default function ShoppingListScreen() {
         setMessage('');
         setItems(await getShoppingListItems(user.id));
       } catch (error) {
-        setMessage(getErrorMessage(error, 'Unable to load your shopping list.'));
+        setMessage(getErrorMessage(error, t('unableToLoadShoppingList')));
       } finally {
         hasLoadedItems.current = true;
         if (showLoading) {
@@ -45,7 +47,7 @@ export default function ShoppingListScreen() {
         }
       }
     },
-    [user],
+    [t, user],
   );
 
   const { isRefreshing, refresh } = useRefresh(() => loadItems({ showLoading: false }));
@@ -78,7 +80,7 @@ export default function ShoppingListScreen() {
       );
     } catch (error) {
       setItems(previousItems);
-      setMessage(getErrorMessage(error, 'Unable to update this shopping item.'));
+      setMessage(getErrorMessage(error, t('unableToUpdateShoppingItem')));
     } finally {
       setBusyItemId(null);
     }
@@ -98,7 +100,7 @@ export default function ShoppingListScreen() {
       await deleteShoppingListItem(user.id, item.id);
     } catch (error) {
       setItems(previousItems);
-      setMessage(getErrorMessage(error, 'Unable to remove this shopping item.'));
+      setMessage(getErrorMessage(error, t('unableToRemoveShoppingItem')));
     } finally {
       setBusyItemId(null);
     }
@@ -111,16 +113,16 @@ export default function ShoppingListScreen() {
     <Screen
       onRefresh={refresh}
       refreshing={isRefreshing}
-      title="Shopping List"
-      subtitle="Missing ingredients from recipes, ready for your next grocery run."
-      headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">Back</Button>}>
+      title={t('shoppingList')}
+      subtitle={t('shoppingListSubtitle')}
+      headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">{t('back')}</Button>}>
       {message ? <Text style={styles.message}>{message}</Text> : null}
 
       <View style={styles.section}>
-        <SectionTitle>To Buy</SectionTitle>
+        <SectionTitle>{t('toBuy')}</SectionTitle>
         <Card style={styles.listCard}>
           {isLoading ? (
-            <Text style={styles.body}>Loading shopping list...</Text>
+            <Text style={styles.body}>{t('loadingShoppingList')}</Text>
           ) : activeItems.length ? (
             activeItems.map((item, index) => (
               <ShoppingListRow
@@ -135,8 +137,8 @@ export default function ShoppingListScreen() {
           ) : (
             <View style={styles.emptyState}>
               <Ionicons color={palette.green} name="cart-outline" size={22} />
-              <Text style={styles.emptyTitle}>Nothing to buy yet</Text>
-              <Text style={styles.body}>Add missing ingredients from a recipe to build this list.</Text>
+              <Text style={styles.emptyTitle}>{t('nothingToBuyYet')}</Text>
+              <Text style={styles.body}>{t('addMissingIngredientsToBuildList')}</Text>
             </View>
           )}
         </Card>
@@ -144,7 +146,7 @@ export default function ShoppingListScreen() {
 
       {checkedItems.length ? (
         <View style={styles.section}>
-          <SectionTitle>Checked Off</SectionTitle>
+          <SectionTitle>{t('checkedOff')}</SectionTitle>
           <Card style={styles.listCard}>
             {checkedItems.map((item, index) => (
               <ShoppingListRow
@@ -176,9 +178,11 @@ function ShoppingListRow({
   onToggle: () => void;
   showDivider?: boolean;
 }) {
+  const { t } = useAppLanguage();
+
   return (
     <View style={[styles.row, showDivider && styles.withDivider]}>
-      <Pressable accessibilityLabel={`Mark ${item.name}`} hitSlop={8} onPress={onToggle} style={styles.checkButton}>
+      <Pressable accessibilityLabel={t('markItem', { itemName: item.name })} hitSlop={8} onPress={onToggle} style={styles.checkButton}>
         <Ionicons
           color={item.isChecked ? palette.green : palette.muted}
           name={item.isChecked ? 'checkmark-circle' : 'ellipse-outline'}
@@ -190,15 +194,15 @@ function ShoppingListRow({
           {item.name}
         </Text>
         {item.sourceRecipeTitle ? (
-          <Text numberOfLines={1} style={styles.body}>From {item.sourceRecipeTitle}</Text>
+          <Text numberOfLines={1} style={styles.body}>{t('fromRecipe', { recipeTitle: item.sourceRecipeTitle })}</Text>
         ) : null}
         {item.isChecked ? (
           <Button compact icon="file-tray-full-outline" onPress={onAddToPantry} secondary style={styles.addToPantryButton}>
-            Add to Pantry
+            {t('addToPantry')}
           </Button>
         ) : null}
       </View>
-      <Pressable accessibilityLabel={`Delete ${item.name}`} hitSlop={10} onPress={onDelete} style={styles.deleteButton}>
+      <Pressable accessibilityLabel={t('deleteItemNamed', { itemName: item.name })} hitSlop={10} onPress={onDelete} style={styles.deleteButton}>
         <Ionicons color={palette.muted} name="trash-outline" size={20} />
       </Pressable>
     </View>

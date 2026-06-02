@@ -16,12 +16,14 @@ import {
   typography,
 } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { safeBack } from '@/lib/navigation';
 import { deletePantryItem, getErrorMessage, getPantryItemById } from '@/lib/pantry';
 import { PantryItem } from '@/types/useitup';
 
 export default function PantryItemDetailScreen() {
+  const { t } = useAppLanguage();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const [item, setItem] = useState<PantryItem | null>(null);
@@ -45,14 +47,14 @@ export default function PantryItemDetailScreen() {
         const nextItem = await getPantryItemById(user.id, id);
         setItem(nextItem);
       } catch (error) {
-        setErrorMessage(getErrorMessage(error, 'Unable to load pantry item.'));
+        setErrorMessage(getErrorMessage(error, t('unableToLoadPantryItem')));
       } finally {
         if (showLoading) {
           setIsLoading(false);
         }
       }
     },
-    [id, user],
+    [id, t, user],
   );
 
   const { isRefreshing, refresh } = useRefresh(() => loadItem({ showLoading: false }));
@@ -73,7 +75,7 @@ export default function PantryItemDetailScreen() {
       await deletePantryItem(user.id, id);
       router.replace('/(tabs)/pantry');
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, 'Unable to delete pantry item.'));
+      setErrorMessage(getErrorMessage(error, t('unableToDeletePantryItem')));
     } finally {
       setIsDeleting(false);
     }
@@ -85,11 +87,11 @@ export default function PantryItemDetailScreen() {
       <Screen
         onRefresh={refresh}
         refreshing={isRefreshing}
-        title="Pantry Item"
-        subtitle="Loading item details."
-        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
+        title={t('pantryItem')}
+        subtitle={t('loadingItemDetails')}
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">{t('back')}</Button>}>
         <Card style={styles.actionCard}>
-          <Text style={styles.actionTitle}>Loading...</Text>
+          <Text style={styles.actionTitle}>{t('loading')}</Text>
         </Card>
       </Screen>
     );
@@ -100,16 +102,16 @@ export default function PantryItemDetailScreen() {
       <Screen
         onRefresh={refresh}
         refreshing={isRefreshing}
-        title="Pantry Item"
-        subtitle="This item could not be found."
-        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
+        title={t('pantryItem')}
+        subtitle={t('thisItemCannotBeFound')}
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">{t('back')}</Button>}>
         <Card style={styles.actionCard}>
-          <Text style={styles.actionTitle}>{errorMessage ? 'Unable to load item' : 'Item not found'}</Text>
+          <Text style={styles.actionTitle}>{errorMessage ? t('unableToLoadItem') : t('itemNotFound')}</Text>
           <Text style={styles.actionCopy}>
-            {errorMessage || 'This pantry item may have been deleted or belongs to another account.'}
+            {errorMessage || t('pantryItemMayHaveBeenDeleted')}
           </Text>
           <Button compact href="/(tabs)/pantry" secondary icon="basket-outline">
-            Back to Pantry
+            {t('backToPantry')}
           </Button>
         </Card>
       </Screen>
@@ -121,53 +123,52 @@ export default function PantryItemDetailScreen() {
       onRefresh={refresh}
       refreshing={isRefreshing}
       title={item.name}
-      subtitle="Pantry item detail from your Supabase inventory."
-      headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">Back</Button>}>
+      subtitle={t('pantryItemDetailSubtitle')}
+      headerAction={<Button compact onPress={() => safeBack('/(tabs)/pantry')} secondary icon="arrow-back">{t('back')}</Button>}>
       <Card style={styles.heroCard}>
         <PantryArtworkImage item={item} style={styles.itemImageLarge} />
         <View style={styles.heroCopy}>
           <Text style={styles.itemName}>{item.name}</Text>
-          <Text style={styles.category}>{titleCase(item.category ?? 'other')}</Text>
+          <Text style={styles.category}>{t(getCategoryKey(item.category))}</Text>
           <ExpirationText expirationDate={item.expirationDate} />
         </View>
       </Card>
 
       <View style={styles.section}>
-        <SectionTitle>Item Details</SectionTitle>
+        <SectionTitle>{t('itemDetails')}</SectionTitle>
         <Card style={styles.detailCard}>
-          <DetailRow icon="cube-outline" label="Quantity">
+          <DetailRow icon="cube-outline" label={t('quantity')}>
             <QuantityText item={item} />
           </DetailRow>
-          <DetailRow icon="file-tray-outline" label="Storage">
-            <Text style={styles.detailValue}>{titleCase(item.storageLocation)}</Text>
+          <DetailRow icon="file-tray-outline" label={t('storage')}>
+            <Text style={styles.detailValue}>{t(item.storageLocation)}</Text>
           </DetailRow>
-          <DetailRow icon="calendar-outline" label="Expiration">
+          <DetailRow icon="calendar-outline" label={t('expiration')}>
             <ExpirationText expirationDate={item.expirationDate} />
           </DetailRow>
-          <DetailRow icon="pricetag-outline" label="Category">
-            <Text style={styles.detailValue}>{titleCase(item.category ?? 'other')}</Text>
+          <DetailRow icon="pricetag-outline" label={t('category')}>
+            <Text style={styles.detailValue}>{t(getCategoryKey(item.category))}</Text>
           </DetailRow>
         </Card>
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Actions</SectionTitle>
+        <SectionTitle>{t('actions')}</SectionTitle>
         <Card style={styles.actionCard}>
-          <Text style={styles.actionTitle}>Manage this item</Text>
+          <Text style={styles.actionTitle}>{t('manageThisItem')}</Text>
           <Text style={styles.actionCopy}>
-            Edit details when quantities change, or remove the item when it is no longer in your
-            pantry.
+            {t('managePantryItemCopy')}
           </Text>
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
           <View style={styles.actionRow}>
             <Button compact href={`/edit-item/${item.id}`} secondary icon="create-outline">
-              Edit Item
+              {t('editItem')}
             </Button>
             <Button compact onPress={() => setIsConfirmingDelete(true)} secondary icon="trash-outline">
-              Delete
+              {t('delete')}
             </Button>
             <Button compact href="/(tabs)/recipes" icon="restaurant-outline">
-              Find Meals
+              {t('findMeals')}
             </Button>
           </View>
         </Card>
@@ -175,12 +176,12 @@ export default function PantryItemDetailScreen() {
 
       <ConfirmDialog
         busy={isDeleting}
-        confirmLabel={isDeleting ? 'Deleting...' : 'Delete Item'}
+        confirmLabel={isDeleting ? t('deleting') : t('deleteItem')}
         destructive
-        message={`Remove ${item.name} from your pantry?`}
+        message={t('removeItemFromPantryQuestion', { itemName: item.name })}
         onCancel={() => setIsConfirmingDelete(false)}
         onConfirm={handleDelete}
-        title="Delete this pantry item?"
+        title={t('deletePantryItemTitle')}
         visible={isConfirmingDelete}
       />
     </Screen>
@@ -207,8 +208,22 @@ function DetailRow({
   );
 }
 
-function titleCase(value: string) {
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
+type PantryCategoryKey = 'produce' | 'meat' | 'dairy' | 'grain' | 'condiment' | 'other';
+
+function getCategoryKey(value: string | undefined): PantryCategoryKey {
+  const category = value?.toLowerCase();
+
+  if (
+    category === 'produce' ||
+    category === 'meat' ||
+    category === 'dairy' ||
+    category === 'grain' ||
+    category === 'condiment'
+  ) {
+    return category;
+  }
+
+  return 'other';
 }
 
 const styles = StyleSheet.create({

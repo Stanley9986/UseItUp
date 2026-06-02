@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 
 import { Button, Card, palette, Screen, SectionTitle } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { getErrorMessage } from '@/lib/errors';
 import { getFavoriteRecipeById, updateFavoriteRecipe } from '@/lib/favorite-recipes';
 import { getSavedRecipeById, updateSavedRecipe } from '@/lib/recipes';
@@ -29,6 +30,7 @@ const emptyInput: FavoriteRecipeEditInput = {
 export default function EditRecipeScreen() {
   const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
   const { user } = useAuth();
+  const { t } = useAppLanguage();
   const editType = type === 'suggested' ? 'suggested' : 'favorite';
   const isSuggestedEdit = editType === 'suggested';
   const [recipe, setRecipe] = useState<Recipe | null>(null);
@@ -51,18 +53,18 @@ export default function EditRecipeScreen() {
         : await getFavoriteRecipeById(user.id, id);
 
       if (!nextRecipe) {
-        setMessage(isSuggestedEdit ? 'This saved recipe could not be found.' : 'This favorite recipe could not be found.');
+        setMessage(isSuggestedEdit ? t('savedRecipeNotFound') : t('favoriteRecipeNotFound'));
         return;
       }
 
       setRecipe(nextRecipe);
       setInput(getFavoriteRecipeEditInput(nextRecipe));
     } catch (error) {
-      setMessage(getErrorMessage(error, isSuggestedEdit ? 'Unable to load this saved recipe.' : 'Unable to load this favorite recipe.'));
+      setMessage(getErrorMessage(error, isSuggestedEdit ? t('unableToLoadSavedRecipe') : t('unableToLoadFavoriteRecipe')));
     } finally {
       setIsLoading(false);
     }
-  }, [id, isSuggestedEdit, user]);
+  }, [id, isSuggestedEdit, t, user]);
 
   useEffect(() => {
     loadRecipe();
@@ -80,7 +82,7 @@ export default function EditRecipeScreen() {
     const validationMessage = validateFavoriteRecipeEditInput(input);
 
     if (validationMessage) {
-      setMessage(validationMessage);
+      setMessage(translateValidationMessage(validationMessage, t));
       return;
     }
 
@@ -94,13 +96,13 @@ export default function EditRecipeScreen() {
         : await updateFavoriteRecipe(user.id, recipe.id, editedRecipe);
 
       if (!updatedRecipe) {
-        setMessage('Recipe saved, but it could not be reloaded.');
+        setMessage(t('recipeReloadFailed'));
         return;
       }
 
       router.replace(`/recipe/${updatedRecipe.id}`);
     } catch (error) {
-      setMessage(getErrorMessage(error, isSuggestedEdit ? 'Unable to save this recipe.' : 'Unable to save this favorite recipe.'));
+      setMessage(getErrorMessage(error, isSuggestedEdit ? t('unableToSaveRecipe') : t('unableToSaveFavoriteRecipe')));
     } finally {
       setIsSaving(false);
     }
@@ -109,13 +111,13 @@ export default function EditRecipeScreen() {
   return (
     <Screen
       keyboardAware
-      title={isSuggestedEdit ? 'Edit Recipe' : 'Edit Favorite'}
-      subtitle={isSuggestedEdit ? 'Update this saved recipe.' : 'Update your saved recipe snapshot.'}
-      headerAction={<Button compact href={`/recipe/${id}`} secondary icon="arrow-back">Back</Button>}>
+      title={isSuggestedEdit ? t('editRecipe') : t('editFavorite')}
+      subtitle={isSuggestedEdit ? t('editSuggestedRecipeSubtitle') : t('editFavoriteSubtitle')}
+      headerAction={<Button compact href={`/recipe/${id}`} secondary icon="arrow-back">{t('back')}</Button>}>
       {isLoading ? (
         <Card style={styles.loadingCard}>
           <ActivityIndicator color={palette.blue} />
-          <Text style={styles.body}>{isSuggestedEdit ? 'Loading saved recipe...' : 'Loading favorite recipe...'}</Text>
+          <Text style={styles.body}>{isSuggestedEdit ? t('loadingSavedRecipe') : t('loadingFavoriteRecipe')}</Text>
         </Card>
       ) : null}
 
@@ -129,34 +131,34 @@ export default function EditRecipeScreen() {
       {!isLoading && recipe ? (
         <>
           <View style={styles.section}>
-            <SectionTitle>Recipe Basics</SectionTitle>
+            <SectionTitle>{t('recipeBasics')}</SectionTitle>
             <Card>
-              <Field label="Title">
+              <Field label={t('title')}>
                 <TextInput
                   autoCapitalize="words"
                   onChangeText={(value) => updateInput('title', value)}
-                  placeholder="Recipe title"
+                  placeholder={t('recipeTitle')}
                   placeholderTextColor={palette.muted}
                   style={styles.input}
                   value={input.title}
                 />
               </Field>
-              <Field label="Description">
+              <Field label={t('description')}>
                 <TextInput
                   multiline
                   onChangeText={(value) => updateInput('description', value)}
-                  placeholder="Short description"
+                  placeholder={t('shortDescription')}
                   placeholderTextColor={palette.muted}
                   style={[styles.input, styles.multilineInput]}
                   value={input.description}
                 />
               </Field>
-              <Field label="Prep Time">
+              <Field label={t('prepTime')}>
                 <TextInput
                   inputMode="numeric"
                   keyboardType="number-pad"
                   onChangeText={(value) => updateInput('prepTimeMinutes', value)}
-                  placeholder="Minutes"
+                  placeholder={t('minutes')}
                   placeholderTextColor={palette.muted}
                   style={styles.input}
                   value={input.prepTimeMinutes}
@@ -170,29 +172,29 @@ export default function EditRecipeScreen() {
                 <View style={[styles.checkbox, input.usesExpiringItems && styles.checkedBox]}>
                   {input.usesExpiringItems ? <Ionicons color="#fff" name="checkmark" size={15} /> : null}
                 </View>
-                <Text style={styles.toggleLabel}>Uses expiring items</Text>
+                <Text style={styles.toggleLabel}>{t('usesExpiringItems')}</Text>
               </Pressable>
             </Card>
           </View>
 
           <View style={styles.section}>
-            <SectionTitle>Ingredients</SectionTitle>
+            <SectionTitle>{t('ingredients')}</SectionTitle>
             <Card>
-              <Field label="Pantry Ingredients">
+              <Field label={t('pantryIngredients')}>
                 <TextInput
                   multiline
                   onChangeText={(value) => updateInput('availableIngredientsText', value)}
-                  placeholder="One ingredient per line"
+                  placeholder={t('oneIngredientPerLine')}
                   placeholderTextColor={palette.muted}
                   style={[styles.input, styles.tallInput]}
                   value={input.availableIngredientsText}
                 />
               </Field>
-              <Field label="Missing Ingredients">
+              <Field label={t('missingIngredients')}>
                 <TextInput
                   multiline
                   onChangeText={(value) => updateInput('missingIngredientsText', value)}
-                  placeholder="One missing ingredient per line"
+                  placeholder={t('oneMissingIngredientPerLine')}
                   placeholderTextColor={palette.muted}
                   style={[styles.input, styles.tallInput]}
                   value={input.missingIngredientsText}
@@ -202,13 +204,13 @@ export default function EditRecipeScreen() {
           </View>
 
           <View style={styles.section}>
-            <SectionTitle>Instructions</SectionTitle>
+            <SectionTitle>{t('instructions')}</SectionTitle>
             <Card>
-              <Field label="Steps">
+              <Field label={t('steps')}>
                 <TextInput
                   multiline
                   onChangeText={(value) => updateInput('instructionsText', value)}
-                  placeholder="One step per line"
+                  placeholder={t('oneStepPerLine')}
                   placeholderTextColor={palette.muted}
                   style={[styles.input, styles.stepsInput]}
                   value={input.instructionsText}
@@ -218,7 +220,7 @@ export default function EditRecipeScreen() {
           </View>
 
           <Button disabled={isSaving} icon="save-outline" onPress={handleSave}>
-            {isSaving ? 'Saving...' : isSuggestedEdit ? 'Save Recipe' : 'Save Favorite'}
+            {isSaving ? t('saving') : isSuggestedEdit ? t('saveRecipe') : t('saveFavorite')}
           </Button>
         </>
       ) : null}
@@ -233,6 +235,26 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
       {children}
     </View>
   );
+}
+
+function translateValidationMessage(message: string, t: ReturnType<typeof useAppLanguage>['t']) {
+  if (message === 'Add a recipe title before saving.') {
+    return t('addRecipeTitleBeforeSaving');
+  }
+
+  if (message === 'Add at least one ingredient before saving.') {
+    return t('addIngredientBeforeSaving');
+  }
+
+  if (message === 'Add at least one instruction before saving.') {
+    return t('addInstructionBeforeSaving');
+  }
+
+  if (message === 'Prep time must be a whole number of minutes.') {
+    return t('prepTimeWholeMinutes');
+  }
+
+  return message;
 }
 
 const styles = StyleSheet.create({

@@ -9,12 +9,14 @@ import {
   quantityLabelFromLevel,
 } from '@/components/useitup/pantry-item-form';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { safeBack } from '@/lib/navigation';
 import { createPantryItem, getErrorMessage, isDuplicatePantryItemError, normalizePantryName } from '@/lib/pantry';
 import { deleteShoppingListItem } from '@/lib/shopping-list';
 import { getSingleSearchParam } from '@/lib/shopping-list-mappers';
 
 export default function AddItemScreen() {
+  const { t } = useAppLanguage();
   const { itemName, shoppingItemId } = useLocalSearchParams<{
     itemName?: string | string[];
     shoppingItemId?: string | string[];
@@ -33,14 +35,14 @@ export default function AddItemScreen() {
     const normalizedName = normalizePantryName(values.name);
 
     if (!normalizedName) {
-      setMessage('Add an item name before saving.');
+      setMessage(t('addItemNameBeforeSaving'));
       return;
     }
 
     const expirationDate = parseExpirationDate(values.expiration);
 
     if (values.expiration.trim() && !expirationDate) {
-      setMessage('Use YYYY-MM-DD, today, tomorrow, or a phrase like "in 3 days".');
+      setMessage(t('useValidExpirationDate'));
       return;
     }
 
@@ -48,7 +50,7 @@ export default function AddItemScreen() {
     const quantityValue = values.quantityType === 'level' ? undefined : parsedAmount;
 
     if (values.quantityType !== 'level' && (!Number.isFinite(parsedAmount) || parsedAmount <= 0)) {
-      setMessage('Enter an amount greater than 0.');
+      setMessage(t('enterAmountGreaterThanZero'));
       return;
     }
 
@@ -68,9 +70,9 @@ export default function AddItemScreen() {
       });
     } catch (error) {
       if (isDuplicatePantryItemError(error)) {
-        setMessage(`You already have ${titleCase(normalizedName)} in ${titleCase(values.location)}.`);
+        setMessage(t('duplicatePantryItem', { itemName: titleCase(normalizedName), location: t(values.location) }));
       } else {
-        setMessage(getErrorMessage(error, 'Unable to save item.'));
+        setMessage(getErrorMessage(error, t('unableToSaveItem')));
       }
       setIsSaving(false);
       return;
@@ -80,7 +82,7 @@ export default function AddItemScreen() {
       try {
         await deleteShoppingListItem(user.id, sourceShoppingItemId);
       } catch (error) {
-        setMessage(getErrorMessage(error, 'Item was added to your pantry, but it could not be removed from your shopping list.'));
+        setMessage(getErrorMessage(error, t('itemWasAddedButShoppingListRemoveFailed')));
         setIsSaving(false);
         return;
       }
@@ -98,15 +100,15 @@ export default function AddItemScreen() {
   return (
     <Screen
       keyboardAware
-      title="Add Item"
-      subtitle="Add a real pantry item to your Supabase-backed inventory."
+      title={t('addItem')}
+      subtitle={t('addPantryItemSubtitle')}
       headerAction={
         <Button
           compact
           onPress={() => safeBack(sourceShoppingItemId ? '/shopping-list' : '/(tabs)/pantry')}
           secondary
           icon="close">
-          Close
+          {t('close')}
         </Button>
       }>
       <PantryItemForm
@@ -114,7 +116,7 @@ export default function AddItemScreen() {
         isSaving={isSaving}
         message={message}
         onSubmit={handleSave}
-        submitLabel="Save Item"
+        submitLabel={t('saveItem')}
       />
     </Screen>
   );

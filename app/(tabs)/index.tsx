@@ -6,6 +6,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { Button, Card, ExpirationText, palette, PantryArtworkImage, RecipeArtworkImage, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import {
   buildExpiryReminderPlan,
@@ -27,6 +28,7 @@ const emptyWasteStats: WasteReductionStats = {
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const { languageCode, t } = useAppLanguage();
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
   const [wasteStats, setWasteStats] = useState<WasteReductionStats>(emptyWasteStats);
@@ -47,11 +49,11 @@ export default function HomeScreen() {
       const nextItems = await getPantryItems(user.id);
       setPantryItems(nextItems);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, 'Unable to load pantry summary.'));
+      setErrorMessage(getErrorMessage(error, t('unableToLoadPantrySummary')));
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [t, user]);
 
   const loadSavedRecipes = useCallback(async () => {
     if (!user) {
@@ -104,7 +106,7 @@ export default function HomeScreen() {
   const fridgeCount = pantryItems.filter((item) => item.storageLocation === 'fridge').length;
   const freezerCount = pantryItems.filter((item) => item.storageLocation === 'freezer').length;
   const pantryCount = pantryItems.filter((item) => item.storageLocation === 'pantry').length;
-  const displayName = user?.user_metadata?.name ?? user?.email?.split('@')[0] ?? 'there';
+  const displayName = user?.user_metadata?.name ?? user?.email?.split('@')[0] ?? t('there');
   const suggestedRecipes = savedRecipes;
   const reminderPlan = useMemo(
     () => buildExpiryReminderPlan(pantryItems, { ...reminderSettings, enabled: true }),
@@ -116,7 +118,7 @@ export default function HomeScreen() {
       <View style={styles.appHeader}>
         <Text style={styles.logo}>UseItUp</Text>
         <View style={styles.headerActions}>
-          <Pressable accessibilityLabel="Open expiring soon alerts" onPress={() => setIsBellOpen(true)} style={styles.iconButton}>
+          <Pressable accessibilityLabel={t('expiringSoon')} onPress={() => setIsBellOpen(true)} style={styles.iconButton}>
             <Ionicons color={palette.ink} name={reminderPlan.length ? 'notifications' : 'notifications-outline'} size={20} />
             {reminderPlan.length > 0 ? <View style={styles.notificationDot} /> : null}
           </Pressable>
@@ -128,9 +130,9 @@ export default function HomeScreen() {
 
       <Card style={styles.greetingCard}>
         <View style={styles.greetingCopy}>
-          <Text style={styles.greeting}>Good afternoon</Text>
+          <Text style={styles.greeting}>{t('goodAfternoon')}</Text>
           <Text numberOfLines={2} style={styles.greetingName}>{displayName}</Text>
-          <Text style={styles.heroCopy}>Let&apos;s make the most of what you have.</Text>
+          <Text style={styles.heroCopy}>{t('makeTheMost')}</Text>
         </View>
         <View style={styles.greetingIcon}>
           <Ionicons color={palette.green} name="leaf-outline" size={24} />
@@ -146,7 +148,7 @@ export default function HomeScreen() {
               </View>
               <Text style={styles.tileValue}>{expiringItems.length}</Text>
             </View>
-            <Text style={styles.tileLabel}>expiring soon</Text>
+            <Text style={styles.tileLabel}>{t('expiringSoon')}</Text>
           </Card>
           <Card style={styles.trackedTile}>
             <View style={styles.tileTopRow}>
@@ -155,35 +157,35 @@ export default function HomeScreen() {
               </View>
               <Text style={styles.tileValue}>{pantryItems.length}</Text>
             </View>
-            <Text style={styles.tileLabel}>items tracked</Text>
+            <Text style={styles.tileLabel}>{t('itemsTracked')}</Text>
             <Text style={styles.tileBreakdown}>
-              {isLoading ? 'Loading pantry...' : `${fridgeCount} fridge · ${freezerCount} freezer · ${pantryCount} pantry`}
+              {isLoading ? t('loadingPantry') : `${fridgeCount} ${t('fridge')} · ${freezerCount} ${t('freezer')} · ${pantryCount} ${t('pantry')}`}
             </Text>
           </Card>
         </View>
         <Button href="/(tabs)/recipes" icon="sparkles-outline">
-          Cook What I Have
+          {t('cookWhatIHave')}
         </Button>
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Waste Less This Month</SectionTitle>
+        <SectionTitle>{t('wasteLessThisMonth')}</SectionTitle>
         <Card style={styles.impactCard}>
           <ImpactStat
             icon="restaurant-outline"
-            label="meals cooked"
+            label={t('mealsCooked')}
             tone="green"
             value={wasteStats.mealsCooked}
           />
           <ImpactStat
             icon="leaf-outline"
-            label="items used"
+            label={t('itemsUsed')}
             tone="gold"
             value={wasteStats.pantryItemsUsed}
           />
           <ImpactStat
             icon="scale-outline"
-            label="portions used"
+            label={t('portionsUsed')}
             tone="blue"
             value={formatPortionsUsed(wasteStats.portionsUsed)}
           />
@@ -192,22 +194,22 @@ export default function HomeScreen() {
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <SectionTitle>Expiring Soon</SectionTitle>
+          <SectionTitle>{t('expiringSoon')}</SectionTitle>
           <Link asChild href="/expiring-soon">
             <Pressable hitSlop={10}>
-              <Text style={styles.viewAll}>View all</Text>
+              <Text style={styles.viewAll}>{t('viewAll')}</Text>
             </Pressable>
           </Link>
         </View>
         <Card style={styles.expiringCard}>
           {errorMessage ? (
             <View style={styles.emptyExpiring}>
-              <Text style={styles.emptyTitle}>Could not load pantry summary</Text>
+              <Text style={styles.emptyTitle}>{t('unableToLoadPantrySummary')}</Text>
               <Text style={styles.emptyCopy}>{errorMessage}</Text>
             </View>
           ) : isLoading ? (
             <View style={styles.emptyExpiring}>
-              <Text style={styles.emptyTitle}>Loading expiring items...</Text>
+              <Text style={styles.emptyTitle}>{t('loadingExpiringItems')}</Text>
             </View>
           ) : expiringPreviewItems.length ? (
             expiringPreviewItems.map((item, index) => (
@@ -222,7 +224,7 @@ export default function HomeScreen() {
                       <ExpirationText expirationDate={item.expirationDate} />
                     </View>
                     <View style={styles.expiringMeta}>
-                      <Text style={styles.itemDate}>{formatShortDate(item.expirationDate)}</Text>
+                      <Text style={styles.itemDate}>{formatShortDate(item.expirationDate, languageCode)}</Text>
                       <Ionicons color={palette.muted} name="chevron-forward" size={18} />
                     </View>
                   </Pressable>
@@ -231,8 +233,8 @@ export default function HomeScreen() {
             ))
           ) : (
             <View style={styles.emptyExpiring}>
-              <Text style={styles.emptyTitle}>Nothing expiring soon</Text>
-              <Text style={styles.emptyCopy}>Add expiration dates to see priority items here.</Text>
+              <Text style={styles.emptyTitle}>{t('nothingExpiringSoon')}</Text>
+              <Text style={styles.emptyCopy}>{t('addExpirationDatesForPriority')}</Text>
             </View>
           )}
         </Card>
@@ -240,10 +242,10 @@ export default function HomeScreen() {
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <SectionTitle>Suggested Meals</SectionTitle>
+          <SectionTitle>{t('suggestedMeals')}</SectionTitle>
           <Link asChild href="/(tabs)/recipes">
             <Pressable hitSlop={10}>
-              <Text style={styles.viewAll}>View all</Text>
+              <Text style={styles.viewAll}>{t('viewAll')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -256,13 +258,13 @@ export default function HomeScreen() {
                     <MealArtwork recipe={recipe} />
                     <View style={styles.timePill}>
                       <Ionicons color={palette.ink} name="time-outline" size={12} />
-                      <Text style={styles.timePillText}>{recipe.prepTimeMinutes ?? '--'} min</Text>
+                      <Text style={styles.timePillText}>{recipe.prepTimeMinutes ?? '--'} {t('min')}</Text>
                     </View>
                     <Text numberOfLines={2} style={styles.mealTitle}>
                       {recipe.title}
                     </Text>
                     <Text style={styles.mealTag}>
-                      {recipe.usesExpiringItems ? 'High Protein' : 'Quick & Easy'}
+                      {recipe.usesExpiringItems ? t('highProtein') : t('quickAndEasy')}
                     </Text>
                   </Pressable>
                 </Link>
@@ -272,20 +274,20 @@ export default function HomeScreen() {
         ) : (
           <Card style={styles.expiringCard}>
             <View style={styles.emptyExpiring}>
-              <Text style={styles.emptyTitle}>No suggested meals yet</Text>
-              <Text style={styles.emptyCopy}>Generate recipes from your pantry to see meal ideas here.</Text>
+              <Text style={styles.emptyTitle}>{t('noSuggestedMealsYet')}</Text>
+              <Text style={styles.emptyCopy}>{t('generateRecipesFromPantry')}</Text>
             </View>
           </Card>
         )}
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Pantry Summary</SectionTitle>
+        <SectionTitle>{t('pantrySummary')}</SectionTitle>
         <Card style={styles.statsCard}>
-          <StatTile icon="cube-outline" label="Items" value={pantryItems.length} />
-          <StatTile icon="snow-outline" label="Frozen" value={freezerCount} />
-          <StatTile icon="file-tray-outline" label="Fridge" value={fridgeCount} />
-          <StatTile icon="storefront-outline" label="Pantry" value={pantryCount} />
+          <StatTile icon="cube-outline" label={t('items')} value={pantryItems.length} />
+          <StatTile icon="snow-outline" label={t('freezer')} value={freezerCount} />
+          <StatTile icon="file-tray-outline" label={t('fridge')} value={fridgeCount} />
+          <StatTile icon="storefront-outline" label={t('pantry')} value={pantryCount} />
         </Card>
       </View>
       <BellPreviewModal
@@ -309,6 +311,7 @@ function BellPreviewModal({
   settings: ExpiryReminderSettings;
   visible: boolean;
 }) {
+  const { t } = useAppLanguage();
   const previewReminders = reminders.slice(0, 3);
 
   return (
@@ -317,12 +320,12 @@ function BellPreviewModal({
         <Pressable onPress={() => {}} style={styles.bellCard}>
           <View style={styles.bellHeader}>
             <View>
-              <Text style={styles.bellTitle}>Expiring Soon</Text>
+              <Text style={styles.bellTitle}>{t('expiringSoon')}</Text>
               <Text style={styles.bellSubtitle}>
-                Within {settings.daysAhead} day{settings.daysAhead === 1 ? '' : 's'}
+                {t('withinDays', { days: settings.daysAhead, plural: settings.daysAhead === 1 ? '' : 's' })}
               </Text>
             </View>
-            <Pressable accessibilityLabel="Close expiring soon alerts" hitSlop={10} onPress={onClose}>
+            <Pressable accessibilityLabel={t('closeExpiringSoonAlerts')} hitSlop={10} onPress={onClose}>
               <Ionicons color={palette.muted} name="close" size={22} />
             </Pressable>
           </View>
@@ -342,7 +345,7 @@ function BellPreviewModal({
                   </View>
                   <View style={styles.bellRowCopy}>
                     <Text numberOfLines={1} style={styles.bellItemName}>{reminder.itemName}</Text>
-                    <Text style={styles.bellItemDetail}>Expires {formatReminderExpiration(reminder.daysUntilExpiration)}</Text>
+                    <Text style={styles.bellItemDetail}>{t('expires', { label: formatReminderExpiration(reminder.daysUntilExpiration, t) })}</Text>
                   </View>
                   <Ionicons color={palette.muted} name="chevron-forward" size={18} />
                 </Pressable>
@@ -350,8 +353,8 @@ function BellPreviewModal({
             </View>
           ) : (
             <View style={styles.bellEmpty}>
-              <Text style={styles.bellEmptyTitle}>No items need attention</Text>
-              <Text style={styles.bellEmptyCopy}>Nothing expires within your current reminder window.</Text>
+              <Text style={styles.bellEmptyTitle}>{t('noItemsNeedAttention')}</Text>
+              <Text style={styles.bellEmptyCopy}>{t('nothingExpiresWithinWindow')}</Text>
             </View>
           )}
 
@@ -362,7 +365,7 @@ function BellPreviewModal({
                 router.push('/expiring-soon' as Href);
               }}
               style={styles.bellPrimaryAction}>
-              <Text style={styles.bellPrimaryActionText}>More</Text>
+              <Text style={styles.bellPrimaryActionText}>{t('more')}</Text>
               <Ionicons color="#fff" name="arrow-forward" size={16} />
             </Pressable>
             <Pressable
@@ -371,7 +374,7 @@ function BellPreviewModal({
                 router.push('/expiration-reminders' as Href);
               }}
               style={styles.bellSecondaryAction}>
-              <Text style={styles.bellSecondaryActionText}>Reminder Settings</Text>
+              <Text style={styles.bellSecondaryActionText}>{t('reminderSettings')}</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -380,16 +383,16 @@ function BellPreviewModal({
   );
 }
 
-function formatReminderExpiration(daysUntilExpiration: number) {
+function formatReminderExpiration(daysUntilExpiration: number, t: ReturnType<typeof useAppLanguage>['t']) {
   if (daysUntilExpiration <= 0) {
-    return 'today';
+    return t('today');
   }
 
   if (daysUntilExpiration === 1) {
-    return 'tomorrow';
+    return t('tomorrow');
   }
 
-  return `in ${daysUntilExpiration} days`;
+  return t('inDays', { days: daysUntilExpiration });
 }
 
 function MealArtwork({ recipe }: { recipe: Recipe }) {
@@ -444,12 +447,12 @@ function formatPortionsUsed(value: number) {
   return value.toFixed(1);
 }
 
-function formatShortDate(expirationDate?: string) {
+function formatShortDate(expirationDate: string | undefined, languageCode: string) {
   if (!expirationDate) {
     return '--';
   }
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(languageCode, {
     day: 'numeric',
     month: 'short',
   }).format(new Date(`${expirationDate}T12:00:00`));

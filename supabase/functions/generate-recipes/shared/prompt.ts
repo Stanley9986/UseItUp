@@ -24,6 +24,8 @@ export function createRecipePrompt({ pantryItems, preferences }: RecipePromptInp
       'Keep each instruction under 100 characters.',
       'Use no more than 8 ingredients per recipe.',
       'Respect dietary preferences and avoided ingredients from the user payload.',
+      'Write all user-facing recipe content in the requested language.',
+      'Keep JSON property names in English even when recipe content uses another language.',
       'Do not include avoided ingredients as required or optional ingredients.',
       'When dietary preferences limit ingredients, adapt recipes instead of ignoring the preferences.',
       'Do not claim spoiled food is safe.',
@@ -60,8 +62,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function normalizePreferences(value: unknown) {
   if (!isRecord(value)) {
-    return {};
+    return {
+      languageCode: defaultLanguageCode,
+      languageName: languageNamesByCode[defaultLanguageCode],
+    };
   }
+
+  const languageCode = normalizeLanguageCode(value.languageCode);
 
   return {
     dietaryPreferences: cleanStringList(value.dietaryPreferences),
@@ -70,6 +77,8 @@ function normalizePreferences(value: unknown) {
       typeof value.maxPrepTimeMinutes === 'number' ? value.maxPrepTimeMinutes : undefined,
     prioritizeExpiringSoon:
       typeof value.prioritizeExpiringSoon === 'boolean' ? value.prioritizeExpiringSoon : undefined,
+    languageCode,
+    languageName: languageNamesByCode[languageCode],
   };
 }
 
@@ -82,4 +91,29 @@ function cleanStringList(value: unknown) {
     .filter((item): item is string => typeof item === 'string')
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+const defaultLanguageCode = 'en';
+
+const languageNamesByCode = {
+  en: 'English',
+  es: 'Spanish',
+  zh: 'Chinese',
+  fr: 'French',
+  de: 'German',
+  it: 'Italian',
+  ja: 'Japanese',
+  ko: 'Korean',
+  pt: 'Portuguese',
+  vi: 'Vietnamese',
+} as const;
+
+function normalizeLanguageCode(value: unknown): keyof typeof languageNamesByCode {
+  if (typeof value !== 'string') {
+    return defaultLanguageCode;
+  }
+
+  const normalized = value.trim().toLowerCase().split('-')[0] as keyof typeof languageNamesByCode;
+
+  return normalized in languageNamesByCode ? normalized : defaultLanguageCode;
 }

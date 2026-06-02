@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getCookHistory } from '@/lib/cook-history';
 import { CookHistoryItem } from '@/lib/cook-history-mappers';
@@ -13,6 +14,7 @@ import { safeBack } from '@/lib/navigation';
 
 export default function CookHistoryScreen() {
   const { user } = useAuth();
+  const { languageCode, t } = useAppLanguage();
   const [history, setHistory] = useState<CookHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -31,14 +33,14 @@ export default function CookHistoryScreen() {
       try {
         setHistory(await getCookHistory(user.id));
       } catch (error) {
-        setMessage(getErrorMessage(error, 'Unable to load cooked recipe history.'));
+        setMessage(getErrorMessage(error, t('unableToLoadCookHistory')));
       } finally {
         if (showLoading) {
           setIsLoading(false);
         }
       }
     },
-    [user],
+    [t, user],
   );
   const { isRefreshing, refresh } = useRefresh(() => loadHistory({ showLoading: false }));
 
@@ -50,22 +52,22 @@ export default function CookHistoryScreen() {
     <Screen
       onRefresh={refresh}
       refreshing={isRefreshing}
-      title="Cook History"
-      subtitle="Your latest cooked recipes."
-      headerAction={<Button compact onPress={() => safeBack('/(tabs)/profile')} secondary icon="arrow-back">Back</Button>}>
+      title={t('cookHistory')}
+      subtitle={t('cookHistorySubtitle')}
+      headerAction={<Button compact onPress={() => safeBack('/(tabs)/profile')} secondary icon="arrow-back">{t('back')}</Button>}>
       <View style={styles.section}>
-        <SectionTitle>Latest</SectionTitle>
+        <SectionTitle>{t('latest')}</SectionTitle>
         {isLoading ? (
           <Card style={styles.stateCard}>
-            <Text style={styles.copy}>Loading cooked recipes...</Text>
+            <Text style={styles.copy}>{t('loadingCookedRecipes')}</Text>
           </Card>
         ) : message ? (
           <Card style={styles.stateCard}>
             <Ionicons color={palette.red} name="alert-circle-outline" size={24} />
-            <Text style={styles.title}>Could not load history</Text>
+            <Text style={styles.title}>{t('couldNotLoadHistory')}</Text>
             <Text style={styles.copy}>{message}</Text>
             <Button compact onPress={() => loadHistory()} secondary icon="refresh-outline">
-              Try Again
+              {t('retry')}
             </Button>
           </Card>
         ) : history.length ? (
@@ -79,7 +81,7 @@ export default function CookHistoryScreen() {
                     </View>
                     <View style={styles.rowCopy}>
                       <Text numberOfLines={2} style={styles.rowTitle}>{item.recipeTitle}</Text>
-                      <Text numberOfLines={1} style={styles.rowDetail}>{formatCookedAt(item.cookedAt)}</Text>
+                      <Text numberOfLines={1} style={styles.rowDetail}>{formatCookedAt(item.cookedAt, languageCode)}</Text>
                     </View>
                     <Ionicons color={palette.muted} name="chevron-forward" size={18} />
                   </View>
@@ -90,10 +92,10 @@ export default function CookHistoryScreen() {
         ) : (
           <Card style={styles.stateCard}>
             <Ionicons color={palette.green} name="restaurant-outline" size={24} />
-            <Text style={styles.title}>No cooked recipes yet</Text>
-            <Text style={styles.copy}>Cook a saved recipe and it will show up here.</Text>
+            <Text style={styles.title}>{t('noCookedRecipesYet')}</Text>
+            <Text style={styles.copy}>{t('cookSavedRecipeToSeeItHere')}</Text>
             <Button compact href="/(tabs)/recipes" icon="restaurant-outline">
-              View Recipes
+              {t('viewRecipes')}
             </Button>
           </Card>
         )}
@@ -102,8 +104,8 @@ export default function CookHistoryScreen() {
   );
 }
 
-function formatCookedAt(value: string) {
-  return new Intl.DateTimeFormat('en-US', {
+function formatCookedAt(value: string, languageCode: string) {
+  return new Intl.DateTimeFormat(languageCode, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

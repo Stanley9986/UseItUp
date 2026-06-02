@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button, Card, Chip, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { getErrorMessage } from '@/lib/errors';
 import { safeBack } from '@/lib/navigation';
@@ -20,6 +21,7 @@ const prepTimeOptions = [15, 30, 45, 60] as const;
 
 export default function DietaryPreferencesScreen() {
   const { user } = useAuth();
+  const { t } = useAppLanguage();
   const [preferences, setPreferences] = useState<UserPreferences>(defaultUserPreferences);
   const [draftPreferences, setDraftPreferences] = useState<UserPreferences>(defaultUserPreferences);
   const [ingredientInput, setIngredientInput] = useState('');
@@ -45,14 +47,14 @@ export default function DietaryPreferencesScreen() {
         setDraftPreferences(nextPreferences);
       } catch (error) {
         setMessageType('error');
-        setMessage(getErrorMessage(error, 'Unable to load dietary preferences.'));
+        setMessage(getErrorMessage(error, t('unableToLoadDietaryPreferences')));
       } finally {
         if (showLoading) {
           setIsLoading(false);
         }
       }
     },
-    [user],
+    [t, user],
   );
 
   const { isRefreshing, refresh } = useRefresh(() => loadPreferences({ showLoading: false }));
@@ -86,7 +88,7 @@ export default function DietaryPreferencesScreen() {
 
     if (!normalizedIngredient) {
       setMessageType('error');
-      setMessage('Enter an ingredient before adding it.');
+      setMessage(t('enterIngredientBeforeAdding'));
       return;
     }
 
@@ -119,10 +121,10 @@ export default function DietaryPreferencesScreen() {
       setPreferences(nextPreferences);
       setDraftPreferences(nextPreferences);
       setMessageType('success');
-      setMessage('Preferences saved.');
+      setMessage(t('preferencesSaved'));
     } catch (error) {
       setMessageType('error');
-      setMessage(getErrorMessage(error, 'Unable to save dietary preferences.'));
+      setMessage(getErrorMessage(error, t('unableToSaveDietaryPreferences')));
     } finally {
       setIsSaving(false);
     }
@@ -133,17 +135,17 @@ export default function DietaryPreferencesScreen() {
       keyboardAware
       onRefresh={refresh}
       refreshing={isRefreshing}
-      title="Dietary Preferences"
-      subtitle="Personalize recipes without making pantry entry harder."
-      headerAction={<Button compact onPress={handleCancel} secondary icon="arrow-back">Back</Button>}>
+      title={t('recipePreferences')}
+      subtitle={t('recipePreferencesCopy')}
+      headerAction={<Button compact onPress={handleCancel} secondary icon="arrow-back">{t('back')}</Button>}>
       <Card style={styles.card}>
-        <Text style={styles.cardTitle}>Diet style</Text>
-        <Text style={styles.cardCopy}>Choose any labels that should guide generated meals.</Text>
+        <Text style={styles.cardTitle}>{t('dietStyle')}</Text>
+        <Text style={styles.cardCopy}>{t('chooseDietLabels')}</Text>
         <View style={styles.chipWrap}>
           {dietaryOptions.map((option) => (
             <Chip
               key={option}
-              label={option}
+              label={getDietaryOptionLabel(option, t)}
               onPress={() => handleToggleDietaryPreference(option)}
               selected={draftPreferences.dietaryPreferences.includes(option)}
             />
@@ -152,8 +154,8 @@ export default function DietaryPreferencesScreen() {
       </Card>
 
       <Card style={styles.card}>
-        <Text style={styles.cardTitle}>Avoid ingredients</Text>
-        <Text style={styles.cardCopy}>Add items the recipe generator should avoid.</Text>
+        <Text style={styles.cardTitle}>{t('avoidIngredients')}</Text>
+        <Text style={styles.cardCopy}>{t('avoidIngredientsCopy')}</Text>
         <View style={styles.addRow}>
           <TextInput
             autoCapitalize="none"
@@ -165,7 +167,7 @@ export default function DietaryPreferencesScreen() {
             style={styles.input}
             value={ingredientInput}
           />
-          <Pressable accessibilityLabel="Add avoided ingredient" onPress={handleAddAvoidedIngredient} style={styles.addButton}>
+          <Pressable accessibilityLabel={t('addAvoidedIngredient')} onPress={handleAddAvoidedIngredient} style={styles.addButton}>
             <Ionicons color="#fff" name="add" size={22} />
           </Pressable>
         </View>
@@ -175,7 +177,7 @@ export default function DietaryPreferencesScreen() {
               <View key={ingredient} style={styles.ingredientPill}>
                 <Text style={styles.ingredientText}>{ingredient}</Text>
                 <Pressable
-                  accessibilityLabel={`Remove ${ingredient}`}
+                  accessibilityLabel={`${t('removeAvoidedIngredient')}: ${ingredient}`}
                   hitSlop={8}
                   onPress={() => handleRemoveAvoidedIngredient(ingredient)}>
                   <Ionicons color={palette.muted} name="close-circle" size={20} />
@@ -184,14 +186,14 @@ export default function DietaryPreferencesScreen() {
             ))}
           </View>
         ) : (
-          <Text style={styles.emptyCopy}>No avoided ingredients yet.</Text>
+          <Text style={styles.emptyCopy}>{t('noAvoidedIngredients')}</Text>
         )}
       </Card>
 
       <View style={styles.section}>
-        <SectionTitle>Meal Pace</SectionTitle>
+        <SectionTitle>{t('mealPace')}</SectionTitle>
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Preferred max prep time</Text>
+          <Text style={styles.cardTitle}>{t('preferredMaxPrepTime')}</Text>
           <View style={styles.chipWrap}>
             {prepTimeOptions.map((option) => (
               <Chip
@@ -213,14 +215,34 @@ export default function DietaryPreferencesScreen() {
 
       <View style={styles.actions}>
         <Button disabled={isSaving || isLoading} icon="save-outline" onPress={handleSave}>
-          {isSaving ? 'Saving...' : 'Save Preferences'}
+          {isSaving ? t('saving') : t('savePreferences')}
         </Button>
         <Button disabled={isSaving} icon="close-outline" onPress={handleCancel} secondary>
-          Cancel
+          {t('cancel')}
         </Button>
       </View>
     </Screen>
   );
+}
+
+function getDietaryOptionLabel(option: (typeof dietaryOptions)[number], t: ReturnType<typeof useAppLanguage>['t']) {
+  if (option === 'Vegetarian') {
+    return t('vegetarian');
+  }
+
+  if (option === 'Vegan') {
+    return t('vegan');
+  }
+
+  if (option === 'Dairy-free') {
+    return t('dairyFree');
+  }
+
+  if (option === 'Gluten-free') {
+    return t('glutenFree');
+  }
+
+  return t('nutFree');
 }
 
 const styles = StyleSheet.create({

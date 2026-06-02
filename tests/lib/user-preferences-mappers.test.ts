@@ -22,6 +22,7 @@ describe('mapUserPreferencesRow', () => {
         dietary_preferences: ['Vegetarian', '  ', 'Dairy-free'],
         avoided_ingredients: ['Peanuts', 'Peanuts', 'cilantro'],
         max_prep_time_minutes: 45,
+        language_code: 'es',
         created_at: '2026-05-31T12:00:00Z',
         updated_at: '2026-05-31T12:00:00Z',
       }),
@@ -29,6 +30,7 @@ describe('mapUserPreferencesRow', () => {
       dietaryPreferences: ['Vegetarian', 'Dairy-free'],
       avoidedIngredients: ['Peanuts', 'cilantro'],
       maxPrepTimeMinutes: 45,
+      languageCode: 'es',
     });
   });
 });
@@ -39,6 +41,7 @@ describe('mapUserPreferencesUpsert', () => {
       dietaryPreferences: ['Vegetarian', 'Vegetarian', ''],
       avoidedIngredients: [' Peanuts ', 'Cilantro'],
       maxPrepTimeMinutes: 30,
+      languageCode: 'fr',
     });
 
     expect(mapped).toMatchObject({
@@ -46,6 +49,7 @@ describe('mapUserPreferencesUpsert', () => {
       dietary_preferences: ['Vegetarian'],
       avoided_ingredients: ['peanuts', 'cilantro'],
       max_prep_time_minutes: 30,
+      language_code: 'fr',
     });
     expect(mapped.updated_at).toEqual(expect.any(String));
   });
@@ -59,6 +63,7 @@ describe('summarizeUserPreferences', () => {
         dietaryPreferences: ['Vegetarian'],
         avoidedIngredients: ['peanuts'],
         maxPrepTimeMinutes: 15,
+        languageCode: 'es',
       }),
     ).toBe('Vegetarian · Avoids peanuts · 15 min meals');
   });
@@ -76,6 +81,7 @@ describe('avoided ingredient helpers', () => {
           dietaryPreferences: [],
           avoidedIngredients: ['peanuts'],
           maxPrepTimeMinutes: 30,
+          languageCode: 'en',
         },
         '  Soy   Sauce ',
       ),
@@ -83,6 +89,7 @@ describe('avoided ingredient helpers', () => {
       dietaryPreferences: [],
       avoidedIngredients: ['peanuts', 'soy sauce'],
       maxPrepTimeMinutes: 30,
+      languageCode: 'en',
     });
   });
 
@@ -91,6 +98,7 @@ describe('avoided ingredient helpers', () => {
       dietaryPreferences: [],
       avoidedIngredients: ['peanuts'],
       maxPrepTimeMinutes: 30,
+      languageCode: 'en',
     };
 
     expect(addAvoidedIngredient(preferences, 'peanuts')).toBe(preferences);
@@ -104,6 +112,7 @@ describe('avoided ingredient helpers', () => {
           dietaryPreferences: [],
           avoidedIngredients: ['peanuts', 'soy sauce'],
           maxPrepTimeMinutes: 30,
+          languageCode: 'en',
         },
         ' Soy Sauce ',
       ),
@@ -111,6 +120,7 @@ describe('avoided ingredient helpers', () => {
       dietaryPreferences: [],
       avoidedIngredients: ['peanuts'],
       maxPrepTimeMinutes: 30,
+      languageCode: 'en',
     });
   });
 });

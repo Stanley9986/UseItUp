@@ -4,6 +4,7 @@ import {
   mapUserPreferencesUpsert,
   UserPreferencesRow,
 } from '@/lib/user-preferences-mappers';
+import { getDefaultUserPreferencesForDevice } from '@/lib/device-language';
 import { supabase } from '@/lib/supabase';
 import { UserPreferences } from '@/types/useitup';
 
@@ -18,7 +19,11 @@ export async function getUserPreferences(userId: string) {
     throw error;
   }
 
-  return mapUserPreferencesRow((data as UserPreferencesRow | null) ?? null);
+  if (!data) {
+    return getDefaultUserPreferencesForDevice();
+  }
+
+  return mapUserPreferencesRow(data as UserPreferencesRow);
 }
 
 export async function saveUserPreferences(userId: string, preferences: UserPreferences) {

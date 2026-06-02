@@ -5,33 +5,24 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, Chip, palette, QuantityText, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
 import { PantryUpdateChoice, buildPantryUpdate, cookRecipeAndUpdatePantry, defaultChoiceForItem } from '@/lib/cooking';
 import { useRefresh } from '@/hooks/use-refresh';
 import { safeBack } from '@/lib/navigation';
 import { getErrorMessage, getPantryItemById } from '@/lib/pantry';
 import { getFavoriteRecipeById } from '@/lib/favorite-recipes';
 import { createSavedRecipeFromSnapshot, getSavedRecipeById } from '@/lib/recipes';
-import { UpdateChoiceKey, choiceToKey, getRemainingText, keyToChoice } from '@/lib/update-pantry-ui';
+import { UpdateChoiceKey, choiceToKey, keyToChoice } from '@/lib/update-pantry-ui';
 import { PantryItem, Recipe } from '@/types/useitup';
 
-const amountChoices: { label: string; value: UpdateChoiceKey }[] = [
-  { label: 'Suggested', value: 'suggested' },
-  { label: 'Used all', value: 'all' },
-  { label: 'Used less', value: 'less' },
-  { label: 'Skip', value: 'skip' },
-];
+const amountChoices: UpdateChoiceKey[] = ['suggested', 'all', 'less', 'skip'];
 
-const levelChoices: { label: string; value: UpdateChoiceKey }[] = [
-  { label: 'Empty', value: 'empty' },
-  { label: 'Low', value: 'low' },
-  { label: 'Half', value: 'half' },
-  { label: 'Full', value: 'full' },
-  { label: 'No change', value: 'skip' },
-];
+const levelChoices: UpdateChoiceKey[] = ['empty', 'low', 'half', 'full', 'skip'];
 
 export default function UpdatePantryScreen() {
   const { favoriteId, recipeId } = useLocalSearchParams<{ favoriteId?: string; recipeId?: string }>();
   const { user } = useAuth();
+  const { t } = useAppLanguage();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [choices, setChoices] = useState<Record<string, PantryUpdateChoice>>({});
@@ -60,7 +51,7 @@ export default function UpdatePantryScreen() {
         if (!nextRecipe) {
           setRecipe(null);
           setPantryItems([]);
-          setMessage('This saved recipe could not be found.');
+          setMessage(t('savedRecipeNotFound'));
           return;
         }
 
@@ -80,14 +71,14 @@ export default function UpdatePantryScreen() {
           return nextChoices;
         });
       } catch (error) {
-        setMessage(getErrorMessage(error, 'Unable to load recipe pantry updates.'));
+        setMessage(getErrorMessage(error, t('unableToLoadRecipePantryUpdates')));
       } finally {
         if (showLoading) {
           setIsLoading(false);
         }
       }
     },
-    [favoriteId, recipeId, user],
+    [favoriteId, recipeId, t, user],
   );
 
   const { isRefreshing, refresh } = useRefresh(() => loadCookData({ showLoading: false }));
@@ -125,7 +116,7 @@ export default function UpdatePantryScreen() {
 
       router.replace('/(tabs)/pantry');
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Unable to save pantry updates.'));
+      setMessage(getErrorMessage(error, t('unableToSavePantryUpdates')));
     } finally {
       setIsSaving(false);
     }
@@ -134,14 +125,14 @@ export default function UpdatePantryScreen() {
   if (!recipeId && !favoriteId) {
     return (
       <Screen
-        title="Update Your Pantry"
-        subtitle="Choose a saved recipe before updating pantry quantities."
-        headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">Back</Button>}>
+        title={t('updateYourPantry')}
+        subtitle={t('updatePantrySubtitle')}
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">{t('back')}</Button>}>
         <Card style={styles.stateCard}>
-          <Text style={styles.title}>No recipe selected</Text>
-          <Text style={styles.copy}>Open a saved recipe and tap I Cooked This to update pantry items.</Text>
+          <Text style={styles.title}>{t('noRecipeSelected')}</Text>
+          <Text style={styles.copy}>{t('updatePantryNoRecipeCopy')}</Text>
           <Button compact href="/(tabs)/recipes" icon="restaurant-outline">
-            View Recipes
+            {t('viewRecipes')}
           </Button>
         </Card>
       </Screen>
@@ -152,12 +143,12 @@ export default function UpdatePantryScreen() {
     <Screen
       onRefresh={refresh}
       refreshing={isRefreshing}
-      title="Update Your Pantry"
-      subtitle={recipe ? `Confirm what changed after cooking ${recipe.title}.` : 'Loading recipe updates.'}
-      headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">Back</Button>}>
+      title={t('updateYourPantry')}
+      subtitle={recipe ? t('updatePantryForRecipe', { recipeTitle: recipe.title }) : t('loadingRecipeUpdates')}
+      headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">{t('back')}</Button>}>
       <Card style={styles.success}>
-        <Text style={styles.successTitle}>{recipe ? recipe.title : 'Loading recipe'}</Text>
-        <Text style={styles.copy}>Choose rough updates so the next recipe suggestion stays useful.</Text>
+        <Text style={styles.successTitle}>{recipe ? recipe.title : t('loadingRecipe')}</Text>
+        <Text style={styles.copy}>{t('chooseRoughUpdates')}</Text>
       </Card>
 
       {message ? <Text style={styles.message}>{message}</Text> : null}
@@ -165,11 +156,11 @@ export default function UpdatePantryScreen() {
       {isLoading ? (
         <Card style={styles.stateCard}>
           <ActivityIndicator color={palette.blue} />
-          <Text style={styles.copy}>Loading pantry updates...</Text>
+          <Text style={styles.copy}>{t('loadingPantryUpdates')}</Text>
         </Card>
       ) : pantryItems.length ? (
         <View style={styles.section}>
-          <SectionTitle>Ingredient Updates</SectionTitle>
+          <SectionTitle>{t('ingredientUpdates')}</SectionTitle>
           {previewUpdates.map(({ item, update }) => (
             <UpdateCard
               choice={choices[item.id] ?? defaultChoiceForItem(item)}
@@ -183,13 +174,13 @@ export default function UpdatePantryScreen() {
       ) : (
         <Card style={styles.stateCard}>
           <Ionicons color={palette.green} name="basket-outline" size={24} />
-          <Text style={styles.title}>No matched pantry items</Text>
-          <Text style={styles.copy}>This recipe does not include pantry-linked ingredients to update.</Text>
+          <Text style={styles.title}>{t('noMatchedPantryItems')}</Text>
+          <Text style={styles.copy}>{t('thisRecipeHasNoPantryIngredients')}</Text>
         </Card>
       )}
 
       <Button onPress={handleSave} icon="save-outline">
-        {isSaving ? 'Saving...' : 'Save Pantry Updates'}
+        {isSaving ? t('saving') : t('savePantryUpdates')}
       </Button>
     </Screen>
   );
@@ -206,6 +197,7 @@ function UpdateCard({
   onChange: (choice: PantryUpdateChoice) => void;
   update: ReturnType<typeof buildPantryUpdate>;
 }) {
+  const { t } = useAppLanguage();
   const choices = item.quantityUnit === 'level' ? levelChoices : amountChoices;
   const selected = choiceToKey(choice);
 
@@ -213,22 +205,56 @@ function UpdateCard({
     <Card>
       <Text style={styles.title}>{item.name}</Text>
       <View style={styles.quantityRow}>
-        <Text style={styles.copy}>You have:</Text>
+        <Text style={styles.copy}>{t('youHave')}</Text>
         <QuantityText item={item} />
       </View>
-      <Text style={styles.remaining}>{getRemainingText(item, update)}</Text>
+      <Text style={styles.remaining}>{formatRemainingText(item, update, t)}</Text>
       <View style={styles.choices}>
         {choices.map((option) => (
           <Chip
-            key={option.value}
-            label={option.label}
-            onPress={() => onChange(keyToChoice(option.value))}
-            selected={selected === option.value}
+            key={option}
+            label={getChoiceLabel(option, t)}
+            onPress={() => onChange(keyToChoice(option))}
+            selected={selected === option}
           />
         ))}
       </View>
     </Card>
   );
+}
+
+function getChoiceLabel(choice: UpdateChoiceKey, t: ReturnType<typeof useAppLanguage>['t']) {
+  if (choice === 'all') {
+    return t('usedAll');
+  }
+
+  if (choice === 'less') {
+    return t('usedLess');
+  }
+
+  if (choice === 'skip') {
+    return t('noChange');
+  }
+
+  return t(choice);
+}
+
+function formatRemainingText(
+  item: PantryItem,
+  update: ReturnType<typeof buildPantryUpdate>,
+  t: ReturnType<typeof useAppLanguage>['t'],
+) {
+  if (!update) {
+    return t('noPantryChange');
+  }
+
+  if (item.quantityUnit === 'level') {
+    return t('remaining', { value: update.new_quantity_label ? t(update.new_quantity_label) : t('unknown') });
+  }
+
+  return t('remaining', {
+    value: `${update.new_quantity_value ?? 0} ${t(item.quantityUnit)}${update.new_quantity_value === 1 ? '' : 's'}`,
+  });
 }
 
 const styles = StyleSheet.create({
