@@ -242,7 +242,7 @@ export function QuantityText({ item }: { item: PantryItem }) {
   const text =
     item.quantityUnit === 'level'
       ? `${item.quantityLabel ? t(item.quantityLabel) : t('unknown')} ${t('level')}`
-      : `${item.quantityValue ?? 0} ${t(item.quantityUnit)}${item.quantityValue === 1 ? '' : 's'}`;
+      : `${item.quantityValue ?? 0} ${t(item.quantityUnit)}`;
 
   return <Text style={styles.meta}>{text}</Text>;
 }

@@ -253,7 +253,7 @@ function formatRemainingText(
   }
 
   return t('remaining', {
-    value: `${update.new_quantity_value ?? 0} ${t(item.quantityUnit)}${update.new_quantity_value === 1 ? '' : 's'}`,
+    value: `${update.new_quantity_value ?? 0} ${t(item.quantityUnit)}`,
   });
 }
 
