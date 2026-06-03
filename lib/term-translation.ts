@@ -71,10 +71,6 @@ export async function translateTerms(
   return out;
 }
 
-export function clearTermTranslationClientCache() {
-  memoryTermCache.clear();
-}
-
 async function fetchTerms(terms: string[], targetLanguage: string) {
   const { data, error } = await supabase.functions.invoke<TermsResponse>('generate-recipes', {
     body: { translate: { targetLanguage, terms } },
