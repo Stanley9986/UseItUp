@@ -1,5 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { createClientCache } from '@/lib/client-cache';
 import { supabase } from '@/lib/supabase';
 import { translateTerms } from '@/lib/term-translation';
 import { Recipe } from '@/types/useitup';
@@ -19,14 +18,15 @@ type TranslateResponse = {
   cache?: { hits?: number; misses?: number };
 };
 
-type ClientTranslationCacheEntry = {
-  translation: RecipeTranslation;
-  expiresAt: string;
-};
+const translationCache = createClientCache<RecipeTranslation>({
+  prefix: 'useitup:recipe-translation-cache:',
+  ttlMs: 30 * 24 * 60 * 60 * 1000,
+  isValid: (value) => typeof value === 'object' && value !== null && typeof value.title === 'string',
+});
 
-const translationCachePrefix = 'useitup:recipe-translation-cache:';
-const translationCacheTtlMs = 30 * 24 * 60 * 60 * 1000;
-const memoryTranslationCache = new Map<string, ClientTranslationCacheEntry>();
+function cacheKey(recipeId: string, targetLanguage: string) {
+  return `${recipeId}:${targetLanguage}`;
+}
 
 // Translate recipes whose stored source language differs from the target. Rows
 // with an unknown language (legacy data from before language tracking) are
@@ -57,7 +57,7 @@ export async function translateRecipes(
   const uncached: Recipe[] = [];
 
   for (const recipe of needing) {
-    const cached = await getCachedTranslation(recipe.id, targetLanguage);
+    const cached = await translationCache.get(cacheKey(recipe.id, targetLanguage));
 
     if (cached) {
       result[recipe.id] = cached;
@@ -75,7 +75,7 @@ export async function translateRecipes(
 
         if (translation) {
           result[recipe.id] = translation;
-          await setCachedTranslation(recipe.id, targetLanguage, translation);
+          await translationCache.set(cacheKey(recipe.id, targetLanguage), translation);
         }
       }),
     );
@@ -145,7 +145,7 @@ export async function prepareTranslatedRecipes(
 }
 
 export function clearRecipeTranslationClientCache() {
-  memoryTranslationCache.clear();
+  translationCache.clear();
 }
 
 async function fetchTranslations(recipes: Recipe[], targetLanguage: string) {
@@ -200,84 +200,4 @@ function normalizeTranslation(value: unknown): RecipeTranslation | null {
       : [],
     ingredientNames,
   };
-}
-
-async function getCachedTranslation(recipeId: string, targetLanguage: string) {
-  const key = getCacheKey(recipeId, targetLanguage);
-  const memoryEntry = memoryTranslationCache.get(key);
-
-  if (memoryEntry && isFreshCacheEntry(memoryEntry)) {
-    return memoryEntry.translation;
-  }
-
-  if (memoryEntry) {
-    memoryTranslationCache.delete(key);
-  }
-
-  try {
-    const storageEntry = parseCacheEntry(await AsyncStorage.getItem(getStorageKey(recipeId, targetLanguage)));
-
-    if (!storageEntry) {
-      return null;
-    }
-
-    if (!isFreshCacheEntry(storageEntry)) {
-      await AsyncStorage.removeItem(getStorageKey(recipeId, targetLanguage));
-      return null;
-    }
-
-    memoryTranslationCache.set(key, storageEntry);
-
-    return storageEntry.translation;
-  } catch {
-    return null;
-  }
-}
-
-async function setCachedTranslation(recipeId: string, targetLanguage: string, translation: RecipeTranslation) {
-  const entry: ClientTranslationCacheEntry = {
-    translation,
-    expiresAt: new Date(Date.now() + translationCacheTtlMs).toISOString(),
-  };
-
-  memoryTranslationCache.set(getCacheKey(recipeId, targetLanguage), entry);
-
-  try {
-    await AsyncStorage.setItem(getStorageKey(recipeId, targetLanguage), JSON.stringify(entry));
-  } catch {
-    // Local cache writes should not block rendering translated recipes.
-  }
-}
-
-function getCacheKey(recipeId: string, targetLanguage: string) {
-  return `${recipeId}:${targetLanguage}`;
-}
-
-function getStorageKey(recipeId: string, targetLanguage: string) {
-  return `${translationCachePrefix}${encodeURIComponent(getCacheKey(recipeId, targetLanguage))}`;
-}
-
-function isFreshCacheEntry(entry: ClientTranslationCacheEntry) {
-  return new Date(entry.expiresAt).getTime() > Date.now();
-}
-
-function parseCacheEntry(rawEntry: string | null): ClientTranslationCacheEntry | null {
-  if (!rawEntry) {
-    return null;
-  }
-
-  try {
-    const entry = JSON.parse(rawEntry) as Partial<ClientTranslationCacheEntry>;
-
-    if (!entry.expiresAt || !entry.translation) {
-      return null;
-    }
-
-    return {
-      translation: entry.translation,
-      expiresAt: entry.expiresAt,
-    };
-  } catch {
-    return null;
-  }
 }

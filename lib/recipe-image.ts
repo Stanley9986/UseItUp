@@ -1,5 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { createClientCache } from '@/lib/client-cache';
 import { getRecipeImageSearchQuery, RecipeArtwork } from '@/lib/recipe-artwork';
 import { supabase } from '@/lib/supabase';
 import { Recipe } from '@/types/useitup';
@@ -18,14 +17,11 @@ type RecipeImageResponse = {
   source?: 'cache' | 'none' | 'pexels';
 };
 
-type ClientRecipeImageCacheEntry = {
-  artwork: RecipeArtwork & { imageUrl: string; provider: 'pexels' };
-  expiresAt: string;
-};
-
-const recipeImageClientCachePrefix = 'useitup:recipe-image-cache:';
-const recipeImageClientCacheTtlMs = 30 * 24 * 60 * 60 * 1000;
-const memoryImageCache = new Map<string, ClientRecipeImageCacheEntry>();
+const imageCache = createClientCache<RecipeArtwork>({
+  prefix: 'useitup:recipe-image-cache:',
+  ttlMs: 30 * 24 * 60 * 60 * 1000,
+  isValid: (artwork) => Boolean(artwork.imageUrl) && artwork.provider === 'pexels',
+});
 const pendingImageRequests = new Map<string, Promise<RecipeArtwork | null>>();
 
 export async function getRemoteRecipeArtwork(recipe: Recipe): Promise<RecipeArtwork | null> {
@@ -39,7 +35,7 @@ export async function getRemoteRecipeArtworkForQuery(query: string, label: strin
     return null;
   }
 
-  const cachedArtwork = await getCachedRecipeArtwork(normalizedQuery);
+  const cachedArtwork = await imageCache.get(normalizedQuery);
 
   if (cachedArtwork) {
     return cachedArtwork;
@@ -62,7 +58,7 @@ export async function getRemoteRecipeArtworkForQuery(query: string, label: strin
 }
 
 export function clearRecipeImageClientCache() {
-  memoryImageCache.clear();
+  imageCache.clear();
   pendingImageRequests.clear();
 }
 
@@ -88,95 +84,7 @@ async function fetchAndCacheRecipeArtwork(query: string, label: string) {
     provider: data.image.provider,
   };
 
-  await setCachedRecipeArtwork(query, artwork);
+  await imageCache.set(query, artwork);
 
   return artwork;
-}
-
-async function getCachedRecipeArtwork(query: string) {
-  const memoryEntry = memoryImageCache.get(query);
-
-  if (memoryEntry && isFreshCacheEntry(memoryEntry)) {
-    return memoryEntry.artwork;
-  }
-
-  if (memoryEntry) {
-    memoryImageCache.delete(query);
-  }
-
-  try {
-    const rawEntry = await AsyncStorage.getItem(getRecipeImageClientCacheKey(query));
-    const storageEntry = parseCacheEntry(rawEntry);
-
-    if (!storageEntry) {
-      return null;
-    }
-
-    if (!isFreshCacheEntry(storageEntry)) {
-      await AsyncStorage.removeItem(getRecipeImageClientCacheKey(query));
-      return null;
-    }
-
-    memoryImageCache.set(query, storageEntry);
-
-    return storageEntry.artwork;
-  } catch {
-    return null;
-  }
-}
-
-async function setCachedRecipeArtwork(query: string, artwork: RecipeArtwork) {
-  if (!artwork.imageUrl || artwork.provider !== 'pexels') {
-    return;
-  }
-
-  const entry: ClientRecipeImageCacheEntry = {
-    artwork: {
-      ...artwork,
-      imageUrl: artwork.imageUrl,
-      provider: artwork.provider,
-    },
-    expiresAt: new Date(Date.now() + recipeImageClientCacheTtlMs).toISOString(),
-  };
-
-  memoryImageCache.set(query, entry);
-
-  try {
-    await AsyncStorage.setItem(getRecipeImageClientCacheKey(query), JSON.stringify(entry));
-  } catch {
-    // Local cache writes should not block artwork rendering.
-  }
-}
-
-function getRecipeImageClientCacheKey(query: string) {
-  return `${recipeImageClientCachePrefix}${encodeURIComponent(query)}`;
-}
-
-function isFreshCacheEntry(entry: ClientRecipeImageCacheEntry) {
-  return new Date(entry.expiresAt).getTime() > Date.now();
-}
-
-function parseCacheEntry(rawEntry: string | null): ClientRecipeImageCacheEntry | null {
-  if (!rawEntry) {
-    return null;
-  }
-
-  try {
-    const entry = JSON.parse(rawEntry) as Partial<ClientRecipeImageCacheEntry>;
-
-    if (
-      !entry.expiresAt ||
-      !entry.artwork?.imageUrl ||
-      entry.artwork.provider !== 'pexels'
-    ) {
-      return null;
-    }
-
-    return {
-      artwork: entry.artwork,
-      expiresAt: entry.expiresAt,
-    };
-  } catch {
-    return null;
-  }
 }

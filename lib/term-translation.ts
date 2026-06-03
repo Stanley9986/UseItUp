@@ -1,22 +1,22 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { createClientCache } from '@/lib/client-cache';
 import { supabase } from '@/lib/supabase';
 
 type TermsResponse = {
   terms?: Record<string, string>;
 };
 
-type ClientTermCacheEntry = {
-  translation: string;
-  expiresAt: string;
-};
-
-const termCachePrefix = 'useitup:term-translation-cache:v1:';
-const termCacheTtlMs = 30 * 24 * 60 * 60 * 1000;
-const memoryTermCache = new Map<string, ClientTermCacheEntry>();
+const termCache = createClientCache<string>({
+  prefix: 'useitup:term-translation-cache:v1:',
+  ttlMs: 30 * 24 * 60 * 60 * 1000,
+  isValid: (value) => typeof value === 'string',
+});
 
 function normalizeTerm(term: string) {
   return term.trim().toLowerCase();
+}
+
+function cacheKey(term: string, targetLanguage: string) {
+  return `${normalizeTerm(term)}:${targetLanguage}`;
 }
 
 // Translate short item/ingredient names into the target language, returned as a
@@ -37,7 +37,7 @@ export async function translateTerms(
   const uncached: string[] = [];
 
   for (const term of unique) {
-    const cached = await getCachedTerm(term, targetLanguage);
+    const cached = await termCache.get(cacheKey(term, targetLanguage));
 
     if (cached != null) {
       resolved[term] = cached;
@@ -55,7 +55,7 @@ export async function translateTerms(
 
         if (typeof translation === 'string') {
           resolved[term] = translation;
-          await setCachedTerm(term, targetLanguage, translation);
+          await termCache.set(cacheKey(term, targetLanguage), translation);
         }
       }),
     );
@@ -81,85 +81,4 @@ async function fetchTerms(terms: string[], targetLanguage: string) {
   }
 
   return data.terms;
-}
-
-async function getCachedTerm(term: string, targetLanguage: string) {
-  const key = getCacheKey(term, targetLanguage);
-  const memoryEntry = memoryTermCache.get(key);
-
-  if (memoryEntry && isFreshCacheEntry(memoryEntry)) {
-    return memoryEntry.translation;
-  }
-
-  if (memoryEntry) {
-    memoryTermCache.delete(key);
-  }
-
-  try {
-    const raw = await AsyncStorage.getItem(getStorageKey(term, targetLanguage));
-    const entry = parseCacheEntry(raw);
-
-    if (!entry) {
-      return null;
-    }
-
-    if (!isFreshCacheEntry(entry)) {
-      await AsyncStorage.removeItem(getStorageKey(term, targetLanguage));
-      return null;
-    }
-
-    memoryTermCache.set(key, entry);
-
-    return entry.translation;
-  } catch {
-    return null;
-  }
-}
-
-async function setCachedTerm(term: string, targetLanguage: string, translation: string) {
-  const entry: ClientTermCacheEntry = {
-    translation,
-    expiresAt: new Date(Date.now() + termCacheTtlMs).toISOString(),
-  };
-
-  memoryTermCache.set(getCacheKey(term, targetLanguage), entry);
-
-  try {
-    await AsyncStorage.setItem(getStorageKey(term, targetLanguage), JSON.stringify(entry));
-  } catch {
-    // Local cache writes should not block rendering translated names.
-  }
-}
-
-function getCacheKey(term: string, targetLanguage: string) {
-  return `${normalizeTerm(term)}:${targetLanguage}`;
-}
-
-function getStorageKey(term: string, targetLanguage: string) {
-  return `${termCachePrefix}${encodeURIComponent(getCacheKey(term, targetLanguage))}`;
-}
-
-function isFreshCacheEntry(entry: ClientTermCacheEntry) {
-  return new Date(entry.expiresAt).getTime() > Date.now();
-}
-
-function parseCacheEntry(raw: string | null): ClientTermCacheEntry | null {
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const entry = JSON.parse(raw) as Partial<ClientTermCacheEntry>;
-
-    if (!entry.expiresAt || typeof entry.translation !== 'string') {
-      return null;
-    }
-
-    return {
-      translation: entry.translation,
-      expiresAt: entry.expiresAt,
-    };
-  } catch {
-    return null;
-  }
 }

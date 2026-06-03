@@ -35,7 +35,7 @@ describe('recipe image client cache', () => {
   it('returns persisted cached artwork without invoking the Edge Function', async () => {
     asyncStorageMock.getItem.mockResolvedValue(
       JSON.stringify({
-        artwork: {
+        value: {
           category: 'vegetable',
           imageUrl: 'https://images.pexels.com/spinach.jpg',
           label: 'Spinach',
@@ -110,7 +110,7 @@ describe('recipe image client cache', () => {
   it('removes stale persisted entries before fetching fresh artwork', async () => {
     asyncStorageMock.getItem.mockResolvedValue(
       JSON.stringify({
-        artwork: {
+        value: {
           category: 'vegetable',
           imageUrl: 'https://images.pexels.com/old.jpg',
           label: 'Old spinach',
