@@ -203,62 +203,19 @@ async function handleTranslateTerms(input: Record<string, unknown>) {
 }
 
 async function getCachedTerm(sourceHash: string, targetLanguage: string) {
-  const config = getTranslationCacheConfig();
+  const record = await readCacheRow(sourceHash, targetLanguage, 'title');
 
-  if (!config) {
-    return null;
-  }
-
-  const url = new URL(config.restUrl);
-  url.searchParams.set('source_hash', `eq.${sourceHash}`);
-  url.searchParams.set('target_language', `eq.${targetLanguage}`);
-  url.searchParams.set('select', 'title');
-  url.searchParams.set('limit', '1');
-
-  try {
-    const response = await fetch(url, { headers: config.headers });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const records = await response.json();
-    const record = Array.isArray(records) ? records[0] : null;
-
-    return record && typeof record.title === 'string' ? record.title : null;
-  } catch {
-    return null;
-  }
+  return record && typeof record.title === 'string' ? record.title : null;
 }
 
 async function cacheTerm(sourceHash: string, targetLanguage: string, translation: string) {
-  const config = getTranslationCacheConfig();
-
-  if (!config) {
-    return;
-  }
-
-  const url = new URL(config.restUrl);
-  url.searchParams.set('on_conflict', 'source_hash,target_language');
-
-  try {
-    await fetch(url, {
-      method: 'POST',
-      headers: {
-        ...config.headers,
-        Prefer: 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify({
-        source_hash: sourceHash,
-        target_language: targetLanguage,
-        title: translation,
-        provider: 'gemini',
-        updated_at: new Date().toISOString(),
-      }),
-    });
-  } catch {
-    // Cache writes must not block returning the translation.
-  }
+  await upsertCacheRow({
+    source_hash: sourceHash,
+    target_language: targetLanguage,
+    title: translation,
+    provider: 'gemini',
+    updated_at: new Date().toISOString(),
+  });
 }
 
 function buildTranslation(source, translated) {
@@ -295,37 +252,68 @@ function getTranslationCacheConfig() {
   };
 }
 
-async function getCachedTranslation(sourceHash: string, targetLanguage: string) {
+// Shared recipe_translations read/write. Both recipe and term translations are
+// content-addressed by (source_hash, target_language) in this one table.
+async function readCacheRow(sourceHash: string, targetLanguage: string, select: string) {
   const config = getTranslationCacheConfig();
 
   if (!config) {
-    return { translation: null, status: 'disabled' };
+    return null;
   }
 
   const url = new URL(config.restUrl);
   url.searchParams.set('source_hash', `eq.${sourceHash}`);
   url.searchParams.set('target_language', `eq.${targetLanguage}`);
-  url.searchParams.set('select', 'title,description,instructions,ingredient_names');
+  url.searchParams.set('select', select);
   url.searchParams.set('limit', '1');
 
   try {
     const response = await fetch(url, { headers: config.headers });
 
     if (!response.ok) {
-      return { translation: null, status: `read_failed_${response.status}` };
+      return null;
     }
 
     const records = await response.json();
-    const record = Array.isArray(records) ? records[0] : null;
 
-    if (!record) {
-      return { translation: null, status: 'miss' };
-    }
-
-    return { translation: mapTranslationRecord(record), status: 'hit' };
+    return Array.isArray(records) ? records[0] ?? null : null;
   } catch {
-    return { translation: null, status: 'read_error' };
+    return null;
   }
+}
+
+async function upsertCacheRow(row: Record<string, unknown>) {
+  const config = getTranslationCacheConfig();
+
+  if (!config) {
+    return;
+  }
+
+  const url = new URL(config.restUrl);
+  url.searchParams.set('on_conflict', 'source_hash,target_language');
+
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...config.headers,
+        Prefer: 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify(row),
+    });
+  } catch {
+    // Cache writes must not block returning the translation.
+  }
+}
+
+async function getCachedTranslation(sourceHash: string, targetLanguage: string) {
+  const record = await readCacheRow(
+    sourceHash,
+    targetLanguage,
+    'title,description,instructions,ingredient_names',
+  );
+
+  return { translation: record ? mapTranslationRecord(record) : null };
 }
 
 async function cacheTranslation(
@@ -338,41 +326,14 @@ async function cacheTranslation(
     ingredientNames: Record<string, string>;
   },
 ) {
-  const config = getTranslationCacheConfig();
-
-  if (!config) {
-    return 'write_disabled';
-  }
-
-  const url = new URL(config.restUrl);
-  url.searchParams.set('on_conflict', 'source_hash,target_language');
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        ...config.headers,
-        Prefer: 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify({
-        source_hash: sourceHash,
-        target_language: targetLanguage,
-        title: translation.title,
-        description: translation.description,
-        instructions: translation.instructions,
-        ingredient_names: translation.ingredientNames,
-        provider: 'gemini',
-        updated_at: new Date().toISOString(),
-      }),
-    });
-
-    if (!response.ok) {
-      return `write_failed_${response.status}`;
-    }
-
-    return 'write_succeeded';
-  } catch {
-    // Cache writes must not block returning the translation.
-    return 'write_error';
-  }
+  await upsertCacheRow({
+    source_hash: sourceHash,
+    target_language: targetLanguage,
+    title: translation.title,
+    description: translation.description,
+    instructions: translation.instructions,
+    ingredient_names: translation.ingredientNames,
+    provider: 'gemini',
+    updated_at: new Date().toISOString(),
+  });
 }
