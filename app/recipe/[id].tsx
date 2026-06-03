@@ -7,6 +7,7 @@ import { Button, Card, ConfirmDialog, palette, RecipeArtworkImage, Screen, Secti
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import { useTranslatedRecipe } from '@/hooks/use-recipe-translation';
 import { getErrorMessage } from '@/lib/errors';
 import {
   addFavoriteRecipe,
@@ -44,13 +45,17 @@ export default function RecipeDetailScreen() {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [message, setMessage] = useState<ScreenMessage | null>(null);
   const recipe = useMemo(() => savedRecipe ?? findGeneratedRecipe(id) ?? null, [id, savedRecipe]);
+  // displayRecipe is the recipe rendered to the user, translated into the active
+  // language when needed. recipe (the original) is kept for actions and
+  // persistence so favorites/edits stay in the source language.
+  const { recipe: displayRecipe, isTranslating } = useTranslatedRecipe(recipe);
   const isHistorySource = source === 'history';
   const canUpdatePantry = !isHistorySource && Boolean(recipe);
   const canManageRecipe = Boolean(user && id && isUuid(id) && recipe);
-  const availableIngredients = recipe?.ingredients.filter((ingredient) => ingredient.isAvailable) ?? [];
+  const availableIngredients = displayRecipe?.ingredients.filter((ingredient) => ingredient.isAvailable) ?? [];
   // Only pantry-linked ingredients are decremented when cooking, so they define
   // the recipe's real pantry impact.
-  const pantryIngredients = recipe?.ingredients.filter((ingredient) => ingredient.pantryItemId) ?? [];
+  const pantryIngredients = displayRecipe?.ingredients.filter((ingredient) => ingredient.pantryItemId) ?? [];
 
   const loadRecipe = useCallback(
     async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
@@ -203,12 +208,14 @@ export default function RecipeDetailScreen() {
     );
   }
 
+  const view = displayRecipe ?? recipe;
+
   return (
     <Screen
       onRefresh={refresh}
       refreshing={isRefreshing}
-      title={recipe.title}
-      subtitle={recipe.description}
+      title={view.title}
+      subtitle={view.description}
       headerAction={
         <Button compact onPress={() => safeBack(isHistorySource ? '/cook-history' : '/(tabs)/recipes')} secondary icon="arrow-back">
           {t('back')}
@@ -248,6 +255,7 @@ export default function RecipeDetailScreen() {
         <Meta icon="time-outline" label={`${recipe.prepTimeMinutes ?? '--'} ${t('min')}`} />
         {recipe.usesExpiringItems ? <Meta icon="leaf-outline" label={t('usesExpiringItems')} /> : null}
         {isFavorite ? <Meta icon="star" label={t('favorite')} /> : null}
+        {isTranslating ? <Meta icon="language-outline" label={t('loading')} /> : null}
       </View>
 
       {canManageRecipe ? (
@@ -306,8 +314,8 @@ export default function RecipeDetailScreen() {
         <SectionTitle>{t('missingIngredients')}</SectionTitle>
         <Card>
           <Text style={styles.body}>
-            {recipe.missingIngredients.length
-              ? recipe.missingIngredients.join(', ')
+            {view.missingIngredients.length
+              ? view.missingIngredients.join(', ')
               : t('nothingEssentialMissing')}
           </Text>
           {recipe.missingIngredients.length ? (
@@ -326,7 +334,7 @@ export default function RecipeDetailScreen() {
       <View style={styles.section}>
         <SectionTitle>{t('instructions')}</SectionTitle>
         <Card>
-          {recipe.instructions.map((instruction, index) => (
+          {view.instructions.map((instruction, index) => (
             <View key={instruction} style={styles.step}>
               <Text style={styles.stepNumber}>{index + 1}</Text>
               <Text style={styles.body}>{instruction}</Text>
