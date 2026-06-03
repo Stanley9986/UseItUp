@@ -1,21 +1,30 @@
-// Response schema for translating an existing recipe's user-facing content.
-// instructions and ingredientNames are returned as arrays parallel to the
-// input order so they can be re-aligned to the source by position.
+// Response schema for batch-translating recipe content. The recipes array, and
+// each recipe's instructions and ingredientNames, are returned parallel to the
+// input order so they can be re-aligned to their sources by position.
 export const translationSchema = {
   type: 'object',
   properties: {
-    title: { type: 'string' },
-    description: { type: 'string' },
-    instructions: {
+    recipes: {
       type: 'array',
-      items: { type: 'string' },
-    },
-    ingredientNames: {
-      type: 'array',
-      items: { type: 'string' },
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          description: { type: 'string' },
+          instructions: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+          ingredientNames: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+        required: ['title', 'description', 'instructions', 'ingredientNames'],
+      },
     },
   },
-  required: ['title', 'description', 'instructions', 'ingredientNames'],
+  required: ['recipes'],
 };
 
 export const recipeSchema = {

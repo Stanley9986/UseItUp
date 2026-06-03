@@ -78,37 +78,44 @@ describe('createRecipePrompt', () => {
 });
 
 describe('createTranslationPrompt', () => {
-  it('builds a payload targeting the requested language and trims content', () => {
+  it('builds a batched payload targeting the requested language and trims content', () => {
     const prompt = createTranslationPrompt({
       targetLanguage: 'zh',
-      title: '  Lemon Herb Chicken  ',
-      description: 'Juicy grilled chicken.',
-      instructions: ['Season the chicken.', 123, 'Grill until done.'],
-      ingredientNames: ['Chicken', 'Lemon', ''],
+      recipes: [
+        {
+          title: '  Lemon Herb Chicken  ',
+          description: 'Juicy grilled chicken.',
+          instructions: ['Season the chicken.', 123, 'Grill until done.'],
+          ingredientNames: ['Chicken', 'Lemon', ''],
+        },
+      ],
     });
 
     expect(prompt.systemInstruction).toContain('Translate every string into Chinese');
     expect(prompt.systemInstruction).toContain('Keep JSON property names in English');
-    expect(prompt.systemInstruction).toContain('same order and the same count');
+    expect(prompt.systemInstruction).toContain('array of recipes');
     expect(prompt.userPayload).toEqual({
       targetLanguage: 'zh',
       targetLanguageName: 'Chinese',
-      title: 'Lemon Herb Chicken',
-      description: 'Juicy grilled chicken.',
-      instructions: ['Season the chicken.', 'Grill until done.'],
-      ingredientNames: ['Chicken', 'Lemon'],
+      recipes: [
+        {
+          title: 'Lemon Herb Chicken',
+          description: 'Juicy grilled chicken.',
+          instructions: ['Season the chicken.', 'Grill until done.'],
+          ingredientNames: ['Chicken', 'Lemon'],
+        },
+      ],
     });
   });
 
-  it('falls back to English for an unsupported target language', () => {
+  it('falls back to English and an empty batch for bad input', () => {
     const prompt = createTranslationPrompt({
       targetLanguage: 'klingon',
-      title: 'Toast',
+      recipes: undefined,
     });
 
     expect(prompt.userPayload.targetLanguage).toBe('en');
     expect(prompt.userPayload.targetLanguageName).toBe('English');
-    expect(prompt.userPayload.instructions).toEqual([]);
-    expect(prompt.userPayload.ingredientNames).toEqual([]);
+    expect(prompt.userPayload.recipes).toEqual([]);
   });
 });

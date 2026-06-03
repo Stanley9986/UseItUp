@@ -1,6 +1,11 @@
 // @ts-nocheck
 import { corsHeaders, jsonResponse } from './shared/http.ts';
-import { createRecipePrompt, createTranslationPrompt, normalizeLanguageCode } from './shared/prompt.ts';
+import {
+  createRecipePrompt,
+  createTranslationPrompt,
+  normalizeLanguageCode,
+  sanitizeTranslationRecipe,
+} from './shared/prompt.ts';
 import { getRecipeProvider } from './providers/index.ts';
 import { translateWithGemini } from './providers/gemini.ts';
 import {
@@ -62,59 +67,78 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 async function handleTranslate(input: Record<string, unknown>) {
   const targetLanguage = normalizeLanguageCode(input.targetLanguage);
-  const source = {
-    title: typeof input.title === 'string' ? input.title : '',
-    description: typeof input.description === 'string' ? input.description : '',
-    instructions: Array.isArray(input.instructions)
-      ? input.instructions.filter((value) => typeof value === 'string')
-      : [],
-    ingredientNames: Array.isArray(input.ingredientNames)
-      ? input.ingredientNames.filter((value) => typeof value === 'string')
-      : [],
-  };
+  const sources = Array.isArray(input.recipes) ? input.recipes.map(sanitizeTranslationRecipe) : [];
 
-  if (!source.title && !source.description && !source.instructions.length && !source.ingredientNames.length) {
+  if (!sources.length) {
     return jsonResponse({ error: 'Nothing to translate' }, 400);
   }
 
-  const sourceHash = await hashRecipeSource(source);
-  const cached = await getCachedTranslation(sourceHash, targetLanguage);
+  // Resolve every recipe from cache first; only the misses go to Gemini, and
+  // they go in a single batched call.
+  const hashes = await Promise.all(sources.map(hashRecipeSource));
+  const cached = await Promise.all(hashes.map((hash) => getCachedTranslation(hash, targetLanguage)));
 
-  if (cached.translation) {
-    return jsonResponse({
-      translation: cached.translation,
-      source: 'cache',
-      cache: { status: cached.status },
-    });
+  const missIndexes = [];
+  const missSources = [];
+  cached.forEach((entry, index) => {
+    if (!entry.translation) {
+      missIndexes.push(index);
+      missSources.push(sources[index]);
+    }
+  });
+
+  let missTranslations = [];
+
+  if (missSources.length) {
+    try {
+      const result = await translateWithGemini(
+        createTranslationPrompt({ targetLanguage, recipes: missSources }),
+      );
+      const translated = Array.isArray(result?.recipes) ? result.recipes : [];
+      missTranslations = missSources.map((source, index) => buildTranslation(source, translated[index]));
+
+      await Promise.all(
+        missIndexes.map((sourceIndex, missIndex) =>
+          cacheTranslation(hashes[sourceIndex], targetLanguage, missTranslations[missIndex]),
+        ),
+      );
+    } catch (error) {
+      return jsonResponse(
+        { error: error instanceof Error ? error.message : 'Recipe translation failed' },
+        500,
+      );
+    }
   }
 
-  try {
-    const result = await translateWithGemini(createTranslationPrompt({ targetLanguage, ...source }));
-    const translation = {
-      title: typeof result?.title === 'string' ? result.title : source.title,
-      description: typeof result?.description === 'string' ? result.description : source.description,
-      instructions: Array.isArray(result?.instructions)
-        ? result.instructions.filter((value: unknown) => typeof value === 'string')
-        : source.instructions,
-      ingredientNames: buildIngredientNameMap(
-        source.ingredientNames,
-        Array.isArray(result?.ingredientNames) ? result.ingredientNames : [],
-      ),
-    };
+  const translations = sources.map((_source, index) => {
+    const hit = cached[index].translation;
 
-    const cacheStatus = await cacheTranslation(sourceHash, targetLanguage, translation);
+    return hit ?? missTranslations[missIndexes.indexOf(index)];
+  });
 
-    return jsonResponse({
-      translation,
-      source: 'gemini',
-      cache: { status: `${cached.status}_${cacheStatus}` },
-    });
-  } catch (error) {
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Recipe translation failed' },
-      500,
-    );
-  }
+  return jsonResponse({
+    translations,
+    cache: {
+      hits: sources.length - missSources.length,
+      misses: missSources.length,
+    },
+  });
+}
+
+function buildTranslation(source, translated) {
+  const record = translated && typeof translated === 'object' ? translated : {};
+
+  return {
+    title: typeof record.title === 'string' ? record.title : source.title,
+    description: typeof record.description === 'string' ? record.description : source.description,
+    instructions: Array.isArray(record.instructions)
+      ? record.instructions.filter((value: unknown) => typeof value === 'string')
+      : source.instructions,
+    ingredientNames: buildIngredientNameMap(
+      source.ingredientNames,
+      Array.isArray(record.ingredientNames) ? record.ingredientNames : [],
+    ),
+  };
 }
 
 function getTranslationCacheConfig() {

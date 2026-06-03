@@ -120,10 +120,14 @@ export function normalizeLanguageCode(value: unknown): keyof typeof languageName
 
 export type TranslationPromptInput = {
   targetLanguage: unknown;
-  title?: unknown;
-  description?: unknown;
-  instructions?: unknown;
-  ingredientNames?: unknown;
+  recipes: unknown;
+};
+
+export type TranslationRecipe = {
+  title: string;
+  description: string;
+  instructions: string[];
+  ingredientNames: string[];
 };
 
 export type TranslationPrompt = {
@@ -131,25 +135,26 @@ export type TranslationPrompt = {
   userPayload: {
     targetLanguage: keyof typeof languageNamesByCode;
     targetLanguageName: string;
-    title: string;
-    description: string;
-    instructions: string[];
-    ingredientNames: string[];
+    recipes: TranslationRecipe[];
   };
 };
 
+// One Gemini call translates a batch of recipes, so switching language costs a
+// single request regardless of how many recipes are on screen.
 export function createTranslationPrompt(input: TranslationPromptInput): TranslationPrompt {
   const targetLanguage = normalizeLanguageCode(input.targetLanguage);
+  const recipes = Array.isArray(input.recipes) ? input.recipes.map(sanitizeTranslationRecipe) : [];
 
   return {
     systemInstruction: [
       'You translate user-facing content for a home-cooking app.',
       `Translate every string into ${languageNamesByCode[targetLanguage]}.`,
+      'The input contains an array of recipes; translate every recipe.',
+      'Return recipes in the same order and the same count as the input.',
+      'Within each recipe, return instructions and ingredientNames in the same order and count as the input.',
       'Preserve meaning and keep it natural, concise, and appetizing.',
       'Keep JSON property names in English.',
-      'Return instructions in the same order and the same count as the input.',
-      'Return ingredientNames in the same order and the same count as the input.',
-      'Do not add, remove, merge, split, or reorder list items.',
+      'Do not add, remove, merge, split, or reorder recipes or list items.',
       'Keep numbers, units, and measurements accurate.',
       'Leave brand names and proper nouns untranslated when there is no common equivalent.',
       'Return only valid JSON that matches the provided translation response schema.',
@@ -157,11 +162,19 @@ export function createTranslationPrompt(input: TranslationPromptInput): Translat
     userPayload: {
       targetLanguage,
       targetLanguageName: languageNamesByCode[targetLanguage],
-      title: cleanString(input.title),
-      description: cleanString(input.description),
-      instructions: cleanStringList(input.instructions),
-      ingredientNames: cleanStringList(input.ingredientNames),
+      recipes,
     },
+  };
+}
+
+export function sanitizeTranslationRecipe(value: unknown): TranslationRecipe {
+  const record = isRecord(value) ? value : {};
+
+  return {
+    title: cleanString(record.title),
+    description: cleanString(record.description),
+    instructions: cleanStringList(record.instructions),
+    ingredientNames: cleanStringList(record.ingredientNames),
   };
 }
 
