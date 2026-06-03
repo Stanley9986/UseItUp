@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
@@ -47,9 +48,13 @@ export default function CookHistoryScreen() {
   );
   const { isRefreshing, refresh } = useRefresh(() => loadHistory({ showLoading: false }));
 
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
+  // Reload on focus so returning here (e.g. after deleting an entry) shows the
+  // current list rather than a stale snapshot.
+  useFocusEffect(
+    useCallback(() => {
+      loadHistory();
+    }, [loadHistory]),
+  );
 
   return (
     <Screen

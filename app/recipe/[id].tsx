@@ -145,7 +145,9 @@ export default function RecipeDetailScreen() {
         if (typeof sessionId === 'string' && sessionId) {
           await deleteCookSession(user.id, sessionId);
         }
-        router.replace('/cook-history');
+        // Return to the existing history screen (which refreshes on focus)
+        // rather than pushing a second one onto the stack.
+        safeBack('/cook-history');
         return;
       }
 
