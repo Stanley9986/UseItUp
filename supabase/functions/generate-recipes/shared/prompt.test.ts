@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createRecipePrompt } from './prompt';
+import { createRecipePrompt, createTranslationPrompt } from './prompt';
 
 describe('createRecipePrompt', () => {
   it('includes user preferences in the payload', () => {
@@ -74,5 +74,41 @@ describe('createRecipePrompt', () => {
       languageCode: 'en',
       languageName: 'English',
     });
+  });
+});
+
+describe('createTranslationPrompt', () => {
+  it('builds a payload targeting the requested language and trims content', () => {
+    const prompt = createTranslationPrompt({
+      targetLanguage: 'zh',
+      title: '  Lemon Herb Chicken  ',
+      description: 'Juicy grilled chicken.',
+      instructions: ['Season the chicken.', 123, 'Grill until done.'],
+      ingredientNames: ['Chicken', 'Lemon', ''],
+    });
+
+    expect(prompt.systemInstruction).toContain('Translate every string into Chinese');
+    expect(prompt.systemInstruction).toContain('Keep JSON property names in English');
+    expect(prompt.systemInstruction).toContain('same order and the same count');
+    expect(prompt.userPayload).toEqual({
+      targetLanguage: 'zh',
+      targetLanguageName: 'Chinese',
+      title: 'Lemon Herb Chicken',
+      description: 'Juicy grilled chicken.',
+      instructions: ['Season the chicken.', 'Grill until done.'],
+      ingredientNames: ['Chicken', 'Lemon'],
+    });
+  });
+
+  it('falls back to English for an unsupported target language', () => {
+    const prompt = createTranslationPrompt({
+      targetLanguage: 'klingon',
+      title: 'Toast',
+    });
+
+    expect(prompt.userPayload.targetLanguage).toBe('en');
+    expect(prompt.userPayload.targetLanguageName).toBe('English');
+    expect(prompt.userPayload.instructions).toEqual([]);
+    expect(prompt.userPayload.ingredientNames).toEqual([]);
   });
 });

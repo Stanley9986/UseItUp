@@ -93,9 +93,9 @@ function cleanStringList(value: unknown) {
     .filter(Boolean);
 }
 
-const defaultLanguageCode = 'en';
+export const defaultLanguageCode = 'en';
 
-const languageNamesByCode = {
+export const languageNamesByCode = {
   en: 'English',
   es: 'Spanish',
   zh: 'Chinese',
@@ -108,7 +108,7 @@ const languageNamesByCode = {
   vi: 'Vietnamese',
 } as const;
 
-function normalizeLanguageCode(value: unknown): keyof typeof languageNamesByCode {
+export function normalizeLanguageCode(value: unknown): keyof typeof languageNamesByCode {
   if (typeof value !== 'string') {
     return defaultLanguageCode;
   }
@@ -116,4 +116,55 @@ function normalizeLanguageCode(value: unknown): keyof typeof languageNamesByCode
   const normalized = value.trim().toLowerCase().split('-')[0] as keyof typeof languageNamesByCode;
 
   return normalized in languageNamesByCode ? normalized : defaultLanguageCode;
+}
+
+export type TranslationPromptInput = {
+  targetLanguage: unknown;
+  title?: unknown;
+  description?: unknown;
+  instructions?: unknown;
+  ingredientNames?: unknown;
+};
+
+export type TranslationPrompt = {
+  systemInstruction: string;
+  userPayload: {
+    targetLanguage: keyof typeof languageNamesByCode;
+    targetLanguageName: string;
+    title: string;
+    description: string;
+    instructions: string[];
+    ingredientNames: string[];
+  };
+};
+
+export function createTranslationPrompt(input: TranslationPromptInput): TranslationPrompt {
+  const targetLanguage = normalizeLanguageCode(input.targetLanguage);
+
+  return {
+    systemInstruction: [
+      'You translate user-facing content for a home-cooking app.',
+      `Translate every string into ${languageNamesByCode[targetLanguage]}.`,
+      'Preserve meaning and keep it natural, concise, and appetizing.',
+      'Keep JSON property names in English.',
+      'Return instructions in the same order and the same count as the input.',
+      'Return ingredientNames in the same order and the same count as the input.',
+      'Do not add, remove, merge, split, or reorder list items.',
+      'Keep numbers, units, and measurements accurate.',
+      'Leave brand names and proper nouns untranslated when there is no common equivalent.',
+      'Return only valid JSON that matches the provided translation response schema.',
+    ].join(' '),
+    userPayload: {
+      targetLanguage,
+      targetLanguageName: languageNamesByCode[targetLanguage],
+      title: cleanString(input.title),
+      description: cleanString(input.description),
+      instructions: cleanStringList(input.instructions),
+      ingredientNames: cleanStringList(input.ingredientNames),
+    },
+  };
+}
+
+function cleanString(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
 }

@@ -1,7 +1,38 @@
-import { RecipePrompt } from '../shared/prompt.ts';
-import { recipeSchema } from '../shared/schema.ts';
+import { RecipePrompt, TranslationPrompt } from '../shared/prompt.ts';
+import { recipeSchema, translationSchema } from '../shared/schema.ts';
 
 export async function generateWithGemini(prompt: RecipePrompt) {
+  return requestGeminiJson({
+    systemInstruction: prompt.systemInstruction,
+    userPayload: prompt.userPayload,
+    responseSchema: recipeSchema,
+  });
+}
+
+export async function translateWithGemini(prompt: TranslationPrompt) {
+  // Faithful translation wants a low temperature regardless of the generation
+  // temperature configured for recipe creation.
+  return requestGeminiJson({
+    systemInstruction: prompt.systemInstruction,
+    userPayload: prompt.userPayload,
+    responseSchema: translationSchema,
+    temperature: 0.2,
+  });
+}
+
+type GeminiJsonRequest = {
+  systemInstruction: string;
+  userPayload: unknown;
+  responseSchema: unknown;
+  temperature?: number;
+};
+
+async function requestGeminiJson({
+  systemInstruction,
+  userPayload,
+  responseSchema,
+  temperature,
+}: GeminiJsonRequest) {
   const apiKey = Deno.env.get('GEMINI_API_KEY');
 
   if (!apiKey) {
@@ -10,7 +41,10 @@ export async function generateWithGemini(prompt: RecipePrompt) {
 
   const model = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash';
   const maxOutputTokens = readPositiveInteger(Deno.env.get('GEMINI_MAX_OUTPUT_TOKENS'), 8192);
-  const temperature = readTemperature(Deno.env.get('GEMINI_TEMPERATURE'), 0.7);
+  const resolvedTemperature =
+    typeof temperature === 'number'
+      ? temperature
+      : readTemperature(Deno.env.get('GEMINI_TEMPERATURE'), 0.7);
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -20,18 +54,18 @@ export async function generateWithGemini(prompt: RecipePrompt) {
       },
       body: JSON.stringify({
         systemInstruction: {
-          parts: [{ text: prompt.systemInstruction }],
+          parts: [{ text: systemInstruction }],
         },
         contents: [
           {
             role: 'user',
-            parts: [{ text: JSON.stringify(prompt.userPayload) }],
+            parts: [{ text: JSON.stringify(userPayload) }],
           },
         ],
         generationConfig: {
           response_mime_type: 'application/json',
-          response_json_schema: recipeSchema,
-          temperature,
+          response_json_schema: responseSchema,
+          temperature: resolvedTemperature,
           maxOutputTokens,
         },
       }),
@@ -41,7 +75,7 @@ export async function generateWithGemini(prompt: RecipePrompt) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(data?.error?.message ?? 'Gemini recipe generation failed');
+    throw new Error(data?.error?.message ?? 'Gemini request failed');
   }
 
   const candidate = data?.candidates?.[0];
@@ -52,7 +86,7 @@ export async function generateWithGemini(prompt: RecipePrompt) {
     : '';
 
   if (!outputText) {
-    throw new Error('Gemini recipe generation returned no content');
+    throw new Error('Gemini returned no content');
   }
 
   try {
@@ -65,7 +99,7 @@ export async function generateWithGemini(prompt: RecipePrompt) {
     }
 
     throw new Error(
-      `Gemini returned incomplete recipe JSON${
+      `Gemini returned incomplete JSON${
         candidate?.finishReason ? ` (${candidate.finishReason})` : ''
       }. Please try again.`,
     );
