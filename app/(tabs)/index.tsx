@@ -8,6 +8,7 @@ import { Button, Card, ExpirationText, palette, PantryArtworkImage, RecipeArtwor
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import { useTranslatedRecipes } from '@/hooks/use-recipe-translation';
 import {
   buildExpiryReminderPlan,
   defaultExpiryReminderSettings,
@@ -108,6 +109,10 @@ export default function HomeScreen() {
   const pantryCount = pantryItems.filter((item) => item.storageLocation === 'pantry').length;
   const displayName = user?.user_metadata?.name ?? user?.email?.split('@')[0] ?? t('there');
   const suggestedRecipes = savedRecipes;
+  // Translate only the cards actually shown. Artwork stays keyed off the
+  // original recipe so image search/caching is not split per language.
+  const visibleSuggested = useMemo(() => suggestedRecipes.slice(0, 6), [suggestedRecipes]);
+  const { recipes: displaySuggested } = useTranslatedRecipes(visibleSuggested);
   const reminderPlan = useMemo(
     () => buildExpiryReminderPlan(pantryItems, { ...reminderSettings, enabled: true }),
     [pantryItems, reminderSettings],
@@ -252,10 +257,10 @@ export default function HomeScreen() {
         {suggestedRecipes.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.mealRow}>
-              {suggestedRecipes.slice(0, 6).map((recipe) => (
+              {displaySuggested.map((recipe, index) => (
                 <Link asChild href={`/recipe/${recipe.id}`} key={recipe.id}>
                   <Pressable style={styles.mealCard}>
-                    <MealArtwork recipe={recipe} />
+                    <MealArtwork recipe={visibleSuggested[index]} />
                     <View style={styles.timePill}>
                       <Ionicons color={palette.ink} name="time-outline" size={12} />
                       <Text style={styles.timePillText}>{recipe.prepTimeMinutes ?? '--'} {t('min')}</Text>

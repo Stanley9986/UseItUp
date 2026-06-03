@@ -288,9 +288,16 @@ export function PantryCard({ item, showEdit = false }: { item: PantryItem; showE
   );
 }
 
-export function RecipeRowCard({ onToggleFavorite, recipe }: { recipe: Recipe } & RecipeCardActionProps) {
+export function RecipeRowCard({
+  onToggleFavorite,
+  recipe,
+  display,
+}: { recipe: Recipe; display?: Recipe } & RecipeCardActionProps) {
   const { t } = useAppLanguage();
-  const available = recipe.ingredients
+  // display carries translated text; recipe stays the source for artwork (its
+  // image query keys off English category keywords) and favorite actions.
+  const view = display ?? recipe;
+  const available = view.ingredients
     .filter((ingredient) => ingredient.isAvailable)
     .map((ingredient) => ingredient.name)
     .slice(0, 3)
@@ -310,10 +317,10 @@ export function RecipeRowCard({ onToggleFavorite, recipe }: { recipe: Recipe } &
               </View>
             </View>
             <Text numberOfLines={2} style={styles.itemTitle}>
-              {recipe.title}
+              {view.title}
             </Text>
             <Text numberOfLines={2} style={styles.description}>
-              {recipe.description}
+              {view.description}
             </Text>
             <Text numberOfLines={1} style={styles.meta}>
               {t('uses', { ingredients: available })}
@@ -329,8 +336,13 @@ export function RecipeRowCard({ onToggleFavorite, recipe }: { recipe: Recipe } &
   );
 }
 
-export function FavoriteRecipeCard({ onToggleFavorite, recipe }: { recipe: Recipe } & RecipeCardActionProps) {
+export function FavoriteRecipeCard({
+  onToggleFavorite,
+  recipe,
+  display,
+}: { recipe: Recipe; display?: Recipe } & RecipeCardActionProps) {
   const { t } = useAppLanguage();
+  const view = display ?? recipe;
 
   return (
     <Card style={styles.favoriteRecipeCard}>
@@ -339,7 +351,7 @@ export function FavoriteRecipeCard({ onToggleFavorite, recipe }: { recipe: Recip
           <RecipeArtworkImage recipe={recipe} style={styles.favoriteRecipeImage} />
           <View style={styles.favoriteRecipeBody}>
             <Text numberOfLines={2} style={styles.itemTitle}>
-              {recipe.title}
+              {view.title}
             </Text>
             <View style={styles.recipeMetaRow}>
               <Ionicons color={palette.blue} name="time-outline" size={14} />

@@ -27,6 +27,7 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import { useTranslatedRecipes } from '@/hooks/use-recipe-translation';
 import { getErrorMessage } from '@/lib/errors';
 import { addFavoriteRecipe, getFavoriteRecipesPage, removeFavoriteRecipeByTitle } from '@/lib/favorite-recipes';
 import { setGeneratedRecipes } from '@/lib/generated-recipes';
@@ -85,6 +86,10 @@ export default function RecipesScreen() {
       })),
     [favorites, sort, suggested],
   );
+  // Translate each list in one batched call; cards render the translated copy
+  // but keep the original for artwork and favorite actions.
+  const { recipes: displaySuggestedView } = useTranslatedRecipes(suggestedView);
+  const { recipes: displayFavorites } = useTranslatedRecipes(favorites);
   const favoriteCanScroll = favoriteContentWidth > favoriteRailWidth + 1;
   const generationSteps = useMemo(
     () => [
@@ -439,11 +444,12 @@ export default function RecipesScreen() {
               onScroll={handleFavoriteScroll}
               scrollEventThrottle={16}
               showsHorizontalScrollIndicator={false}>
-              {favorites.map((recipe) => (
+              {favorites.map((recipe, index) => (
                 <FavoriteRecipeCard
                   key={recipe.id}
                   onToggleFavorite={() => handleToggleFavorite(recipe)}
                   recipe={recipe}
+                  display={displayFavorites[index]}
                 />
               ))}
             </ScrollView>
@@ -472,8 +478,13 @@ export default function RecipesScreen() {
             [0, 1, 2].map((item) => <RecipeSkeleton key={item} index={item} />)
           ) : suggestedView.length ? (
             <>
-              {suggestedView.map((recipe) => (
-                <RecipeRowCard key={recipe.id} onToggleFavorite={() => handleToggleFavorite(recipe)} recipe={recipe} />
+              {suggestedView.map((recipe, index) => (
+                <RecipeRowCard
+                  key={recipe.id}
+                  onToggleFavorite={() => handleToggleFavorite(recipe)}
+                  recipe={recipe}
+                  display={displaySuggestedView[index]}
+                />
               ))}
               {hasMoreSuggested ? (
                 <Button
