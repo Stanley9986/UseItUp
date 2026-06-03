@@ -19,13 +19,16 @@ describe('language helpers', () => {
     expect(getLanguageOption('ko')).toEqual({
       code: 'ko',
       label: 'Korean',
+      autonym: '한국어',
       promptName: 'Korean',
     });
   });
 
-  it('translates app copy with English fallback for missing language keys', () => {
+  it('translates app copy and falls back to English when a dictionary is absent', () => {
     expect(translate('es', 'appLanguage')).toBe('Idioma de la app');
-    expect(translate('fr', 'account')).toBe('Account');
+    expect(translate('fr', 'account')).toBe('Compte');
+    // 'en' has no entry in dictionaries, so this exercises the `?? en[key]` fallback.
+    expect(translate('en', 'account')).toBe('Account');
   });
 
   it('interpolates translated app copy', () => {
