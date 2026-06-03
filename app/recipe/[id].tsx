@@ -19,6 +19,7 @@ import { findGeneratedRecipe, removeGeneratedRecipe } from '@/lib/generated-reci
 import { safeBack } from '@/lib/navigation';
 import { formatIngredientQuantity } from '@/lib/quantity';
 import { dismissSuggestedRecipe, getSavedRecipeById } from '@/lib/recipes';
+import { deleteCookSession } from '@/lib/cook-history';
 import { addShoppingListItemsFromRecipe } from '@/lib/shopping-list';
 import { getShoppingListSourceRecipeId } from '@/lib/shopping-list-mappers';
 import { Recipe } from '@/types/useitup';
@@ -29,7 +30,7 @@ type ScreenMessage = {
 };
 
 export default function RecipeDetailScreen() {
-  const { id, source } = useLocalSearchParams<{ id: string; source?: string }>();
+  const { id, source, sessionId } = useLocalSearchParams<{ id: string; source?: string; sessionId?: string }>();
   const { user } = useAuth();
   const { t } = useAppLanguage();
   const [savedRecipe, setSavedRecipe] = useState<Recipe | null>(null);
@@ -138,6 +139,16 @@ export default function RecipeDetailScreen() {
     setMessage(null);
 
     try {
+      // From cook history, "delete" removes the history entry, not a suggestion
+      // (an old cooked recipe is usually no longer in the suggestion list).
+      if (isHistorySource) {
+        if (typeof sessionId === 'string' && sessionId) {
+          await deleteCookSession(user.id, sessionId);
+        }
+        router.replace('/cook-history');
+        return;
+      }
+
       if (isFavoriteSource) {
         await removeFavoriteRecipeByTitle(user.id, recipe.title);
       } else {
@@ -284,16 +295,32 @@ export default function RecipeDetailScreen() {
 
       <ConfirmDialog
         busy={isDeleting}
-        confirmLabel={isDeleting ? t('removing') : isFavoriteSource ? t('removeFavoriteConfirm') : t('removeRecipeConfirm')}
+        confirmLabel={
+          isDeleting
+            ? t('removing')
+            : isHistorySource
+              ? t('removeFromHistoryConfirm')
+              : isFavoriteSource
+                ? t('removeFavoriteConfirm')
+                : t('removeRecipeConfirm')
+        }
         destructive
         message={
-          isFavoriteSource
-            ? t('removeRecipeFavoriteMessage')
-            : t('removeRecipeSuggestionMessage')
+          isHistorySource
+            ? t('removeFromHistoryMessage')
+            : isFavoriteSource
+              ? t('removeRecipeFavoriteMessage')
+              : t('removeRecipeSuggestionMessage')
         }
         onCancel={() => setIsConfirmingDelete(false)}
         onConfirm={handleDeleteRecipe}
-        title={isFavoriteSource ? t('removeFavoriteQuestion') : t('removeSuggestionQuestion')}
+        title={
+          isHistorySource
+            ? t('removeFromHistoryQuestion')
+            : isFavoriteSource
+              ? t('removeFavoriteQuestion')
+              : t('removeSuggestionQuestion')
+        }
         visible={isConfirmingDelete}
       />
 

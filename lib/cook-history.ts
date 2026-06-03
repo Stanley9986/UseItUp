@@ -15,3 +15,17 @@ export async function getCookHistory(userId: string) {
 
   return ((data as CookSessionWithRecipeRow[]) ?? []).map(mapCookHistoryRow);
 }
+
+// Removes a single cooked-history entry. pantry_updates rows cascade on delete,
+// and the recipe row is left intact.
+export async function deleteCookSession(userId: string, sessionId: string) {
+  const { error } = await supabase
+    .from('cook_sessions')
+    .delete()
+    .eq('user_id', userId)
+    .eq('id', sessionId);
+
+  if (error) {
+    throw error;
+  }
+}
