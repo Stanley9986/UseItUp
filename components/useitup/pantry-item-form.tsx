@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button, Card, Chip, palette } from '@/components/useitup/ui';
 import { useAppLanguage } from '@/contexts/language-context';
@@ -38,7 +39,7 @@ export function PantryItemForm({
   onSubmit,
   submitLabel,
 }: PantryItemFormProps) {
-  const { t } = useAppLanguage();
+  const { t, languageCode } = useAppLanguage();
   const [name, setName] = useState(initialValues?.name ?? '');
   const [category, setCategory] = useState(initialValues?.category?.toLowerCase() ?? 'meat');
   const [quantityType, setQuantityType] = useState<QuantityUnit>(initialValues?.quantityType ?? 'portion');
@@ -47,6 +48,24 @@ export function PantryItemForm({
   const [location, setLocation] = useState<StorageLocation>(initialValues?.location ?? 'fridge');
   const [expiration, setExpiration] = useState(initialValues?.expiration ?? '');
   const [notes, setNotes] = useState(initialValues?.notes ?? '');
+  const [showExpirationPicker, setShowExpirationPicker] = useState(false);
+
+  const expirationDate = expiration ? new Date(`${expiration}T12:00:00`) : null;
+  const expirationLabel = expirationDate
+    ? new Intl.DateTimeFormat(languageCode, { day: 'numeric', month: 'short', year: 'numeric' }).format(
+        expirationDate,
+      )
+    : t('selectDate');
+
+  function handleExpirationChange(event: DateTimePickerEvent, selectedDate?: Date) {
+    if (Platform.OS !== 'ios') {
+      setShowExpirationPicker(false);
+    }
+
+    if (event.type === 'set' && selectedDate) {
+      setExpiration(toIsoDate(selectedDate));
+    }
+  }
 
   return (
     <>
@@ -107,16 +126,30 @@ export function PantryItemForm({
         </View>
 
         <FieldLabel>{t('expirationDate')}</FieldLabel>
-        <View style={styles.inputRow}>
+        <Pressable onPress={() => setShowExpirationPicker(true)} style={styles.inputRow}>
           <Ionicons color={palette.muted} name="calendar-outline" size={19} />
-          <TextInput
-            onChangeText={setExpiration}
-            placeholder={t('expirationDatePlaceholder')}
-            placeholderTextColor={palette.muted}
-            style={styles.rowInput}
-            value={expiration}
-          />
-        </View>
+          <Text style={[styles.dateText, !expiration && styles.datePlaceholder]}>{expirationLabel}</Text>
+          {expiration ? (
+            <Pressable hitSlop={10} onPress={() => setExpiration('')}>
+              <Ionicons color={palette.muted} name="close-circle" size={18} />
+            </Pressable>
+          ) : null}
+        </Pressable>
+        {showExpirationPicker ? (
+          <View style={styles.pickerWrap}>
+            <DateTimePicker
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              mode="date"
+              onChange={handleExpirationChange}
+              value={expirationDate ?? new Date()}
+            />
+            {Platform.OS === 'ios' ? (
+              <Button compact icon="checkmark" onPress={() => setShowExpirationPicker(false)}>
+                {t('close')}
+              </Button>
+            ) : null}
+          </View>
+        ) : null}
 
         <FieldLabel>{t('notes')}</FieldLabel>
         <TextInput
@@ -150,6 +183,13 @@ export function PantryItemForm({
 }
 
 export { parseExpirationDate };
+
+function toIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export function quantityLabelFromLevel(level: string) {
   return level.toLowerCase() as QuantityLabel;
@@ -192,11 +232,17 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: 12,
   },
-  rowInput: {
+  dateText: {
     color: palette.ink,
     flex: 1,
     fontSize: 16,
-    minHeight: 46,
+  },
+  datePlaceholder: {
+    color: palette.muted,
+  },
+  pickerWrap: {
+    gap: 8,
+    marginTop: 4,
   },
   notes: {
     minHeight: 80,
