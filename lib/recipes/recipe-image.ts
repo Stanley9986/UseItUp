@@ -1,6 +1,6 @@
-import { createClientCache } from '@/lib/client-cache';
-import { getRecipeImageSearchQuery, RecipeArtwork } from '@/lib/recipe-artwork';
-import { supabase } from '@/lib/supabase';
+import { createClientCache } from '@/lib/shared/client-cache';
+import { getRecipeImageSearchQuery, RecipeArtwork } from '@/lib/recipes/recipe-artwork';
+import { supabase } from '@/lib/shared/supabase';
 import { Recipe } from '@/types/useitup';
 
 type RecipeImageResponse = {

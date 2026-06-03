@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useAppLanguage } from '@/contexts/language-context';
-import { translateTerms } from '@/lib/term-translation';
+import { translateTerms } from '@/lib/i18n/term-translation';
 
 // Returns a map of original name -> translated name for the active app language.
 // English is treated as the source language for item names, so no request is made

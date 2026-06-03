@@ -17,10 +17,10 @@ import {
   requestExpiryReminderPermission,
   saveExpiryReminderSettings,
   syncExpiryReminders,
-} from '@/lib/expiry-reminders';
-import { getErrorMessage } from '@/lib/errors';
-import { safeBack } from '@/lib/navigation';
-import { getPantryItems } from '@/lib/pantry';
+} from '@/lib/reminders/expiry-reminders';
+import { getErrorMessage } from '@/lib/shared/errors';
+import { safeBack } from '@/lib/shared/navigation';
+import { getPantryItems } from '@/lib/pantry/pantry';
 import { PantryItem } from '@/types/useitup';
 
 const dayOptions = [1, 2, 3, 5, 7] as const;

@@ -7,14 +7,14 @@ import { Button, Card, palette, Screen, SectionTitle, typography } from '@/compo
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
-import { getErrorMessage } from '@/lib/errors';
-import { safeBack } from '@/lib/navigation';
+import { getErrorMessage } from '@/lib/shared/errors';
+import { safeBack } from '@/lib/shared/navigation';
 import {
   deleteShoppingListItem,
   getShoppingListItems,
   updateShoppingListItemChecked,
-} from '@/lib/shopping-list';
-import { mapShoppingItemToAddPantryParams } from '@/lib/shopping-list-mappers';
+} from '@/lib/shopping/shopping-list';
+import { mapShoppingItemToAddPantryParams } from '@/lib/shopping/shopping-list-mappers';
 import { ShoppingListItem } from '@/types/useitup';
 
 export default function ShoppingListScreen() {

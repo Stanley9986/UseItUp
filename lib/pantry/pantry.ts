@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import { getErrorMessage } from '@/lib/errors';
+import { supabase } from '@/lib/shared/supabase';
+import { getErrorMessage } from '@/lib/shared/errors';
 import {
   isDuplicatePantryItemError,
   mapPantryItemInput,
@@ -7,7 +7,7 @@ import {
   normalizePantryName,
   PantryItemInput,
   PantryItemRow,
-} from '@/lib/pantry-mappers';
+} from '@/lib/pantry/pantry-mappers';
 
 export {
   getErrorMessage,

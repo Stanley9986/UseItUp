@@ -4,7 +4,7 @@ import {
   getGeneratedRecipes,
   removeGeneratedRecipe,
   setGeneratedRecipes,
-} from '@/lib/generated-recipes';
+} from '@/lib/recipes/generated-recipes';
 import { Recipe } from '@/types/useitup';
 
 const recipe: Recipe = {

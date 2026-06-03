@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { getLanguageOption, normalizeLanguageCode } from '@/lib/languages';
-import { translate } from '@/lib/translations';
+import { getLanguageOption, normalizeLanguageCode } from '@/lib/i18n/languages';
+import { translate } from '@/lib/i18n/translations';
 
 describe('language helpers', () => {
   it('normalizes supported language and locale codes', () => {

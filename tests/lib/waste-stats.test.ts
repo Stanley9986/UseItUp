@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { summarizeWasteReductionStats } from '@/lib/waste-stats-mappers';
+import { summarizeWasteReductionStats } from '@/lib/preferences/waste-stats-mappers';
 
 describe('summarizeWasteReductionStats', () => {
   it('summarizes recent cooking sessions and pantry updates', () => {

@@ -1,9 +1,9 @@
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { useAuth } from '@/contexts/auth-context';
-import { defaultLanguageCode, normalizeLanguageCode, SupportedLanguageCode } from '@/lib/languages';
-import { translate, TranslationKey } from '@/lib/translations';
-import { getUserPreferences } from '@/lib/user-preferences';
+import { defaultLanguageCode, normalizeLanguageCode, SupportedLanguageCode } from '@/lib/i18n/languages';
+import { translate, TranslationKey } from '@/lib/i18n/translations';
+import { getUserPreferences } from '@/lib/preferences/user-preferences';
 
 type LanguageContextValue = {
   languageCode: SupportedLanguageCode;

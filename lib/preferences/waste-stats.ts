@@ -1,6 +1,6 @@
-import { supabase } from '@/lib/supabase';
-import { CookSessionStatsRow, summarizeWasteReductionStats } from '@/lib/waste-stats-mappers';
-export type { WasteReductionStats } from '@/lib/waste-stats-mappers';
+import { supabase } from '@/lib/shared/supabase';
+import { CookSessionStatsRow, summarizeWasteReductionStats } from '@/lib/preferences/waste-stats-mappers';
+export type { WasteReductionStats } from '@/lib/preferences/waste-stats-mappers';
 
 const RECENT_DAYS = 30;
 

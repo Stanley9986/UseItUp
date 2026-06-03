@@ -5,7 +5,7 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-na
 
 import { Button, Card, Chip, palette } from '@/components/useitup/ui';
 import { useAppLanguage } from '@/contexts/language-context';
-import { parseExpirationDate } from '@/lib/date-utils';
+import { parseExpirationDate } from '@/lib/shared/date-utils';
 import { QuantityLabel, QuantityUnit, StorageLocation } from '@/types/useitup';
 
 export type PantryItemFormValues = {

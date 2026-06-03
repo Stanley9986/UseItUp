@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { readFunctionErrorPayload } from '@/lib/function-errors';
+import { readFunctionErrorPayload } from '@/lib/shared/function-errors';
 
 describe('readFunctionErrorPayload', () => {
   it('reads JSON error response bodies from cloned responses', async () => {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useAppLanguage } from '@/contexts/language-context';
-import { prepareTranslatedRecipes } from '@/lib/recipe-translation';
+import { prepareTranslatedRecipes } from '@/lib/recipes/recipe-translation';
 import { Recipe } from '@/types/useitup';
 
 // Returns the recipes prepared for display in the active app language (recipe

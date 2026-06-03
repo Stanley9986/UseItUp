@@ -1,4 +1,4 @@
-import { defaultLanguageCode, normalizeLanguageCode } from '@/lib/languages';
+import { defaultLanguageCode, normalizeLanguageCode } from '@/lib/i18n/languages';
 import { UserPreferences } from '@/types/useitup';
 
 export type UserPreferencesRow = {

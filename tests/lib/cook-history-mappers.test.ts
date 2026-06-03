@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapCookHistoryRow } from '@/lib/cook-history-mappers';
+import { mapCookHistoryRow } from '@/lib/cooking/cook-history-mappers';
 
 describe('mapCookHistoryRow', () => {
   it('maps joined cook session rows to history items', () => {

@@ -4,7 +4,7 @@ import type { MockSupabaseClient } from '@/tests/helpers/createMockSupabaseClien
 
 const supabaseMock = vi.hoisted(() => ({ current: null as MockSupabaseClient | null }));
 
-vi.mock('@/lib/supabase', async () => {
+vi.mock('@/lib/shared/supabase', async () => {
   const { createMockSupabaseClient } = await import('@/tests/helpers/createMockSupabaseClient');
   supabaseMock.current = createMockSupabaseClient();
   return { supabase: supabaseMock.current.supabase };
@@ -17,8 +17,8 @@ import {
   isTitleFavorited,
   removeFavoriteRecipeByTitle,
   updateFavoriteRecipe,
-} from '@/lib/favorite-recipes';
-import type { FavoriteRecipeRow } from '@/lib/favorite-recipes-mappers';
+} from '@/lib/recipes/favorite-recipes';
+import type { FavoriteRecipeRow } from '@/lib/recipes/favorite-recipes-mappers';
 import type { Recipe } from '@/types/useitup';
 
 const favoriteRow: FavoriteRecipeRow = {

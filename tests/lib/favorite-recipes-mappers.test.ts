@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { FavoriteRecipeRow, mapFavoriteRecipeInsert, mapFavoriteRecipeRow } from '@/lib/favorite-recipes-mappers';
+import { FavoriteRecipeRow, mapFavoriteRecipeInsert, mapFavoriteRecipeRow } from '@/lib/recipes/favorite-recipes-mappers';
 import { Recipe } from '@/types/useitup';
 
 const baseRow: FavoriteRecipeRow = {

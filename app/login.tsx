@@ -14,8 +14,8 @@ import {
 
 import { Card, palette, Screen } from '@/components/useitup/ui';
 import { useAppLanguage } from '@/contexts/language-context';
-import { getFriendlyAuthError } from '@/lib/auth-errors';
-import { supabase } from '@/lib/supabase';
+import { getFriendlyAuthError } from '@/lib/shared/auth-errors';
+import { supabase } from '@/lib/shared/supabase';
 
 export default function LoginScreen() {
   const { t } = useAppLanguage();

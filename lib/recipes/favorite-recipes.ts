@@ -2,10 +2,10 @@ import {
   FavoriteRecipeRow,
   mapFavoriteRecipeInsert,
   mapFavoriteRecipeRow,
-} from '@/lib/favorite-recipes-mappers';
-import { buildPaginatedResult, getPageRange, PaginationOptions } from '@/lib/pagination';
-import { normalizeRecipeTitle } from '@/lib/recipe-list';
-import { supabase } from '@/lib/supabase';
+} from '@/lib/recipes/favorite-recipes-mappers';
+import { buildPaginatedResult, getPageRange, PaginationOptions } from '@/lib/shared/pagination';
+import { normalizeRecipeTitle } from '@/lib/recipes/recipe-list';
+import { supabase } from '@/lib/shared/supabase';
 import { Recipe } from '@/types/useitup';
 
 export async function getFavoriteRecipes(userId: string) {

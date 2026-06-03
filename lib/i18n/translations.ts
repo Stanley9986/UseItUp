@@ -1,4 +1,4 @@
-import { SupportedLanguageCode } from '@/lib/languages';
+import { SupportedLanguageCode } from '@/lib/i18n/languages';
 
 type TranslationParams = Record<string, string | number>;
 

@@ -1,5 +1,5 @@
-import { createClientCache } from '@/lib/client-cache';
-import { supabase } from '@/lib/supabase';
+import { createClientCache } from '@/lib/shared/client-cache';
+import { supabase } from '@/lib/shared/supabase';
 
 type TermsResponse = {
   terms?: Record<string, string>;

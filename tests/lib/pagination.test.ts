@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { appendPageItems, buildPaginatedResult, buildVisibleItemsPage, getPageRange } from '@/lib/pagination';
+import { appendPageItems, buildPaginatedResult, buildVisibleItemsPage, getPageRange } from '@/lib/shared/pagination';
 
 describe('getPageRange', () => {
   it('requests one extra row so callers can detect more pages', () => {

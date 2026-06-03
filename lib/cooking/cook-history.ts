@@ -1,5 +1,5 @@
-import { mapCookHistoryRow, CookSessionWithRecipeRow } from '@/lib/cook-history-mappers';
-import { supabase } from '@/lib/supabase';
+import { mapCookHistoryRow, CookSessionWithRecipeRow } from '@/lib/cooking/cook-history-mappers';
+import { supabase } from '@/lib/shared/supabase';
 
 export async function getCookHistory(userId: string) {
   const { data, error } = await supabase

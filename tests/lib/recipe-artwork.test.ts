@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getRecipeArtwork, getRecipeImageSearchQuery } from '@/lib/recipe-artwork';
+import { getRecipeArtwork, getRecipeImageSearchQuery } from '@/lib/recipes/recipe-artwork';
 import type { Recipe } from '@/types/useitup';
 
 function recipeWith(parts: Partial<Recipe>): Recipe {

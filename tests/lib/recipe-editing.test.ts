@@ -5,7 +5,7 @@ import {
   getFavoriteRecipeEditInput,
   parseRecipeLines,
   validateFavoriteRecipeEditInput,
-} from '@/lib/recipe-editing';
+} from '@/lib/recipes/recipe-editing';
 import type { Recipe } from '@/types/useitup';
 
 const recipe: Recipe = {

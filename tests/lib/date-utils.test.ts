@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseExpirationDate } from '@/lib/date-utils';
+import { parseExpirationDate } from '@/lib/shared/date-utils';
 
 describe('parseExpirationDate', () => {
   it('accepts an ISO date and trims surrounding whitespace', () => {

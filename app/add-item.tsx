@@ -10,10 +10,10 @@ import {
 } from '@/components/useitup/pantry-item-form';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
-import { safeBack } from '@/lib/navigation';
-import { createPantryItem, getErrorMessage, isDuplicatePantryItemError, normalizePantryName } from '@/lib/pantry';
-import { deleteShoppingListItem } from '@/lib/shopping-list';
-import { getSingleSearchParam } from '@/lib/shopping-list-mappers';
+import { safeBack } from '@/lib/shared/navigation';
+import { createPantryItem, getErrorMessage, isDuplicatePantryItemError, normalizePantryName } from '@/lib/pantry/pantry';
+import { deleteShoppingListItem } from '@/lib/shopping/shopping-list';
+import { getSingleSearchParam } from '@/lib/shopping/shopping-list-mappers';
 
 export default function AddItemScreen() {
   const { t } = useAppLanguage();

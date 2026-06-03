@@ -8,7 +8,7 @@ import {
   mapSuggestedRecipesPayload,
   RecipeIngredientRow,
   RecipeRow,
-} from '@/lib/recipe-persistence-mappers';
+} from '@/lib/recipes/recipe-persistence-mappers';
 
 const recipeRow: RecipeRow = {
   id: 'recipe-1',

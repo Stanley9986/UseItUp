@@ -1,4 +1,4 @@
-import { PantryUpdateChoice } from '@/lib/cooking-mappers';
+import { PantryUpdateChoice } from '@/lib/cooking/cooking-mappers';
 import { QuantityLabel } from '@/types/useitup';
 
 export type UpdateChoiceKey = 'suggested' | 'all' | 'less' | 'skip' | QuantityLabel;

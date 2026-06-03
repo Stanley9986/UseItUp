@@ -8,20 +8,20 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTranslatedRecipe } from '@/hooks/use-recipe-translation';
-import { getErrorMessage } from '@/lib/errors';
+import { getErrorMessage } from '@/lib/shared/errors';
 import {
   addFavoriteRecipe,
   getFavoriteRecipeById,
   isTitleFavorited,
   removeFavoriteRecipeByTitle,
-} from '@/lib/favorite-recipes';
-import { findGeneratedRecipe, removeGeneratedRecipe } from '@/lib/generated-recipes';
-import { safeBack } from '@/lib/navigation';
-import { formatIngredientQuantity } from '@/lib/quantity';
-import { dismissSuggestedRecipe, getSavedRecipeById } from '@/lib/recipes';
-import { deleteCookSession } from '@/lib/cook-history';
-import { addShoppingListItemsFromRecipe } from '@/lib/shopping-list';
-import { getShoppingListSourceRecipeId } from '@/lib/shopping-list-mappers';
+} from '@/lib/recipes/favorite-recipes';
+import { findGeneratedRecipe, removeGeneratedRecipe } from '@/lib/recipes/generated-recipes';
+import { safeBack } from '@/lib/shared/navigation';
+import { formatIngredientQuantity } from '@/lib/pantry/quantity';
+import { dismissSuggestedRecipe, getSavedRecipeById } from '@/lib/recipes/recipes';
+import { deleteCookSession } from '@/lib/cooking/cook-history';
+import { addShoppingListItemsFromRecipe } from '@/lib/shopping/shopping-list';
+import { getShoppingListSourceRecipeId } from '@/lib/shopping/shopping-list-mappers';
 import { Recipe } from '@/types/useitup';
 
 type ScreenMessage = {

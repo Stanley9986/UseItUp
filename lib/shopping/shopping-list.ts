@@ -3,8 +3,8 @@ import {
   mapShoppingListItemRow,
   ShoppingListItemRow,
   uniqueMissingIngredients,
-} from '@/lib/shopping-list-mappers';
-import { supabase } from '@/lib/supabase';
+} from '@/lib/shopping/shopping-list-mappers';
+import { supabase } from '@/lib/shared/supabase';
 
 export async function getShoppingListItems(userId: string) {
   const { data, error } = await supabase

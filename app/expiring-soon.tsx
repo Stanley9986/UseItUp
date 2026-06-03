@@ -13,11 +13,11 @@ import {
   groupExpiringReminderItems,
   getExpiryReminderSettings,
   getExpiringReminderItems,
-} from '@/lib/expiry-reminders';
-import { getErrorMessage } from '@/lib/errors';
-import { safeBack } from '@/lib/navigation';
-import { buildVisibleItemsPage, defaultPageSize } from '@/lib/pagination';
-import { getPantryItems } from '@/lib/pantry';
+} from '@/lib/reminders/expiry-reminders';
+import { getErrorMessage } from '@/lib/shared/errors';
+import { safeBack } from '@/lib/shared/navigation';
+import { buildVisibleItemsPage, defaultPageSize } from '@/lib/shared/pagination';
+import { getPantryItems } from '@/lib/pantry/pantry';
 import { PantryItem } from '@/types/useitup';
 
 export default function ExpiringSoonScreen() {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeGeneratedRecipes } from '@/lib/recipe-generation-mappers';
+import { normalizeGeneratedRecipes } from '@/lib/recipes/recipe-generation-mappers';
 
 describe('normalizeGeneratedRecipes', () => {
   it('normalizes generated recipe responses', () => {

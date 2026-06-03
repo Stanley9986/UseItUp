@@ -9,10 +9,10 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTranslatedNames } from '@/hooks/use-term-translation';
-import { getCookHistory } from '@/lib/cook-history';
-import { CookHistoryItem } from '@/lib/cook-history-mappers';
-import { getErrorMessage } from '@/lib/errors';
-import { safeBack } from '@/lib/navigation';
+import { getCookHistory } from '@/lib/cooking/cook-history';
+import { CookHistoryItem } from '@/lib/cooking/cook-history-mappers';
+import { getErrorMessage } from '@/lib/shared/errors';
+import { safeBack } from '@/lib/shared/navigation';
 
 export default function CookHistoryScreen() {
   const { user } = useAuth();

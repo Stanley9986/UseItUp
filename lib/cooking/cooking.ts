@@ -1,10 +1,10 @@
-import { supabase } from '@/lib/supabase';
-import { buildPantryUpdate, defaultChoiceForItem } from '@/lib/cooking-mappers';
-import type { PantryUpdateChoice } from '@/lib/cooking-mappers';
+import { supabase } from '@/lib/shared/supabase';
+import { buildPantryUpdate, defaultChoiceForItem } from '@/lib/cooking/cooking-mappers';
+import type { PantryUpdateChoice } from '@/lib/cooking/cooking-mappers';
 import type { PantryItem, Recipe } from '@/types/useitup';
 
 export { buildPantryUpdate, defaultChoiceForItem };
-export type { PantryUpdateChoice } from '@/lib/cooking-mappers';
+export type { PantryUpdateChoice } from '@/lib/cooking/cooking-mappers';
 
 type CookRecipeInput = {
   pantryItems: PantryItem[];

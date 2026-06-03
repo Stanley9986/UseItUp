@@ -12,14 +12,14 @@ import { Button, Card, palette, Screen } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
-import { safeBack } from '@/lib/navigation';
+import { safeBack } from '@/lib/shared/navigation';
 import {
   getErrorMessage,
   getPantryItemById,
   isDuplicatePantryItemError,
   normalizePantryName,
   updatePantryItem,
-} from '@/lib/pantry';
+} from '@/lib/pantry/pantry';
 import { PantryItem } from '@/types/useitup';
 
 export default function EditItemScreen() {

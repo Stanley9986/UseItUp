@@ -6,7 +6,7 @@ import {
   mapPantryItemRow,
   normalizePantryName,
   PantryItemRow,
-} from '@/lib/pantry-mappers';
+} from '@/lib/pantry/pantry-mappers';
 
 describe('normalizePantryName', () => {
   it('trims, lowercases, and collapses spaces', () => {

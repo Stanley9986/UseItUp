@@ -4,7 +4,7 @@ import type { MockSupabaseClient } from '@/tests/helpers/createMockSupabaseClien
 
 const supabaseMock = vi.hoisted(() => ({ current: null as MockSupabaseClient | null }));
 
-vi.mock('@/lib/supabase', async () => {
+vi.mock('@/lib/shared/supabase', async () => {
   const { createMockSupabaseClient } = await import('@/tests/helpers/createMockSupabaseClient');
   supabaseMock.current = createMockSupabaseClient();
   return { supabase: supabaseMock.current.supabase };
@@ -15,8 +15,8 @@ import {
   deletePantryItem,
   getPantryItemById,
   getPantryItems,
-} from '@/lib/pantry';
-import type { PantryItemRow } from '@/lib/pantry-mappers';
+} from '@/lib/pantry/pantry';
+import type { PantryItemRow } from '@/lib/pantry/pantry-mappers';
 
 const pantryRow: PantryItemRow = {
   id: 'item-1',

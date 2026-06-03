@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import { buildPaginatedResult, getPageRange, PaginationOptions } from '@/lib/pagination';
+import { supabase } from '@/lib/shared/supabase';
+import { buildPaginatedResult, getPageRange, PaginationOptions } from '@/lib/shared/pagination';
 import {
   mapRecipeRow,
   mapRecipeIngredientInsert,
@@ -8,7 +8,7 @@ import {
   mapSuggestedRecipesPayload,
   RecipeIngredientRow,
   RecipeRow,
-} from '@/lib/recipe-persistence-mappers';
+} from '@/lib/recipes/recipe-persistence-mappers';
 import { Recipe } from '@/types/useitup';
 
 export async function getSavedRecipes(userId: string) {

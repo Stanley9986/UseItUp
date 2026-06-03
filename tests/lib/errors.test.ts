@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getErrorMessage } from '@/lib/errors';
+import { getErrorMessage } from '@/lib/shared/errors';
 
 describe('getErrorMessage', () => {
   it('returns Error messages', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isRecipeFavorited, normalizeRecipeTitle } from '@/lib/recipe-list';
+import { isRecipeFavorited, normalizeRecipeTitle } from '@/lib/recipes/recipe-list';
 import { Recipe } from '@/types/useitup';
 
 const baseRecipe: Recipe = {

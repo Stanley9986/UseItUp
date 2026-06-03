@@ -1,4 +1,4 @@
-import { getErrorMessage } from '@/lib/errors';
+import { getErrorMessage } from '@/lib/shared/errors';
 
 export function getFriendlyAuthError(error: unknown, fallback: string) {
   const message = getErrorMessage(error).toLowerCase();

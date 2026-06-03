@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getPantryArtwork, getPantryImageSearchQuery } from '@/lib/pantry-artwork';
+import { getPantryArtwork, getPantryImageSearchQuery } from '@/lib/pantry/pantry-artwork';
 import type { PantryItem } from '@/types/useitup';
 
 function pantryItemWith(parts: Partial<PantryItem>): PantryItem {

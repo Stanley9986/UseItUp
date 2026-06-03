@@ -31,7 +31,7 @@ import {
   getExpiringReminderItems,
   groupExpiringReminderItems,
   summarizeExpiryReminderSettings,
-} from '@/lib/expiry-reminders';
+} from '@/lib/reminders/expiry-reminders';
 import { PantryItem } from '@/types/useitup';
 
 describe('expiry reminder helpers', () => {

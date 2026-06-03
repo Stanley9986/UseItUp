@@ -6,14 +6,14 @@ import { Button, Card, Chip, palette, Screen, SectionTitle, typography } from '@
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
-import { getErrorMessage } from '@/lib/errors';
-import { safeBack } from '@/lib/navigation';
-import { defaultUserPreferences, getUserPreferences, saveUserPreferences } from '@/lib/user-preferences';
+import { getErrorMessage } from '@/lib/shared/errors';
+import { safeBack } from '@/lib/shared/navigation';
+import { defaultUserPreferences, getUserPreferences, saveUserPreferences } from '@/lib/preferences/user-preferences';
 import {
   addAvoidedIngredient,
   normalizeAvoidedIngredient,
   removeAvoidedIngredient,
-} from '@/lib/user-preferences-mappers';
+} from '@/lib/preferences/user-preferences-mappers';
 import { UserPreferences } from '@/types/useitup';
 
 const dietaryOptions = ['Vegetarian', 'Vegan', 'Dairy-free', 'Gluten-free', 'Nut-free'] as const;

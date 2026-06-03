@@ -1,4 +1,4 @@
-import { TranslationKey } from '@/lib/translations';
+import { TranslationKey } from '@/lib/i18n/translations';
 
 // Units that map to a translation key. Recipe ingredients can also carry
 // free-text units from the generator (e.g. "cups"), which are left as-is.

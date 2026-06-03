@@ -14,7 +14,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   default: asyncStorageMock,
 }));
 
-vi.mock('@/lib/supabase', () => ({
+vi.mock('@/lib/shared/supabase', () => ({
   supabase: {
     functions: supabaseFunctionsMock,
   },
@@ -25,7 +25,7 @@ import {
   clearRecipeTranslationClientCache,
   shouldTranslateRecipe,
   translateRecipes,
-} from '@/lib/recipe-translation';
+} from '@/lib/recipes/recipe-translation';
 import { Recipe } from '@/types/useitup';
 
 const recipe: Recipe = {

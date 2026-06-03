@@ -20,9 +20,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PantryItem, Recipe } from '@/types/useitup';
 import { useAppLanguage } from '@/contexts/language-context';
-import { getRemoteRecipeArtworkForQuery } from '@/lib/recipe-image';
-import { getPantryArtwork, getPantryImageSearchQuery, PantryArtwork } from '@/lib/pantry-artwork';
-import { getRecipeArtwork, getRecipeImageSearchQuery, RecipeArtwork } from '@/lib/recipe-artwork';
+import { getRemoteRecipeArtworkForQuery } from '@/lib/recipes/recipe-image';
+import { getPantryArtwork, getPantryImageSearchQuery, PantryArtwork } from '@/lib/pantry/pantry-artwork';
+import { getRecipeArtwork, getRecipeImageSearchQuery, RecipeArtwork } from '@/lib/recipes/recipe-artwork';
 import { palette, typography } from './theme';
 
 export { palette, typography };

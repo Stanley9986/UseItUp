@@ -8,14 +8,14 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTranslatedNames } from '@/hooks/use-term-translation';
-import { getFriendlyAuthError } from '@/lib/auth-errors';
-import { getCookHistory } from '@/lib/cook-history';
-import { CookHistoryItem } from '@/lib/cook-history-mappers';
-import { getErrorMessage } from '@/lib/errors';
-import { getLanguageOption, supportedLanguages } from '@/lib/languages';
-import { supabase } from '@/lib/supabase';
-import { defaultUserPreferences, getUserPreferences, saveUserPreferences } from '@/lib/user-preferences';
-import { summarizeUserPreferences } from '@/lib/user-preferences-mappers';
+import { getFriendlyAuthError } from '@/lib/shared/auth-errors';
+import { getCookHistory } from '@/lib/cooking/cook-history';
+import { CookHistoryItem } from '@/lib/cooking/cook-history-mappers';
+import { getErrorMessage } from '@/lib/shared/errors';
+import { getLanguageOption, supportedLanguages } from '@/lib/i18n/languages';
+import { supabase } from '@/lib/shared/supabase';
+import { defaultUserPreferences, getUserPreferences, saveUserPreferences } from '@/lib/preferences/user-preferences';
+import { summarizeUserPreferences } from '@/lib/preferences/user-preferences-mappers';
 import { UserPreferences } from '@/types/useitup';
 
 type SettingsRow = {

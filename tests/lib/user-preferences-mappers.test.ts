@@ -8,7 +8,7 @@ import {
   normalizeAvoidedIngredient,
   removeAvoidedIngredient,
   summarizeUserPreferences,
-} from '@/lib/user-preferences-mappers';
+} from '@/lib/preferences/user-preferences-mappers';
 
 describe('mapUserPreferencesRow', () => {
   it('returns defaults when no row exists yet', () => {

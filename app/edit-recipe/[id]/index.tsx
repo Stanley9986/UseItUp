@@ -6,15 +6,15 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { Button, Card, palette, Screen, SectionTitle } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
-import { getErrorMessage } from '@/lib/errors';
-import { getFavoriteRecipeById, updateFavoriteRecipe } from '@/lib/favorite-recipes';
-import { getSavedRecipeById, updateSavedRecipe } from '@/lib/recipes';
+import { getErrorMessage } from '@/lib/shared/errors';
+import { getFavoriteRecipeById, updateFavoriteRecipe } from '@/lib/recipes/favorite-recipes';
+import { getSavedRecipeById, updateSavedRecipe } from '@/lib/recipes/recipes';
 import {
   buildEditedFavoriteRecipe,
   FavoriteRecipeEditInput,
   getFavoriteRecipeEditInput,
   validateFavoriteRecipeEditInput,
-} from '@/lib/recipe-editing';
+} from '@/lib/recipes/recipe-editing';
 import { Recipe } from '@/types/useitup';
 
 const emptyInput: FavoriteRecipeEditInput = {

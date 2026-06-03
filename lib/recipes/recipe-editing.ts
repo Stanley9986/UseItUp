@@ -1,4 +1,4 @@
-import { normalizeRecipeTitle } from '@/lib/recipe-list';
+import { normalizeRecipeTitle } from '@/lib/recipes/recipe-list';
 import { Recipe, RecipeIngredient } from '@/types/useitup';
 
 export type FavoriteRecipeEditInput = {

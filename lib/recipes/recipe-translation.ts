@@ -1,6 +1,6 @@
-import { createClientCache } from '@/lib/client-cache';
-import { supabase } from '@/lib/supabase';
-import { translateTerms } from '@/lib/term-translation';
+import { createClientCache } from '@/lib/shared/client-cache';
+import { supabase } from '@/lib/shared/supabase';
+import { translateTerms } from '@/lib/i18n/term-translation';
 import { Recipe } from '@/types/useitup';
 
 const defaultLanguageCode = 'en';

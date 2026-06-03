@@ -20,8 +20,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTranslatedNames } from '@/hooks/use-term-translation';
-import { getErrorMessage } from '@/lib/errors';
-import { getPantryItems } from '@/lib/pantry';
+import { getErrorMessage } from '@/lib/shared/errors';
+import { getPantryItems } from '@/lib/pantry/pantry';
 import { PantryItem, StorageLocation } from '@/types/useitup';
 
 type PantryFilter = 'all' | StorageLocation | 'expiring';

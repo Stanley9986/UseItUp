@@ -4,13 +4,13 @@ import type { MockSupabaseClient } from '@/tests/helpers/createMockSupabaseClien
 
 const supabaseMock = vi.hoisted(() => ({ current: null as MockSupabaseClient | null }));
 
-vi.mock('@/lib/supabase', async () => {
+vi.mock('@/lib/shared/supabase', async () => {
   const { createMockSupabaseClient } = await import('@/tests/helpers/createMockSupabaseClient');
   supabaseMock.current = createMockSupabaseClient();
   return { supabase: supabaseMock.current.supabase };
 });
 
-import { cookRecipeAndUpdatePantry } from '@/lib/cooking';
+import { cookRecipeAndUpdatePantry } from '@/lib/cooking/cooking';
 import type { PantryItem, Recipe } from '@/types/useitup';
 
 const recipe: Recipe = {

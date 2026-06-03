@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { choiceToKey, keyToChoice } from '@/lib/update-pantry-ui';
+import { choiceToKey, keyToChoice } from '@/lib/pantry/update-pantry-ui';
 
 describe('update pantry choice helpers', () => {
   it('maps update choice objects to chip keys', () => {

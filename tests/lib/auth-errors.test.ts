@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getFriendlyAuthError } from '@/lib/auth-errors';
+import { getFriendlyAuthError } from '@/lib/shared/auth-errors';
 
 describe('getFriendlyAuthError', () => {
   it('formats invalid credential errors', () => {

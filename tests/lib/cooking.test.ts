@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildPantryUpdate, defaultChoiceForItem } from '@/lib/cooking-mappers';
+import { buildPantryUpdate, defaultChoiceForItem } from '@/lib/cooking/cooking-mappers';
 import type { PantryItem } from '@/types/useitup';
 
 const steak: PantryItem = {

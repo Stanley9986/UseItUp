@@ -15,10 +15,10 @@ import {
   ExpiryReminderSettings,
   getExpiryReminderSettings,
   getExpiringReminderItems,
-} from '@/lib/expiry-reminders';
-import { getErrorMessage, getPantryItems } from '@/lib/pantry';
-import { getSavedRecipes } from '@/lib/recipes';
-import { getWasteReductionStats, WasteReductionStats } from '@/lib/waste-stats';
+} from '@/lib/reminders/expiry-reminders';
+import { getErrorMessage, getPantryItems } from '@/lib/pantry/pantry';
+import { getSavedRecipes } from '@/lib/recipes/recipes';
+import { getWasteReductionStats, WasteReductionStats } from '@/lib/preferences/waste-stats';
 import { PantryItem, Recipe } from '@/types/useitup';
 
 const emptyWasteStats: WasteReductionStats = {

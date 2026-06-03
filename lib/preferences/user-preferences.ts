@@ -3,9 +3,9 @@ import {
   mapUserPreferencesRow,
   mapUserPreferencesUpsert,
   UserPreferencesRow,
-} from '@/lib/user-preferences-mappers';
-import { getDefaultUserPreferencesForDevice } from '@/lib/device-language';
-import { supabase } from '@/lib/supabase';
+} from '@/lib/preferences/user-preferences-mappers';
+import { getDefaultUserPreferencesForDevice } from '@/lib/i18n/device-language';
+import { supabase } from '@/lib/shared/supabase';
 import { UserPreferences } from '@/types/useitup';
 
 export async function getUserPreferences(userId: string) {

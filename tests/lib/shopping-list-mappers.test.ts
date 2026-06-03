@@ -9,7 +9,7 @@ import {
   mapShoppingItemToAddPantryParams,
   normalizeShoppingItemName,
   uniqueMissingIngredients,
-} from '@/lib/shopping-list-mappers';
+} from '@/lib/shopping/shopping-list-mappers';
 
 describe('shopping list mappers', () => {
   it('normalizes and displays ingredient names', () => {

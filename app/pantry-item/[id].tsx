@@ -18,8 +18,8 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
-import { safeBack } from '@/lib/navigation';
-import { deletePantryItem, getErrorMessage, getPantryItemById } from '@/lib/pantry';
+import { safeBack } from '@/lib/shared/navigation';
+import { deletePantryItem, getErrorMessage, getPantryItemById } from '@/lib/pantry/pantry';
 import { PantryItem } from '@/types/useitup';
 
 export default function PantryItemDetailScreen() {

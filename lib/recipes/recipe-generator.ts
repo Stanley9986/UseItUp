@@ -1,9 +1,9 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
-import { supabase } from '@/lib/supabase';
-import { normalizeGeneratedRecipes } from '@/lib/recipe-generation-mappers';
+import { supabase } from '@/lib/shared/supabase';
+import { normalizeGeneratedRecipes } from '@/lib/recipes/recipe-generation-mappers';
 import { GenerateRecipesRequest, GenerateRecipesResponse } from '@/types/recipe-generation';
-import { readFunctionErrorPayload } from '@/lib/function-errors';
+import { readFunctionErrorPayload } from '@/lib/shared/function-errors';
 
 export async function generateRecipes(request: GenerateRecipesRequest) {
   const { data, error } = await supabase.functions.invoke<GenerateRecipesResponse>('generate-recipes', {

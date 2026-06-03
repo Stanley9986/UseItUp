@@ -14,13 +14,13 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   default: asyncStorageMock,
 }));
 
-vi.mock('@/lib/supabase', () => ({
+vi.mock('@/lib/shared/supabase', () => ({
   supabase: {
     functions: supabaseFunctionsMock,
   },
 }));
 
-import { clearRecipeImageClientCache, getRemoteRecipeArtworkForQuery } from '@/lib/recipe-image';
+import { clearRecipeImageClientCache, getRemoteRecipeArtworkForQuery } from '@/lib/recipes/recipe-image';
 
 describe('recipe image client cache', () => {
   beforeEach(() => {

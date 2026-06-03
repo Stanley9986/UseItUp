@@ -4,7 +4,7 @@ import type { MockSupabaseClient } from '@/tests/helpers/createMockSupabaseClien
 
 const supabaseMock = vi.hoisted(() => ({ current: null as MockSupabaseClient | null }));
 
-vi.mock('@/lib/supabase', async () => {
+vi.mock('@/lib/shared/supabase', async () => {
   const { createMockSupabaseClient } = await import('@/tests/helpers/createMockSupabaseClient');
   supabaseMock.current = createMockSupabaseClient();
   return { supabase: supabaseMock.current.supabase };
@@ -18,8 +18,8 @@ import {
   getSavedRecipes,
   replaceSuggestedRecipes,
   updateSavedRecipe,
-} from '@/lib/recipes';
-import type { RecipeIngredientRow, RecipeRow } from '@/lib/recipe-persistence-mappers';
+} from '@/lib/recipes/recipes';
+import type { RecipeIngredientRow, RecipeRow } from '@/lib/recipes/recipe-persistence-mappers';
 import type { Recipe } from '@/types/useitup';
 
 const recipeRow: RecipeRow = {
