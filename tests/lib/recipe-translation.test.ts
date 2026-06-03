@@ -52,8 +52,12 @@ describe('shouldTranslateRecipe', () => {
     expect(shouldTranslateRecipe(recipe, 'pt')).toBe(false);
   });
 
-  it('skips when the source language is unknown', () => {
-    expect(shouldTranslateRecipe({ ...recipe, language: undefined }, 'zh')).toBe(false);
+  it('translates an unknown-language recipe into a non-English language', () => {
+    expect(shouldTranslateRecipe({ ...recipe, language: undefined }, 'zh')).toBe(true);
+  });
+
+  it('skips an unknown-language recipe when the target is English', () => {
+    expect(shouldTranslateRecipe({ ...recipe, language: undefined }, 'en')).toBe(false);
   });
 });
 

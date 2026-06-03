@@ -28,11 +28,16 @@ const translationCachePrefix = 'useitup:recipe-translation-cache:';
 const translationCacheTtlMs = 30 * 24 * 60 * 60 * 1000;
 const memoryTranslationCache = new Map<string, ClientTranslationCacheEntry>();
 
-// Only translate recipes whose stored source language differs from the target.
-// Recipes with an unknown language (legacy rows from before language tracking)
-// are left as-is rather than spending a translation call guessing.
+// Translate recipes whose stored source language differs from the target. Rows
+// with an unknown language (legacy data from before language tracking) are
+// assumed to be English and translated when the target is another language, so
+// their title/description localize like everything else.
 export function shouldTranslateRecipe(recipe: Recipe, targetLanguage: string) {
-  return Boolean(recipe.language) && recipe.language !== targetLanguage;
+  if (recipe.language) {
+    return recipe.language !== targetLanguage;
+  }
+
+  return targetLanguage !== defaultLanguageCode;
 }
 
 // Resolve translations for the recipes that need them, keyed by recipe id.

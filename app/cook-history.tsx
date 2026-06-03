@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import { useTranslatedNames } from '@/hooks/use-term-translation';
 import { getCookHistory } from '@/lib/cook-history';
 import { CookHistoryItem } from '@/lib/cook-history-mappers';
 import { getErrorMessage } from '@/lib/errors';
@@ -18,6 +19,8 @@ export default function CookHistoryScreen() {
   const [history, setHistory] = useState<CookHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('');
+  // Cooked-history rows store a title string, so translate the titles directly.
+  const titleMap = useTranslatedNames(useMemo(() => history.map((item) => item.recipeTitle), [history]));
 
   const loadHistory = useCallback(
     async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
@@ -80,7 +83,7 @@ export default function CookHistoryScreen() {
                       <Ionicons color={palette.green} name="checkmark-circle-outline" size={20} />
                     </View>
                     <View style={styles.rowCopy}>
-                      <Text numberOfLines={2} style={styles.rowTitle}>{item.recipeTitle}</Text>
+                      <Text numberOfLines={2} style={styles.rowTitle}>{titleMap[item.recipeTitle] ?? item.recipeTitle}</Text>
                       <Text numberOfLines={1} style={styles.rowDetail}>{formatCookedAt(item.cookedAt, languageCode)}</Text>
                     </View>
                     <Ionicons color={palette.muted} name="chevron-forward" size={18} />

@@ -7,6 +7,7 @@ import { Button, Card, Chip, palette, Screen, SectionTitle, typography } from '@
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import { useTranslatedNames } from '@/hooks/use-term-translation';
 import { getFriendlyAuthError } from '@/lib/auth-errors';
 import { getCookHistory } from '@/lib/cook-history';
 import { CookHistoryItem } from '@/lib/cook-history-mappers';
@@ -166,6 +167,7 @@ export default function ProfileScreen() {
   }
 
   const latestCookedRecipe = cookHistory[0];
+  const cookedTitleMap = useTranslatedNames(latestCookedRecipe ? [latestCookedRecipe.recipeTitle] : []);
   const recentlyCookedRow: SettingsRow = {
     href: '/cook-history',
     icon: 'checkmark-circle-outline',
@@ -173,7 +175,7 @@ export default function ProfileScreen() {
     detail: historyMessage
       ? historyMessage
       : latestCookedRecipe
-        ? latestCookedRecipe.recipeTitle
+        ? cookedTitleMap[latestCookedRecipe.recipeTitle] ?? latestCookedRecipe.recipeTitle
         : t('cookSavedRecipeToSeeItHere'),
   };
   const kitchenRows: SettingsRow[] = [
