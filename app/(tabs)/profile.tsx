@@ -271,14 +271,14 @@ export default function ProfileScreen() {
             {supportedLanguages.map((language) => (
               <Chip
                 key={language.code}
-                label={language.label}
+                label={language.autonym}
                 onPress={() => handleSelectLanguage(language.code)}
                 selected={languageCode === language.code}
               />
             ))}
           </View>
           <Text style={styles.languageDetail}>
-            {getLanguageOption(languageCode).label}
+            {getLanguageOption(languageCode).autonym}
           </Text>
         </Card>
         <Card style={styles.listCard}>

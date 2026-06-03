@@ -13,22 +13,23 @@ export type SupportedLanguageCode =
 export type SupportedLanguage = {
   code: SupportedLanguageCode;
   label: string;
+  autonym: string;
   promptName: string;
 };
 
 export const defaultLanguageCode: SupportedLanguageCode = 'en';
 
 export const supportedLanguages: SupportedLanguage[] = [
-  { code: 'en', label: 'English', promptName: 'English' },
-  { code: 'es', label: 'Spanish', promptName: 'Spanish' },
-  { code: 'zh', label: 'Chinese', promptName: 'Chinese' },
-  { code: 'fr', label: 'French', promptName: 'French' },
-  { code: 'de', label: 'German', promptName: 'German' },
-  { code: 'it', label: 'Italian', promptName: 'Italian' },
-  { code: 'ja', label: 'Japanese', promptName: 'Japanese' },
-  { code: 'ko', label: 'Korean', promptName: 'Korean' },
-  { code: 'pt', label: 'Portuguese', promptName: 'Portuguese' },
-  { code: 'vi', label: 'Vietnamese', promptName: 'Vietnamese' },
+  { code: 'en', label: 'English', autonym: 'English', promptName: 'English' },
+  { code: 'es', label: 'Spanish', autonym: 'Español', promptName: 'Spanish' },
+  { code: 'zh', label: 'Chinese', autonym: '中文', promptName: 'Chinese' },
+  { code: 'fr', label: 'French', autonym: 'Français', promptName: 'French' },
+  { code: 'de', label: 'German', autonym: 'Deutsch', promptName: 'German' },
+  { code: 'it', label: 'Italian', autonym: 'Italiano', promptName: 'Italian' },
+  { code: 'ja', label: 'Japanese', autonym: '日本語', promptName: 'Japanese' },
+  { code: 'ko', label: 'Korean', autonym: '한국어', promptName: 'Korean' },
+  { code: 'pt', label: 'Portuguese', autonym: 'Português', promptName: 'Portuguese' },
+  { code: 'vi', label: 'Vietnamese', autonym: 'Tiếng Việt', promptName: 'Vietnamese' },
 ];
 
 const supportedLanguageByCode = new Map(supportedLanguages.map((language) => [language.code, language]));
