@@ -16,6 +16,7 @@ import {
 } from '@/lib/favorite-recipes';
 import { findGeneratedRecipe, removeGeneratedRecipe } from '@/lib/generated-recipes';
 import { safeBack } from '@/lib/navigation';
+import { formatIngredientQuantity } from '@/lib/quantity';
 import { dismissSuggestedRecipe, getSavedRecipeById } from '@/lib/recipes';
 import { addShoppingListItemsFromRecipe } from '@/lib/shopping-list';
 import { getShoppingListSourceRecipeId } from '@/lib/shopping-list-mappers';
@@ -295,7 +296,7 @@ export default function RecipeDetailScreen() {
             <IngredientRow
               key={ingredient.name}
               label={ingredient.name}
-              detail={[ingredient.quantityValue, ingredient.quantityUnit].filter(Boolean).join(' ')}
+              detail={formatIngredientQuantity(ingredient.quantityValue, ingredient.quantityUnit, t)}
             />
           ))}
         </Card>
@@ -343,7 +344,7 @@ export default function RecipeDetailScreen() {
                 <ImpactRow
                   key={ingredient.name}
                   item={ingredient.name}
-                  detail={[ingredient.quantityValue, ingredient.quantityUnit].filter(Boolean).join(' ') || t('amountVaries')}
+                  detail={formatIngredientQuantity(ingredient.quantityValue, ingredient.quantityUnit, t) || t('amountVaries')}
                 />
               ))}
               {!isHistorySource ? (
