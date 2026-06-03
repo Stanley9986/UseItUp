@@ -42,6 +42,21 @@ export async function hashRecipeSource(source: RecipeTranslationSource): Promise
     .join('');
 }
 
+export function normalizeTerm(term: string) {
+  return term.trim().toLowerCase();
+}
+
+// Cache key for a single term translation. Namespaced so it never collides with
+// a recipe content hash even though both share the recipe_translations table.
+export async function hashTerm(term: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`term:${normalizeTerm(term)}`);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 // Zip the source ingredient names with the model's translated names (returned
 // in the same order) into an original -> translated map.
 export function buildIngredientNameMap(

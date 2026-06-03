@@ -1,5 +1,5 @@
-import { RecipePrompt, TranslationPrompt } from '../shared/prompt.ts';
-import { recipeSchema, translationSchema } from '../shared/schema.ts';
+import { RecipePrompt, TermsPrompt, TranslationPrompt } from '../shared/prompt.ts';
+import { recipeSchema, termsSchema, translationSchema } from '../shared/schema.ts';
 
 export async function generateWithGemini(prompt: RecipePrompt) {
   return requestGeminiJson({
@@ -16,6 +16,15 @@ export async function translateWithGemini(prompt: TranslationPrompt) {
     systemInstruction: prompt.systemInstruction,
     userPayload: prompt.userPayload,
     responseSchema: translationSchema,
+    temperature: 0.2,
+  });
+}
+
+export async function translateTermsWithGemini(prompt: TermsPrompt) {
+  return requestGeminiJson({
+    systemInstruction: prompt.systemInstruction,
+    userPayload: prompt.userPayload,
+    responseSchema: termsSchema,
     temperature: 0.2,
   });
 }

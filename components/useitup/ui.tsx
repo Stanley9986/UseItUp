@@ -262,7 +262,11 @@ export function ExpirationText({ expirationDate }: { expirationDate?: string }) 
   return <Text style={styles.expiration}>{t('expires', { label })}</Text>;
 }
 
-export function PantryCard({ item, showEdit = false }: { item: PantryItem; showEdit?: boolean }) {
+export function PantryCard({
+  item,
+  showEdit = false,
+  displayName,
+}: { item: PantryItem; showEdit?: boolean; displayName?: string }) {
   const { t } = useAppLanguage();
 
   return (
@@ -272,7 +276,7 @@ export function PantryCard({ item, showEdit = false }: { item: PantryItem; showE
           <View style={styles.itemRow}>
             <PantryArtworkImage item={item} style={styles.itemIcon} />
             <View style={styles.itemCopy}>
-              <Text style={styles.itemTitle}>{item.name}</Text>
+              <Text style={styles.itemTitle}>{displayName ?? item.name}</Text>
               <View style={styles.inlineMeta}>
                 <QuantityText item={item} />
                 <Text style={styles.dot}>.</Text>

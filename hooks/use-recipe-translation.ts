@@ -1,48 +1,33 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useAppLanguage } from '@/contexts/language-context';
-import {
-  applyRecipeTranslation,
-  RecipeTranslation,
-  shouldTranslateRecipe,
-  translateRecipes,
-} from '@/lib/recipe-translation';
+import { prepareTranslatedRecipes } from '@/lib/recipe-translation';
 import { Recipe } from '@/types/useitup';
 
-// Returns the recipes with translations applied for the active app language,
-// plus a flag while a translation request is in flight. Recipes already in the
-// active language (or with unknown source language) pass through untouched.
+// Returns the recipes prepared for display in the active app language (recipe
+// prose translated when needed, plus ingredient names translated via the term
+// service), with a flag while a translation request is in flight.
 export function useTranslatedRecipes(recipes: Recipe[]): { recipes: Recipe[]; isTranslating: boolean } {
   const { languageCode } = useAppLanguage();
-  const [translations, setTranslations] = useState<Record<string, RecipeTranslation>>({});
+  const [display, setDisplay] = useState<Recipe[]>(recipes);
   const [isTranslating, setIsTranslating] = useState(false);
 
   const recipeKey = useMemo(() => recipes.map((recipe) => recipe.id).join(','), [recipes]);
-  const needsTranslation = useMemo(
-    () => recipes.some((recipe) => shouldTranslateRecipe(recipe, languageCode)),
-    [recipes, languageCode],
-  );
 
   useEffect(() => {
-    if (!needsTranslation) {
-      setTranslations({});
-      setIsTranslating(false);
-      return;
-    }
-
     let cancelled = false;
     setIsTranslating(true);
 
-    translateRecipes(recipes, languageCode)
+    prepareTranslatedRecipes(recipes, languageCode)
       .then((result) => {
         if (!cancelled) {
-          setTranslations(result);
+          setDisplay(result);
         }
       })
       .catch(() => {
-        // On failure, fall back to the original language rather than blanking.
+        // On failure, fall back to the originals rather than blanking.
         if (!cancelled) {
-          setTranslations({});
+          setDisplay(recipes);
         }
       })
       .finally(() => {
@@ -56,14 +41,19 @@ export function useTranslatedRecipes(recipes: Recipe[]): { recipes: Recipe[]; is
     };
     // recipeKey captures recipe identity; recipes is intentionally read fresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipeKey, languageCode, needsTranslation]);
+  }, [recipeKey, languageCode]);
 
-  const translated = useMemo(
-    () => recipes.map((recipe) => applyRecipeTranslation(recipe, translations[recipe.id])),
-    [recipes, translations],
-  );
+  // Only use the prepared set when it matches the current recipes; otherwise show
+  // the originals until the new translation resolves.
+  const aligned = useMemo(() => {
+    if (display.length === recipes.length && display.every((item, index) => item.id === recipes[index].id)) {
+      return display;
+    }
 
-  return { recipes: translated, isTranslating };
+    return recipes;
+  }, [display, recipes]);
+
+  return { recipes: aligned, isTranslating };
 }
 
 export function useTranslatedRecipe(recipe: Recipe | null): { recipe: Recipe | null; isTranslating: boolean } {

@@ -27,6 +27,27 @@ export const translationSchema = {
   required: ['recipes'],
 };
 
+// Response schema for translating short item/ingredient names. Each entry pairs
+// the original source string with its translation so results map back by value
+// rather than by fragile array position.
+export const termsSchema = {
+  type: 'object',
+  properties: {
+    terms: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          source: { type: 'string' },
+          translation: { type: 'string' },
+        },
+        required: ['source', 'translation'],
+      },
+    },
+  },
+  required: ['terms'],
+};
+
 export const recipeSchema = {
   type: 'object',
   properties: {

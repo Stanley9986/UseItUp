@@ -25,6 +25,7 @@ export function createRecipePrompt({ pantryItems, preferences }: RecipePromptInp
       'Use no more than 8 ingredients per recipe.',
       'Respect dietary preferences and avoided ingredients from the user payload.',
       'Write all user-facing recipe content in the requested language.',
+      'Write ingredient names in the requested language too, including ones that match pantry items; keep the matching pantryItemId so the link is preserved.',
       'Keep JSON property names in English even when recipe content uses another language.',
       'Do not include avoided ingredients as required or optional ingredients.',
       'When dietary preferences limit ingredients, adapt recipes instead of ignoring the preferences.',
@@ -163,6 +164,46 @@ export function createTranslationPrompt(input: TranslationPromptInput): Translat
       targetLanguage,
       targetLanguageName: languageNamesByCode[targetLanguage],
       recipes,
+    },
+  };
+}
+
+export type TermsPromptInput = {
+  targetLanguage: unknown;
+  terms: unknown;
+};
+
+export type TermsPrompt = {
+  systemInstruction: string;
+  userPayload: {
+    targetLanguage: keyof typeof languageNamesByCode;
+    targetLanguageName: string;
+    terms: string[];
+  };
+};
+
+// Translates short food item / ingredient names (pantry entries, recipe
+// ingredients) into the active language, independent of any recipe's source
+// language.
+export function createTermsPrompt(input: TermsPromptInput): TermsPrompt {
+  const targetLanguage = normalizeLanguageCode(input.targetLanguage);
+  const terms = Array.isArray(input.terms) ? cleanStringList(input.terms) : [];
+
+  return {
+    systemInstruction: [
+      'You translate short food item and ingredient names for a kitchen app.',
+      `Translate each name into ${languageNamesByCode[targetLanguage]}.`,
+      'Return one object per input name with its exact original source string and the translation.',
+      'Use the common culinary name in the target language.',
+      'If a name is already in the target language, return it unchanged.',
+      'Leave brand names and proper nouns untranslated when there is no common equivalent.',
+      'Do not add, remove, merge, or reorder names.',
+      'Return only valid JSON that matches the provided terms response schema.',
+    ].join(' '),
+    userPayload: {
+      targetLanguage,
+      targetLanguageName: languageNamesByCode[targetLanguage],
+      terms,
     },
   };
 }

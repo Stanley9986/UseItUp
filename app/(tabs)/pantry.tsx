@@ -19,6 +19,7 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import { useTranslatedNames } from '@/hooks/use-term-translation';
 import { getErrorMessage } from '@/lib/errors';
 import { getPantryItems } from '@/lib/pantry';
 import { PantryItem, StorageLocation } from '@/types/useitup';
@@ -83,6 +84,9 @@ export default function PantryScreen() {
     [filter, items, query],
   );
   const groupedItems = useMemo(() => groupItemsByCategory(visibleItems), [visibleItems]);
+  // Pantry names are user data; translate them for display in the active language.
+  const itemNames = useMemo(() => items.map((item) => item.name), [items]);
+  const pantryNameMap = useTranslatedNames(itemNames);
 
   return (
     <Screen
@@ -145,7 +149,7 @@ export default function PantryScreen() {
               <SectionTitle>{t(group.title)}</SectionTitle>
               <View style={styles.groupList}>
                 {group.items.map((item) => (
-                  <PantryListItem item={item} key={item.id} />
+                  <PantryListItem displayName={pantryNameMap[item.name]} item={item} key={item.id} />
                 ))}
               </View>
             </View>
@@ -171,14 +175,14 @@ export default function PantryScreen() {
   );
 }
 
-function PantryListItem({ item }: { item: PantryItem }) {
+function PantryListItem({ item, displayName }: { item: PantryItem; displayName?: string }) {
   return (
     <Link asChild href={`/pantry-item/${item.id}`}>
       <Pressable>
         <Card style={styles.pantryItem}>
           <PantryArtworkImage item={item} style={styles.itemImage} />
           <View style={styles.itemCopy}>
-            <Text numberOfLines={1} style={styles.itemName}>{item.name}</Text>
+            <Text numberOfLines={1} style={styles.itemName}>{displayName ?? item.name}</Text>
             <View style={styles.itemMeta}>
               <QuantityText item={item} />
               <Text style={styles.metaDot}>.</Text>

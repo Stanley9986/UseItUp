@@ -1,7 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { supabase } from '@/lib/supabase';
+import { translateTerms } from '@/lib/term-translation';
 import { Recipe } from '@/types/useitup';
+
+const defaultLanguageCode = 'en';
 
 export type RecipeTranslation = {
   title: string;
@@ -97,6 +100,43 @@ export function applyRecipeTranslation(recipe: Recipe, translation?: RecipeTrans
       (name) => translation.ingredientNames[name] ?? name,
     ),
   };
+}
+
+// Returns display-ready recipes: recipe prose translated when the source
+// language differs, and ingredient/missing names translated into the active
+// language via the term service. The term pass fixes names even when the recipe
+// itself is already in the active language -- e.g. a recipe generated in Chinese
+// that echoed English pantry names for its ingredients.
+export async function prepareTranslatedRecipes(
+  recipes: Recipe[],
+  targetLanguage: string,
+): Promise<Recipe[]> {
+  const translations = await translateRecipes(recipes, targetLanguage);
+  let display = recipes.map((recipe) => applyRecipeTranslation(recipe, translations[recipe.id]));
+
+  // English is the assumed source language for item names, so only term-translate
+  // for other languages to avoid needless calls in the common case.
+  if (targetLanguage !== defaultLanguageCode) {
+    const names = new Set<string>();
+    display.forEach((recipe) => {
+      recipe.ingredients.forEach((ingredient) => names.add(ingredient.name));
+      recipe.missingIngredients.forEach((name) => names.add(name));
+    });
+
+    if (names.size) {
+      const termMap = await translateTerms(Array.from(names), targetLanguage);
+      display = display.map((recipe) => ({
+        ...recipe,
+        ingredients: recipe.ingredients.map((ingredient) => ({
+          ...ingredient,
+          name: termMap[ingredient.name] ?? ingredient.name,
+        })),
+        missingIngredients: recipe.missingIngredients.map((name) => termMap[name] ?? name),
+      }));
+    }
+  }
+
+  return display;
 }
 
 export function clearRecipeTranslationClientCache() {
