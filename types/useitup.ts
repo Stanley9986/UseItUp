@@ -34,6 +34,8 @@ export type Recipe = {
   ingredients: RecipeIngredient[];
   missingIngredients: string[];
   instructions: string[];
+  // Language the stored content was generated/saved in. Drives translate-on-view.
+  language?: string;
 };
 
 export type UserPreferences = {

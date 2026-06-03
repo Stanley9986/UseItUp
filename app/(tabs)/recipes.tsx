@@ -252,8 +252,10 @@ export default function RecipesScreen() {
         return;
       }
 
-      // Regenerating replaces the previous suggestion batch.
-      const savedRecipes = await replaceSuggestedRecipes(user.id, nextRecipes);
+      // Regenerating replaces the previous suggestion batch. Stamp it with the
+      // language it was generated in so translate-on-view can skip recipes that
+      // are already in the active language.
+      const savedRecipes = await replaceSuggestedRecipes(user.id, nextRecipes, preferences.languageCode);
       setSuggested(savedRecipes);
       setGeneratedRecipes(savedRecipes);
       setSuggestedNextPage(1);

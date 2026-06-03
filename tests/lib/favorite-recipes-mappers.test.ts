@@ -109,6 +109,7 @@ describe('mapFavoriteRecipeInsert', () => {
       ingredients: [{ name: 'Steak', isAvailable: true }],
       prep_time_minutes: 20,
       uses_expiring_items: true,
+      language: null,
     });
   });
 

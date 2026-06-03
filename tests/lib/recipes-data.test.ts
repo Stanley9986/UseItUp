@@ -207,6 +207,7 @@ describe('recipe data access', () => {
             is_suggested: false,
             created_by_ai: false,
             source: 'user_saved',
+            language: null,
           },
         ],
       },

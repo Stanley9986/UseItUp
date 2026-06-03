@@ -11,6 +11,7 @@ export type FavoriteRecipeRow = {
   ingredients: unknown;
   prep_time_minutes: number | null;
   uses_expiring_items: boolean;
+  language?: string | null;
   created_at: string;
 };
 
@@ -29,6 +30,7 @@ export function mapFavoriteRecipeRow(row: FavoriteRecipeRow): Recipe {
       .filter((ingredient) => !ingredient.isAvailable)
       .map((ingredient) => ingredient.name),
     instructions: normalizeInstructions(row.instructions),
+    language: row.language ?? undefined,
   };
 }
 
@@ -42,6 +44,7 @@ export function mapFavoriteRecipeInsert(userId: string, recipe: Recipe) {
     ingredients: recipe.ingredients,
     prep_time_minutes: recipe.prepTimeMinutes ?? null,
     uses_expiring_items: Boolean(recipe.usesExpiringItems),
+    language: recipe.language ?? null,
   };
 }
 

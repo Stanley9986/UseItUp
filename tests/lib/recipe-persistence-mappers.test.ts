@@ -107,6 +107,7 @@ describe('mapRecipeInsert', () => {
       is_suggested: true,
       created_by_ai: true,
       source: 'ai',
+      language: null,
     });
   });
 });

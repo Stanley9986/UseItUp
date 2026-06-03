@@ -64,13 +64,28 @@ export async function getSavedRecipeById(userId: string, recipeId: string) {
 // RPC demotes the previous batch and inserts the new one in one transaction, so
 // a failure can never wipe or partially replace the current suggestions.
 // Demoting (rather than deleting) keeps rows referenced by cook history alive.
-export async function replaceSuggestedRecipes(userId: string, recipes: Recipe[]) {
+export async function replaceSuggestedRecipes(userId: string, recipes: Recipe[], language?: string) {
   const { error } = await supabase.rpc('replace_suggested_recipes', {
     p_recipes: mapSuggestedRecipesPayload(userId, recipes),
   });
 
   if (error) {
     throw error;
+  }
+
+  // The whole batch was generated in one language. The RPC assigns its own ids,
+  // so stamp the language on the freshly inserted suggested rows in one update
+  // rather than threading it through the RPC.
+  if (language) {
+    const { error: languageError } = await supabase
+      .from('recipes')
+      .update({ language })
+      .eq('user_id', userId)
+      .eq('is_suggested', true);
+
+    if (languageError) {
+      throw languageError;
+    }
   }
 
   return getSavedRecipes(userId);

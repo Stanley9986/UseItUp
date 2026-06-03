@@ -11,6 +11,7 @@ export type RecipeRow = {
   is_suggested: boolean;
   created_by_ai: boolean;
   source: string;
+  language?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -42,6 +43,7 @@ export function mapRecipeRow(row: RecipeRow, ingredientRows: RecipeIngredientRow
     ingredients,
     missingIngredients: ingredients.filter((ingredient) => !ingredient.isAvailable).map((ingredient) => ingredient.name),
     instructions: normalizeInstructions(row.instructions),
+    language: row.language ?? undefined,
   };
 }
 
@@ -56,6 +58,7 @@ export function mapRecipeInsert(userId: string, recipe: Recipe) {
     is_suggested: true,
     created_by_ai: true,
     source: 'ai',
+    language: recipe.language ?? null,
   };
 }
 
@@ -76,8 +79,11 @@ export function mapRecipeIngredientInsert(recipeId: string, ingredient: RecipeIn
 // user_id (from auth.uid()) and recipe_id, so those keys are omitted here.
 export function mapSuggestedRecipesPayload(userId: string, recipes: Recipe[]) {
   return recipes.map((recipe) => {
-    const { user_id, ...recipeInsert } = mapRecipeInsert(userId, recipe);
+    // language is stamped on the inserted rows in a follow-up update, not via
+    // the RPC payload.
+    const { user_id, language, ...recipeInsert } = mapRecipeInsert(userId, recipe);
     void user_id;
+    void language;
 
     return {
       ...recipeInsert,
@@ -92,11 +98,16 @@ export function mapSuggestedRecipesPayload(userId: string, recipes: Recipe[]) {
 }
 
 export function mapSavedRecipeUpdatePayload(userId: string, recipe: Recipe) {
-  const { user_id, is_suggested, created_by_ai, source, ...recipePayload } = mapRecipeInsert(userId, recipe);
+  // Editing a saved recipe does not change the language it was generated in.
+  const { user_id, is_suggested, created_by_ai, source, language, ...recipePayload } = mapRecipeInsert(
+    userId,
+    recipe,
+  );
   void user_id;
   void is_suggested;
   void created_by_ai;
   void source;
+  void language;
 
   return {
     ...recipePayload,
