@@ -7,7 +7,7 @@ import {
   normalizeLanguageCode,
   sanitizeTranslationRecipe,
 } from './shared/prompt.ts';
-import { getRecipeProvider, getTranslationProvider } from './providers/index.ts';
+import { buildProviderChain, callWithFallback } from './providers/index.ts';
 import {
   buildIngredientNameMap,
   hashRecipeSource,
@@ -53,10 +53,10 @@ Deno.serve(async (request) => {
     },
   });
 
-  const provider = getRecipeProvider(Deno.env.get('AI_PROVIDER') ?? 'gemini');
-
   try {
-    const recipes = await provider.generate(prompt);
+    const { result: recipes } = await callWithFallback(getGenerationChain(), (provider) =>
+      provider.generate(prompt),
+    );
 
     return jsonResponse(recipes);
   } catch (error) {
@@ -99,16 +99,15 @@ async function handleTranslate(input: Record<string, unknown>) {
 
   if (missSources.length) {
     try {
-      const provider = getConfiguredTranslationProvider();
-      const result = await provider.translateRecipes(
-        createTranslationPrompt({ targetLanguage, recipes: missSources }),
+      const { result, providerName } = await callWithFallback(getTranslationChain(), (provider) =>
+        provider.translateRecipes(createTranslationPrompt({ targetLanguage, recipes: missSources })),
       );
       const translated = Array.isArray(result?.recipes) ? result.recipes : [];
       missTranslations = missSources.map((source, index) => buildTranslation(source, translated[index]));
 
       await Promise.all(
         missIndexes.map((sourceIndex, missIndex) =>
-          cacheTranslation(hashes[sourceIndex], targetLanguage, missTranslations[missIndex], provider.name),
+          cacheTranslation(hashes[sourceIndex], targetLanguage, missTranslations[missIndex], providerName),
         ),
       );
     } catch (error) {
@@ -164,8 +163,9 @@ async function handleTranslateTerms(input: Record<string, unknown>) {
 
   if (missTerms.length) {
     try {
-      const provider = getConfiguredTranslationProvider();
-      const result = await provider.translateTerms(createTermsPrompt({ targetLanguage, terms: missTerms }));
+      const { result, providerName } = await callWithFallback(getTranslationChain(), (provider) =>
+        provider.translateTerms(createTermsPrompt({ targetLanguage, terms: missTerms })),
+      );
       const pairs = Array.isArray(result?.terms) ? result.terms : [];
       const bySource: Record<string, string> = {};
 
@@ -184,7 +184,7 @@ async function handleTranslateTerms(input: Record<string, unknown>) {
         missTerms.map(async (term, missIndex) => {
           const translation = bySource[term] ?? term;
           resolved[term] = translation;
-          await cacheTerm(hashes[missIndexes[missIndex]], targetLanguage, translation, provider.name);
+          await cacheTerm(hashes[missIndexes[missIndex]], targetLanguage, translation, providerName);
         }),
       );
     } catch {
@@ -219,11 +219,21 @@ async function cacheTerm(sourceHash: string, targetLanguage: string, translation
   });
 }
 
-function getConfiguredTranslationProvider() {
-  return getTranslationProvider(
-    Deno.env.get('TRANSLATION_PROVIDER'),
-    Deno.env.get('AI_PROVIDER') ?? 'gemini',
-  );
+function parseFallbackOrder() {
+  return (Deno.env.get('PROVIDER_FALLBACK_ORDER') ?? '')
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name && name.toLowerCase() !== 'none');
+}
+
+function getGenerationChain() {
+  return buildProviderChain(Deno.env.get('AI_PROVIDER') ?? 'gemini', parseFallbackOrder());
+}
+
+function getTranslationChain() {
+  const primary = Deno.env.get('TRANSLATION_PROVIDER') || Deno.env.get('AI_PROVIDER') || 'gemini';
+
+  return buildProviderChain(primary, parseFallbackOrder());
 }
 
 function buildTranslation(source, translated) {

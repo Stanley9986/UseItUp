@@ -1,4 +1,5 @@
 import { RecipePrompt, TermsPrompt, TranslationPrompt } from '../shared/prompt.ts';
+import { fetchWithTimeout } from '../shared/request.ts';
 import { recipeSchema, termsSchema, translationSchema } from '../shared/schema.ts';
 import { RecipeProvider } from './types.ts';
 
@@ -62,7 +63,7 @@ async function requestGeminiJson({
     typeof temperature === 'number'
       ? temperature
       : readTemperature(Deno.env.get('GEMINI_TEMPERATURE'), 0.7);
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: 'POST',

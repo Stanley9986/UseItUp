@@ -1,4 +1,5 @@
 import { RecipePrompt, TermsPrompt, TranslationPrompt } from '../shared/prompt.ts';
+import { fetchWithTimeout } from '../shared/request.ts';
 import { recipeSchema, termsSchema, translationSchema } from '../shared/schema.ts';
 import { RecipeProvider } from './types.ts';
 
@@ -63,7 +64,7 @@ async function requestOpenAICompatibleJson(
       ? temperature
       : readTemperature(Deno.env.get(config.temperatureEnv), 0.7);
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  const response = await fetchWithTimeout(`${baseUrl}/chat/completions`, {
     body: JSON.stringify({
       max_tokens: maxTokens,
       messages: [

@@ -33,6 +33,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - Edge Functions have provider selection env vars for recipe generation, translation, and image lookup so Gemini/OpenAI/DeepSeek/Pexels choices can be swapped without mobile app changes.
 - lib modules are grouped into domain folders (recipes, pantry, cooking, i18n, shopping, reminders, preferences, shared) and the on-device caches share one client-cache utility.
 - Migrations run through 016 (recipe source-language column, content-addressed translation cache, OpenAI food-image provider allowance).
+- The Edge Function falls back across providers on error or timeout (`PROVIDER_FALLBACK_ORDER`), caps each provider request (`PROVIDER_TIMEOUT_MS`), and the Recipes screen briefly disables regenerate after a run to avoid double-fire.
 
 ## Section 2 - Tech Debt / Cleanup
 
@@ -47,7 +48,8 @@ This file tracks the working backlog for UseItUp so project direction survives c
 
 ## Section 4 - Quality / Robustness
 
-- Harden the Edge Function with rate limiting, provider fallback, and generation caching.
+- Add a per-user generation cost cap (cost control, not rate compliance) before a public launch. DeepSeek imposes no requests-per-minute limit, only a high concurrency cap (500/2500), so dedicated rate limiting is not needed at current scale; provider fallback and request timeouts are already in place.
+- Cache recipe generation results where appropriate (translation results are already cached; generation is still fresh per request).
 - Add Supabase Storage-backed generated image support before enabling `IMAGE_PROVIDER=openai`.
 - Improve duplicate handling for generated recipes, beyond title-based favorite dedupe.
 - Keep adding focused tests with every new feature.

@@ -81,4 +81,9 @@ Do not commit secret values. `SERVICE_ROLE_KEY` is intentionally not named with 
 
 `generate-recipes` supports `AI_PROVIDER=gemini|openai|deepseek` for recipe generation and `TRANSLATION_PROVIDER=gemini|openai|deepseek` for recipe and term translation. If `TRANSLATION_PROVIDER` is unset, it falls back to `AI_PROVIDER`.
 
+Provider resilience:
+
+- `PROVIDER_FALLBACK_ORDER` is a comma-separated list of providers to try after the primary if it errors or times out (e.g. `deepseek,gemini`). Applies to both generation and translation. Leave unset or set to `none` for no fallback. Only list providers whose API keys are configured.
+- `PROVIDER_TIMEOUT_MS` caps each AI provider request (default `45000`). DeepSeek can hold a connection open for minutes under load, so this bounds the wait and turns a stall into a fallback. Keep it well under the Edge Function's own timeout.
+
 `recipe-image` supports `IMAGE_PROVIDER=pexels` today. `IMAGE_PROVIDER=openai` is reserved for future generated image support after adding Supabase Storage for stable image URLs.

@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   LayoutChangeEvent,
@@ -70,6 +70,10 @@ export default function RecipesScreen() {
   const [isLoadingMoreFavorites, setIsLoadingMoreFavorites] = useState(false);
   const [isLoadingMoreSuggested, setIsLoadingMoreSuggested] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  // Brief cooldown after a generation so a double-tap cannot fire a second
+  // (paid) provider call immediately.
+  const [isCoolingDown, setIsCoolingDown] = useState(false);
+  const cooldownTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [generationStepIndex, setGenerationStepIndex] = useState(0);
   const [favoriteScrollProgress, setFavoriteScrollProgress] = useState(0);
   const [favoriteRailWidth, setFavoriteRailWidth] = useState(0);
@@ -229,8 +233,10 @@ export default function RecipesScreen() {
     return () => clearTimeout(timeout);
   }, [favoriteToast]);
 
+  useEffect(() => () => clearTimeout(cooldownTimer.current), []);
+
   async function handleGenerate() {
-    if (!user || isGenerating) {
+    if (!user || isGenerating || isCoolingDown) {
       return;
     }
 
@@ -270,6 +276,8 @@ export default function RecipesScreen() {
       setMessage({ tone: 'error', text: getErrorMessage(error, t('unableToGenerateRecipes')) });
     } finally {
       setIsGenerating(false);
+      setIsCoolingDown(true);
+      cooldownTimer.current = setTimeout(() => setIsCoolingDown(false), 4000);
     }
   }
 
@@ -402,7 +410,7 @@ export default function RecipesScreen() {
             </Text>
           </View>
         ) : null}
-        <Button disabled={isGenerating} icon="sparkles-outline" onPress={handleGenerate}>
+        <Button disabled={isGenerating || isCoolingDown} icon="sparkles-outline" onPress={handleGenerate}>
           {isGenerating ? t('generating') : suggested.length ? t('regenerateRecipes') : t('generateRecipes')}
         </Button>
         {isGenerating ? (
