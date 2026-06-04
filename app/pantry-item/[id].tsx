@@ -1,6 +1,7 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -59,9 +60,11 @@ export default function PantryItemDetailScreen() {
 
   const { isRefreshing, refresh } = useRefresh(() => loadItem({ showLoading: false }));
 
-  useEffect(() => {
-    loadItem();
-  }, [loadItem]);
+  useFocusEffect(
+    useCallback(() => {
+      loadItem();
+    }, [loadItem]),
+  );
 
   async function handleDelete() {
     if (!user || !id || isDeleting) {

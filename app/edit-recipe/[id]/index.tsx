@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -7,6 +7,7 @@ import { Button, Card, palette, Screen, SectionTitle } from '@/components/useitu
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { getErrorMessage } from '@/lib/shared/errors';
+import { safeBack } from '@/lib/shared/navigation';
 import { getFavoriteRecipeById, updateFavoriteRecipe } from '@/lib/recipes/favorite-recipes';
 import { getSavedRecipeById, updateSavedRecipe } from '@/lib/recipes/recipes';
 import {
@@ -100,7 +101,7 @@ export default function EditRecipeScreen() {
         return;
       }
 
-      router.replace(`/recipe/${updatedRecipe.id}`);
+      safeBack(`/recipe/${updatedRecipe.id}`);
     } catch (error) {
       setMessage(getErrorMessage(error, isSuggestedEdit ? t('unableToSaveRecipe') : t('unableToSaveFavoriteRecipe')));
     } finally {

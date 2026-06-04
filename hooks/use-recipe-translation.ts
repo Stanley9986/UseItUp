@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useAppLanguage } from '@/contexts/language-context';
-import { prepareTranslatedRecipes } from '@/lib/recipes/recipe-translation';
+import { getRecipeTranslationSignature, prepareTranslatedRecipes } from '@/lib/recipes/recipe-translation';
 import { Recipe } from '@/types/useitup';
 
 // Returns the recipes prepared for display in the active app language (recipe
@@ -12,7 +12,10 @@ export function useTranslatedRecipes(recipes: Recipe[]): { recipes: Recipe[]; is
   const [display, setDisplay] = useState<Recipe[]>(recipes);
   const [isTranslating, setIsTranslating] = useState(false);
 
-  const recipeKey = useMemo(() => recipes.map((recipe) => recipe.id).join(','), [recipes]);
+  const recipeKey = useMemo(
+    () => recipes.map(getRecipeTranslationSignature).join('|'),
+    [recipes],
+  );
 
   useEffect(() => {
     let cancelled = false;

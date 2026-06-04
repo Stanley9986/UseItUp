@@ -8,6 +8,7 @@ import {
   PantryItemInput,
   PantryItemRow,
 } from '@/lib/pantry/pantry-mappers';
+import { isDepletedPantryItem } from '@/lib/pantry/quantity';
 
 export {
   getErrorMessage,
@@ -33,7 +34,7 @@ export async function getPantryItems(userId: string) {
     throw error;
   }
 
-  return (data as PantryItemRow[]).map(mapPantryItemRow);
+  return (data as PantryItemRow[]).map(mapPantryItemRow).filter((item) => !isDepletedPantryItem(item));
 }
 
 export async function getPantryItemById(userId: string, itemId: string) {
@@ -48,7 +49,12 @@ export async function getPantryItemById(userId: string, itemId: string) {
     throw error;
   }
 
-  return data ? mapPantryItemRow(data as PantryItemRow) : null;
+  if (!data) {
+    return null;
+  }
+
+  const item = mapPantryItemRow(data as PantryItemRow);
+  return isDepletedPantryItem(item) ? null : item;
 }
 
 export async function createPantryItem(userId: string, input: CreatePantryItemInput) {

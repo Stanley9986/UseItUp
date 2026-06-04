@@ -213,7 +213,7 @@ export function getExpiringReminderItems(
       }
 
       const daysUntilExpiration = getDaysUntilExpiration(item.expirationDate, now);
-      return daysUntilExpiration >= 0 && daysUntilExpiration <= nextSettings.daysAhead;
+      return daysUntilExpiration <= nextSettings.daysAhead;
     })
     .sort((first, second) => {
       const firstDays = first.expirationDate ? getDaysUntilExpiration(first.expirationDate, now) : Number.MAX_SAFE_INTEGER;
@@ -236,12 +236,9 @@ export function groupExpiringReminderItems(
 
     const daysUntilExpiration = getDaysUntilExpiration(item.expirationDate, now);
 
-    if (daysUntilExpiration < 0) {
-      return;
-    }
-
-    const currentItems = groupedItems.get(daysUntilExpiration) ?? [];
-    groupedItems.set(daysUntilExpiration, [...currentItems, item]);
+    const groupDay = Math.max(daysUntilExpiration, 0);
+    const currentItems = groupedItems.get(groupDay) ?? [];
+    groupedItems.set(groupDay, [...currentItems, item]);
   });
 
   return [...groupedItems.entries()]

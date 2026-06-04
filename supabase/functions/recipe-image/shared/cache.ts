@@ -1,9 +1,11 @@
+import { FoodImageProviderName } from '../providers/types.ts';
+
 export type CachedFoodImage = {
   alt?: string;
   imageUrl: string;
   photographer?: string;
   photographerUrl?: string;
-  provider: 'pexels';
+  provider: FoodImageProviderName;
 };
 
 export type FoodImageCacheRecord = {
@@ -12,7 +14,7 @@ export type FoodImageCacheRecord = {
   image_url: string;
   photographer?: string | null;
   photographer_url?: string | null;
-  provider: 'pexels';
+  provider: FoodImageProviderName;
 };
 
 export const foodImageCacheTtlDays = 30;
@@ -41,4 +43,3 @@ export function mapFoodImageCacheRecord(record: FoodImageCacheRecord): CachedFoo
     provider: record.provider,
   };
 }
-

@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTranslatedRecipes } from '@/hooks/use-recipe-translation';
+import { useTranslatedNames } from '@/hooks/use-term-translation';
 import {
   buildExpiryReminderPlan,
   defaultExpiryReminderSettings,
@@ -103,6 +104,11 @@ export default function HomeScreen() {
     [pantryItems, reminderSettings],
   );
   const expiringPreviewItems = expiringItems.slice(0, 3);
+  const expiringPreviewNames = useMemo(
+    () => expiringPreviewItems.map((item) => item.name),
+    [expiringPreviewItems],
+  );
+  const expiringNameMap = useTranslatedNames(expiringPreviewNames);
 
   const fridgeCount = pantryItems.filter((item) => item.storageLocation === 'fridge').length;
   const freezerCount = pantryItems.filter((item) => item.storageLocation === 'freezer').length;
@@ -224,7 +230,7 @@ export default function HomeScreen() {
                     <PantryArtworkImage item={item} style={styles.foodThumb} />
                     <View style={styles.expiringCopy}>
                       <Text numberOfLines={1} style={styles.foodName}>
-                        {item.name}
+                        {expiringNameMap[item.name] ?? item.name}
                       </Text>
                       <ExpirationText expirationDate={item.expirationDate} />
                     </View>

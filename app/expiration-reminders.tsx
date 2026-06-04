@@ -1,6 +1,7 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Link, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, Chip, ConfirmDialog, palette, Screen, SectionTitle, typography } from '@/components/useitup/ui';
@@ -77,9 +78,11 @@ export default function ExpirationRemindersScreen() {
 
   const { isRefreshing, refresh } = useRefresh(() => loadReminders({ showLoading: false }));
 
-  useEffect(() => {
-    loadReminders();
-  }, [loadReminders]);
+  useFocusEffect(
+    useCallback(() => {
+      loadReminders();
+    }, [loadReminders]),
+  );
 
   const previewPlan = useMemo(
     () => buildExpiryReminderPlan(items, { ...settings, enabled: true }),

@@ -53,5 +53,21 @@ describe('food image cache helpers', () => {
       provider: 'pexels',
     });
   });
-});
 
+  it('maps future generated-image provider rows', () => {
+    expect(
+      mapFoodImageCacheRecord({
+        alt: 'Generated spinach dish',
+        expires_at: '2026-06-02T12:00:00.000Z',
+        image_url: 'https://example.com/generated.webp',
+        provider: 'openai',
+      }),
+    ).toEqual({
+      alt: 'Generated spinach dish',
+      imageUrl: 'https://example.com/generated.webp',
+      photographer: undefined,
+      photographerUrl: undefined,
+      provider: 'openai',
+    });
+  });
+});

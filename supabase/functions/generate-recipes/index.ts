@@ -7,8 +7,7 @@ import {
   normalizeLanguageCode,
   sanitizeTranslationRecipe,
 } from './shared/prompt.ts';
-import { getRecipeProvider } from './providers/index.ts';
-import { translateTermsWithGemini, translateWithGemini } from './providers/gemini.ts';
+import { getRecipeProvider, getTranslationProvider } from './providers/index.ts';
 import {
   buildIngredientNameMap,
   hashRecipeSource,
@@ -82,8 +81,8 @@ async function handleTranslate(input: Record<string, unknown>) {
     return jsonResponse({ error: 'Nothing to translate' }, 400);
   }
 
-  // Resolve every recipe from cache first; only the misses go to Gemini, and
-  // they go in a single batched call.
+  // Resolve every recipe from cache first; only the misses go to the configured
+  // translation provider, and they go in a single batched call.
   const hashes = await Promise.all(sources.map(hashRecipeSource));
   const cached = await Promise.all(hashes.map((hash) => getCachedTranslation(hash, targetLanguage)));
 
@@ -100,7 +99,8 @@ async function handleTranslate(input: Record<string, unknown>) {
 
   if (missSources.length) {
     try {
-      const result = await translateWithGemini(
+      const provider = getConfiguredTranslationProvider();
+      const result = await provider.translateRecipes(
         createTranslationPrompt({ targetLanguage, recipes: missSources }),
       );
       const translated = Array.isArray(result?.recipes) ? result.recipes : [];
@@ -108,7 +108,7 @@ async function handleTranslate(input: Record<string, unknown>) {
 
       await Promise.all(
         missIndexes.map((sourceIndex, missIndex) =>
-          cacheTranslation(hashes[sourceIndex], targetLanguage, missTranslations[missIndex]),
+          cacheTranslation(hashes[sourceIndex], targetLanguage, missTranslations[missIndex], provider.name),
         ),
       );
     } catch (error) {
@@ -164,7 +164,8 @@ async function handleTranslateTerms(input: Record<string, unknown>) {
 
   if (missTerms.length) {
     try {
-      const result = await translateTermsWithGemini(createTermsPrompt({ targetLanguage, terms: missTerms }));
+      const provider = getConfiguredTranslationProvider();
+      const result = await provider.translateTerms(createTermsPrompt({ targetLanguage, terms: missTerms }));
       const pairs = Array.isArray(result?.terms) ? result.terms : [];
       const bySource: Record<string, string> = {};
 
@@ -183,7 +184,7 @@ async function handleTranslateTerms(input: Record<string, unknown>) {
         missTerms.map(async (term, missIndex) => {
           const translation = bySource[term] ?? term;
           resolved[term] = translation;
-          await cacheTerm(hashes[missIndexes[missIndex]], targetLanguage, translation);
+          await cacheTerm(hashes[missIndexes[missIndex]], targetLanguage, translation, provider.name);
         }),
       );
     } catch {
@@ -208,14 +209,21 @@ async function getCachedTerm(sourceHash: string, targetLanguage: string) {
   return record && typeof record.title === 'string' ? record.title : null;
 }
 
-async function cacheTerm(sourceHash: string, targetLanguage: string, translation: string) {
+async function cacheTerm(sourceHash: string, targetLanguage: string, translation: string, provider: string) {
   await upsertCacheRow({
     source_hash: sourceHash,
     target_language: targetLanguage,
     title: translation,
-    provider: 'gemini',
+    provider,
     updated_at: new Date().toISOString(),
   });
+}
+
+function getConfiguredTranslationProvider() {
+  return getTranslationProvider(
+    Deno.env.get('TRANSLATION_PROVIDER'),
+    Deno.env.get('AI_PROVIDER') ?? 'gemini',
+  );
 }
 
 function buildTranslation(source, translated) {
@@ -325,6 +333,7 @@ async function cacheTranslation(
     instructions: string[];
     ingredientNames: Record<string, string>;
   },
+  provider: string,
 ) {
   await upsertCacheRow({
     source_hash: sourceHash,
@@ -333,7 +342,7 @@ async function cacheTranslation(
     description: translation.description,
     instructions: translation.instructions,
     ingredient_names: translation.ingredientNames,
-    provider: 'gemini',
+    provider,
     updated_at: new Date().toISOString(),
   });
 }

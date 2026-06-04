@@ -1,12 +1,14 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, palette, PantryArtworkImage, QuantityText, Screen, SectionTitle, typography } from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import { useTranslatedNames } from '@/hooks/use-term-translation';
 import {
   defaultExpiryReminderSettings,
   ExpiryReminderSettings,
@@ -62,9 +64,11 @@ export default function ExpiringSoonScreen() {
 
   const { isRefreshing, refresh } = useRefresh(() => loadExpiringSoon({ showLoading: false }));
 
-  useEffect(() => {
-    loadExpiringSoon();
-  }, [loadExpiringSoon]);
+  useFocusEffect(
+    useCallback(() => {
+      loadExpiringSoon();
+    }, [loadExpiringSoon]),
+  );
 
   const expiringItems = useMemo(
     () => getExpiringReminderItems(items, settings),
@@ -74,6 +78,11 @@ export default function ExpiringSoonScreen() {
     () => buildVisibleItemsPage(expiringItems, { page: expiringPage, pageSize: defaultPageSize }),
     [expiringItems, expiringPage],
   );
+  const visibleExpiringNames = useMemo(
+    () => visibleExpiringPage.items.map((item) => item.name),
+    [visibleExpiringPage.items],
+  );
+  const expiringNameMap = useTranslatedNames(visibleExpiringNames);
   const expiringGroups = useMemo(
     () => groupExpiringReminderItems(visibleExpiringPage.items),
     [visibleExpiringPage.items],
@@ -127,7 +136,7 @@ export default function ExpiringSoonScreen() {
                       <Pressable style={styles.itemRow}>
                         <PantryArtworkImage item={item} style={styles.itemIcon} />
                         <View style={styles.itemCopy}>
-                          <Text numberOfLines={1} style={styles.itemName}>{item.name}</Text>
+                          <Text numberOfLines={1} style={styles.itemName}>{expiringNameMap[item.name] ?? item.name}</Text>
                           <View style={styles.itemMeta}>
                             <QuantityText item={item} />
                           </View>

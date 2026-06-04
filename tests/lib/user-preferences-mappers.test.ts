@@ -67,6 +67,27 @@ describe('summarizeUserPreferences', () => {
       }),
     ).toBe('Vegetarian · Avoids peanuts · 15 min meals');
   });
+
+  it('summarizes preferences with localized display labels', () => {
+    expect(
+      summarizeUserPreferences(
+        {
+          dietaryPreferences: ['Nut-free'],
+          avoidedIngredients: ['garlic', 'peanuts'],
+          maxPrepTimeMinutes: 30,
+          languageCode: 'ja',
+        },
+        {
+          avoidIngredientsLabel: '避ける食材:',
+          avoidedIngredients: ['ニンニク', 'ピーナッツ'],
+          dietaryPreferenceLabels: {
+            'Nut-free': 'ナッツ不使用',
+          },
+          formatMaxPrepTime: (minutes) => `${minutes}分`,
+        },
+      ),
+    ).toBe('ナッツ不使用 · 避ける食材: ニンニク, ピーナッツ · 30分');
+  });
 });
 
 describe('avoided ingredient helpers', () => {

@@ -24,20 +24,48 @@ const translationCache = createClientCache<RecipeTranslation>({
   isValid: (value) => typeof value === 'object' && value !== null && typeof value.title === 'string',
 });
 
-function cacheKey(recipeId: string, targetLanguage: string) {
-  return `${recipeId}:${targetLanguage}`;
+function cacheKey(recipe: Recipe, targetLanguage: string) {
+  return `${getRecipeTranslationSignature(recipe)}:${targetLanguage}`;
+}
+
+export function getRecipeTranslationSignature(recipe: Recipe) {
+  const ingredients = recipe.ingredients
+    .map((ingredient) => [
+      ingredient.name,
+      ingredient.isAvailable ? '1' : '0',
+      ingredient.pantryItemId ?? '',
+    ].join(':'))
+    .join(',');
+
+  return [
+    recipe.id,
+    recipe.language ?? '',
+    recipe.title,
+    recipe.description ?? '',
+    recipe.instructions.join('\n'),
+    ingredients,
+    recipe.missingIngredients.join(','),
+  ].join('::');
 }
 
 // Translate recipes whose stored source language differs from the target. Rows
-// with an unknown language (legacy data from before language tracking) are
-// assumed to be English and translated when the target is another language, so
-// their title/description localize like everything else.
+// with an unknown language are legacy data from before language tracking: most
+// are English, but some were generated in the active app language before the
+// column existed, so likely non-English content is still translated to English.
 export function shouldTranslateRecipe(recipe: Recipe, targetLanguage: string) {
   if (recipe.language) {
+    if (recipe.language === targetLanguage && targetLanguage === defaultLanguageCode) {
+      return containsLikelyNonEnglishText(recipe);
+    }
+
     return recipe.language !== targetLanguage;
   }
 
-  return targetLanguage !== defaultLanguageCode;
+  if (targetLanguage === defaultLanguageCode) {
+    return containsLikelyNonEnglishText(recipe);
+  }
+
+  return true;
 }
 
 // Resolve translations for the recipes that need them, keyed by recipe id.
@@ -57,7 +85,7 @@ export async function translateRecipes(
   const uncached: Recipe[] = [];
 
   for (const recipe of needing) {
-    const cached = await translationCache.get(cacheKey(recipe.id, targetLanguage));
+    const cached = await translationCache.get(cacheKey(recipe, targetLanguage));
 
     if (cached) {
       result[recipe.id] = cached;
@@ -75,7 +103,7 @@ export async function translateRecipes(
 
         if (translation) {
           result[recipe.id] = translation;
-          await translationCache.set(cacheKey(recipe.id, targetLanguage), translation);
+          await translationCache.set(cacheKey(recipe, targetLanguage), translation);
         }
       }),
     );
@@ -200,4 +228,16 @@ function normalizeTranslation(value: unknown): RecipeTranslation | null {
       : [],
     ingredientNames,
   };
+}
+
+function containsLikelyNonEnglishText(recipe: Recipe) {
+  const text = [
+    recipe.title,
+    recipe.description,
+    ...recipe.instructions,
+    ...recipe.ingredients.map((ingredient) => ingredient.name),
+    ...recipe.missingIngredients,
+  ].join(' ');
+
+  return /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/u.test(text);
 }

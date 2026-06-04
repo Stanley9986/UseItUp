@@ -13,7 +13,7 @@ export type RecipeArtwork = {
   category: RecipeArtworkCategory;
   imageUrl?: string;
   label: string;
-  provider?: 'pexels';
+  provider?: 'openai' | 'pexels';
   photographer?: string;
   photographerUrl?: string;
 };

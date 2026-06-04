@@ -62,14 +62,23 @@ The `Local` and `Remote` columns should match for applied migrations.
 Deploy Supabase Edge Functions explicitly after function source changes:
 
 ```sh
+npx supabase functions deploy generate-recipes
 npx supabase functions deploy recipe-image
 ```
 
 Function secrets are managed separately from migrations:
 
 ```sh
+npx supabase secrets set AI_PROVIDER=gemini
+npx supabase secrets set TRANSLATION_PROVIDER=gemini
+npx supabase secrets set IMAGE_PROVIDER=pexels
+npx supabase secrets set GEMINI_API_KEY=...
 npx supabase secrets set PEXELS_API_KEY=...
 npx supabase secrets set SERVICE_ROLE_KEY=...
 ```
 
 Do not commit secret values. `SERVICE_ROLE_KEY` is intentionally not named with a `SUPABASE_` prefix because the dashboard blocks user-created secrets with that prefix.
+
+`generate-recipes` supports `AI_PROVIDER=gemini|openai|deepseek` for recipe generation and `TRANSLATION_PROVIDER=gemini|openai|deepseek` for recipe and term translation. If `TRANSLATION_PROVIDER` is unset, it falls back to `AI_PROVIDER`.
+
+`recipe-image` supports `IMAGE_PROVIDER=pexels` today. `IMAGE_PROVIDER=openai` is reserved for future generated image support after adding Supabase Storage for stable image URLs.

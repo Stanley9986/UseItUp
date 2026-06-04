@@ -55,7 +55,7 @@ const generationStepIntervalMs = 2000;
 
 export default function RecipesScreen() {
   const { user } = useAuth();
-  const { t } = useAppLanguage();
+  const { languageCode, t } = useAppLanguage();
   const [sort, setSort] = useState<RecipeSort>('expiring');
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [suggested, setSuggested] = useState<Recipe[]>([]);
@@ -247,6 +247,7 @@ export default function RecipesScreen() {
         pantryItems,
         preferences: {
           ...preferences,
+          languageCode,
           prioritizeExpiringSoon: true,
         },
       });
@@ -260,7 +261,7 @@ export default function RecipesScreen() {
       // Regenerating replaces the previous suggestion batch. Stamp it with the
       // language it was generated in so translate-on-view can skip recipes that
       // are already in the active language.
-      const savedRecipes = await replaceSuggestedRecipes(user.id, nextRecipes, preferences.languageCode);
+      const savedRecipes = await replaceSuggestedRecipes(user.id, nextRecipes, languageCode);
       setSuggested(savedRecipes);
       setGeneratedRecipes(savedRecipes);
       setSuggestedNextPage(1);

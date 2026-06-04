@@ -27,6 +27,14 @@ export const defaultUserPreferences: UserPreferences = {
   languageCode: defaultLanguageCode,
 };
 
+export type UserPreferencesSummaryOptions = {
+  avoidIngredientsLabel?: string;
+  avoidedIngredients?: string[];
+  dietaryPreferenceLabels?: Record<string, string>;
+  emptyLabel?: string;
+  formatMaxPrepTime?: (minutes: number) => string;
+};
+
 export function mapUserPreferencesRow(row: UserPreferencesRow | null): UserPreferences {
   if (!row) {
     return defaultUserPreferences;
@@ -52,14 +60,23 @@ export function mapUserPreferencesUpsert(userId: string, preferences: UserPrefer
   };
 }
 
-export function summarizeUserPreferences(preferences: UserPreferences) {
+export function summarizeUserPreferences(
+  preferences: UserPreferences,
+  options: UserPreferencesSummaryOptions = {},
+) {
+  const dietaryPreferences = preferences.dietaryPreferences.map(
+    (preference) => options.dietaryPreferenceLabels?.[preference] ?? preference,
+  );
+  const avoidedIngredients = options.avoidedIngredients ?? preferences.avoidedIngredients;
   const parts = [
-    preferences.dietaryPreferences.length ? preferences.dietaryPreferences.join(', ') : '',
-    preferences.avoidedIngredients.length ? `Avoids ${preferences.avoidedIngredients.join(', ')}` : '',
-    preferences.maxPrepTimeMinutes ? `${preferences.maxPrepTimeMinutes} min meals` : '',
+    dietaryPreferences.length ? dietaryPreferences.join(', ') : '',
+    avoidedIngredients.length ? `${options.avoidIngredientsLabel ?? 'Avoids'} ${avoidedIngredients.join(', ')}` : '',
+    preferences.maxPrepTimeMinutes
+      ? options.formatMaxPrepTime?.(preferences.maxPrepTimeMinutes) ?? `${preferences.maxPrepTimeMinutes} min meals`
+      : '',
   ].filter(Boolean);
 
-  return parts.length ? parts.join(' · ') : 'No preferences set';
+  return parts.length ? parts.join(' · ') : options.emptyLabel ?? 'No preferences set';
 }
 
 export function normalizeAvoidedIngredient(value: string) {

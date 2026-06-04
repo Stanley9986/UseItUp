@@ -1,18 +1,22 @@
-import { generateWithGemini } from './gemini.ts';
-import { generateWithOpenAI } from './openai.ts';
+import { deepSeekProvider } from './deepseek.ts';
+import { geminiProvider } from './gemini.ts';
+import { openAIProvider } from './openai.ts';
 import { RecipeProvider } from './types.ts';
 
 const providers: Record<string, RecipeProvider> = {
-  gemini: {
-    generate: generateWithGemini,
-    name: 'gemini',
-  },
-  openai: {
-    generate: generateWithOpenAI,
-    name: 'openai',
-  },
+  deepseek: deepSeekProvider,
+  gemini: geminiProvider,
+  openai: openAIProvider,
 };
 
 export function getRecipeProvider(name = 'gemini') {
-  return providers[name] ?? providers.gemini;
+  return providers[normalizeProviderName(name)] ?? providers.gemini;
+}
+
+export function getTranslationProvider(name: string | undefined, fallbackName = 'gemini') {
+  return getRecipeProvider(name || fallbackName);
+}
+
+function normalizeProviderName(name: string) {
+  return name.trim().toLowerCase();
 }

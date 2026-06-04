@@ -1,6 +1,7 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, ConfirmDialog, palette, RecipeArtworkImage, Screen, SectionTitle, typography } from '@/components/useitup/ui';
@@ -102,9 +103,11 @@ export default function RecipeDetailScreen() {
 
   const { isRefreshing, refresh } = useRefresh(() => loadRecipe({ showLoading: false }));
 
-  useEffect(() => {
-    loadRecipe();
-  }, [loadRecipe]);
+  useFocusEffect(
+    useCallback(() => {
+      loadRecipe();
+    }, [loadRecipe]),
+  );
 
   async function handleToggleFavorite() {
     if (!user || !canManageRecipe || isSavingFavorite || !recipe) {

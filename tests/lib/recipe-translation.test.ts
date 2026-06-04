@@ -23,6 +23,7 @@ vi.mock('@/lib/shared/supabase', () => ({
 import {
   applyRecipeTranslation,
   clearRecipeTranslationClientCache,
+  getRecipeTranslationSignature,
   shouldTranslateRecipe,
   translateRecipes,
 } from '@/lib/recipes/recipe-translation';
@@ -52,12 +53,54 @@ describe('shouldTranslateRecipe', () => {
     expect(shouldTranslateRecipe(recipe, 'pt')).toBe(false);
   });
 
+  it('translates likely non-English content into English even when bad metadata says English', () => {
+    expect(
+      shouldTranslateRecipe(
+        {
+          ...recipe,
+          title: '黄油菠菜炒蛋',
+          instructions: ['翻炒菠菜。'],
+          language: 'en',
+        },
+        'en',
+      ),
+    ).toBe(true);
+  });
+
   it('translates an unknown-language recipe into a non-English language', () => {
     expect(shouldTranslateRecipe({ ...recipe, language: undefined }, 'zh')).toBe(true);
   });
 
-  it('skips an unknown-language recipe when the target is English', () => {
+  it('skips a likely English unknown-language recipe when the target is English', () => {
     expect(shouldTranslateRecipe({ ...recipe, language: undefined }, 'en')).toBe(false);
+  });
+
+  it('translates a likely non-English unknown-language recipe into English', () => {
+    expect(
+      shouldTranslateRecipe(
+        {
+          ...recipe,
+          title: '柠檬香草鸡',
+          instructions: ['给鸡肉调味。'],
+          language: undefined,
+        },
+        'en',
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('getRecipeTranslationSignature', () => {
+  it('changes when the stored source language changes under the same recipe id', () => {
+    expect(getRecipeTranslationSignature({ ...recipe, language: 'zh' })).not.toBe(
+      getRecipeTranslationSignature({ ...recipe, language: 'en' }),
+    );
+  });
+
+  it('changes when refreshed recipe text changes under the same recipe id', () => {
+    expect(getRecipeTranslationSignature(recipe)).not.toBe(
+      getRecipeTranslationSignature({ ...recipe, title: 'Chinese Spinach Eggs' }),
+    );
   });
 });
 

@@ -5,6 +5,8 @@ import {
   mapFoodImageCacheRecord,
   normalizeImageQuery,
 } from './shared/cache.ts';
+import { getImageProvider } from './providers/index.ts';
+import { FoodImage } from './providers/types.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -22,7 +24,7 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function imageResponse(image: unknown, source: 'cache' | 'none' | 'pexels', cacheStatus: string) {
+function imageResponse(image: unknown, source: 'cache' | 'none' | 'openai' | 'pexels', cacheStatus: string) {
   return jsonResponse({
     cache: {
       status: cacheStatus,
@@ -89,7 +91,7 @@ async function cacheImage(query: string, image: {
   imageUrl: string;
   photographer?: string;
   photographerUrl?: string;
-  provider: 'pexels';
+  provider: FoodImage['provider'];
 }) {
   const cacheConfig = getSupabaseCacheConfig();
 
@@ -152,49 +154,25 @@ Deno.serve(async (request) => {
     return imageResponse(cachedImage.image, 'cache', cachedImage.status);
   }
 
-  const apiKey = Deno.env.get('PEXELS_API_KEY');
-
-  if (!apiKey) {
-    return imageResponse(null, 'none', `${cachedImage.status}_missing_pexels_key`);
-  }
-
-  const url = new URL('https://api.pexels.com/v1/search');
-  url.searchParams.set('query', query);
-  url.searchParams.set('orientation', 'landscape');
-  url.searchParams.set('per_page', '1');
-  url.searchParams.set('locale', 'en-US');
+  const provider = getImageProvider(Deno.env.get('IMAGE_PROVIDER') ?? 'pexels');
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        Authorization: apiKey,
-      },
-    });
+    const image = await provider.search(query);
 
-    if (!response.ok) {
-      return imageResponse(null, 'none', `${cachedImage.status}_pexels_failed_${response.status}`);
+    if (!image) {
+      return imageResponse(null, 'none', `${cachedImage.status}_no_${provider.name}_image`);
     }
-
-    const payload = await response.json();
-    const photo = Array.isArray(payload?.photos) ? payload.photos[0] : null;
-    const imageUrl = photo?.src?.landscape ?? photo?.src?.large ?? photo?.src?.medium;
-
-    if (!imageUrl) {
-      return imageResponse(null, 'none', `${cachedImage.status}_no_pexels_image`);
-    }
-
-    const image = {
-      alt: photo.alt,
-      imageUrl,
-      photographer: photo.photographer,
-      photographerUrl: photo.photographer_url,
-      provider: 'pexels' as const,
-    };
 
     const cacheWriteStatus = await cacheImage(query, image);
 
-    return imageResponse(image, 'pexels', `${cachedImage.status}_${cacheWriteStatus}`);
-  } catch {
-    return imageResponse(null, 'none', `${cachedImage.status}_pexels_error`);
+    return imageResponse(image, provider.name, `${cachedImage.status}_${cacheWriteStatus}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `${provider.name} image lookup failed`;
+
+    return imageResponse(
+      { error: message },
+      'none',
+      `${cachedImage.status}_${provider.name}_error`,
+    );
   }
 });

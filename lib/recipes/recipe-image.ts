@@ -12,15 +12,15 @@ type RecipeImageResponse = {
     imageUrl: string;
     photographer?: string;
     photographerUrl?: string;
-    provider: 'pexels';
+    provider: 'openai' | 'pexels';
   } | null;
-  source?: 'cache' | 'none' | 'pexels';
+  source?: 'cache' | 'none' | 'openai' | 'pexels';
 };
 
 const imageCache = createClientCache<RecipeArtwork>({
   prefix: 'useitup:recipe-image-cache:',
   ttlMs: 30 * 24 * 60 * 60 * 1000,
-  isValid: (artwork) => Boolean(artwork.imageUrl) && artwork.provider === 'pexels',
+  isValid: (artwork) => Boolean(artwork.imageUrl) && isRemoteArtworkProvider(artwork.provider),
 });
 const pendingImageRequests = new Map<string, Promise<RecipeArtwork | null>>();
 
@@ -64,6 +64,10 @@ export function clearRecipeImageClientCache() {
 
 function normalizeRecipeImageQuery(query: string) {
   return query.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function isRemoteArtworkProvider(provider: unknown) {
+  return provider === 'openai' || provider === 'pexels';
 }
 
 async function fetchAndCacheRecipeArtwork(query: string, label: string) {

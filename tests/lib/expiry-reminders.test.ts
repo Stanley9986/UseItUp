@@ -112,6 +112,7 @@ describe('expiry reminder helpers', () => {
       pantryItem({ id: '3', name: 'Rice', expirationDate: '2026-06-09' }),
       pantryItem({ id: '4', name: 'Spinach', expirationDate: '2026-06-02' }),
       pantryItem({ id: '5', name: 'Salt' }),
+      pantryItem({ id: '6', name: 'Old Yogurt', expirationDate: '2026-05-31' }),
     ];
 
     const expiringItems = getExpiringReminderItems(
@@ -124,7 +125,7 @@ describe('expiry reminder helpers', () => {
       now,
     );
 
-    expect(expiringItems.map((item) => item.name)).toEqual(['Steak', 'Spinach', 'Milk']);
+    expect(expiringItems.map((item) => item.name)).toEqual(['Old Yogurt', 'Steak', 'Spinach', 'Milk']);
   });
 
   it('groups expiring items by their actual expiration day', () => {
@@ -135,13 +136,17 @@ describe('expiry reminder helpers', () => {
         pantryItem({ id: '3', name: 'Spinach', expirationDate: '2026-06-02' }),
         pantryItem({ id: '4', name: 'Apple', expirationDate: '2026-06-02' }),
         pantryItem({ id: '5', name: 'Rice' }),
+        pantryItem({ id: '6', name: 'Old Yogurt', expirationDate: '2026-05-31' }),
       ],
       now,
     );
 
     expect(groups).toEqual([
       {
-        items: [expect.objectContaining({ name: 'Steak' })],
+        items: [
+          expect.objectContaining({ name: 'Old Yogurt' }),
+          expect.objectContaining({ name: 'Steak' }),
+        ],
         key: 'expires-0',
         title: 'Expires today',
       },

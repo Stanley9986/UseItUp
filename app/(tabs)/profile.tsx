@@ -1,5 +1,6 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 
@@ -74,13 +75,12 @@ export default function ProfileScreen() {
     setDisplayNameInput(displayName);
   }, [displayName]);
 
-  useEffect(() => {
-    loadCookHistory();
-  }, [loadCookHistory]);
-
-  useEffect(() => {
-    loadPreferences();
-  }, [loadPreferences]);
+  useFocusEffect(
+    useCallback(() => {
+      loadCookHistory();
+      loadPreferences();
+    }, [loadCookHistory, loadPreferences]),
+  );
 
   useEffect(() => {
     if (!profileMessage || profileMessageType !== 'success') {
@@ -168,6 +168,18 @@ export default function ProfileScreen() {
 
   const latestCookedRecipe = cookHistory[0];
   const cookedTitleMap = useTranslatedNames(latestCookedRecipe ? [latestCookedRecipe.recipeTitle] : []);
+  const avoidedIngredientMap = useTranslatedNames(preferences.avoidedIngredients);
+  const translatedAvoidedIngredients = useMemo(
+    () => preferences.avoidedIngredients.map((ingredient) => avoidedIngredientMap[ingredient] ?? ingredient),
+    [avoidedIngredientMap, preferences.avoidedIngredients],
+  );
+  const preferenceSummary = summarizeUserPreferences(preferences, {
+    avoidIngredientsLabel: `${t('avoidIngredients')}:`,
+    avoidedIngredients: translatedAvoidedIngredients,
+    dietaryPreferenceLabels: getDietaryPreferenceLabels(t),
+    emptyLabel: t('recipePreferences'),
+    formatMaxPrepTime: (minutes) => `${minutes} ${t('min')}`,
+  });
   const recentlyCookedRow: SettingsRow = {
     href: '/cook-history',
     icon: 'checkmark-circle-outline',
@@ -289,7 +301,7 @@ export default function ProfileScreen() {
               href: '/dietary-preferences',
               icon: 'leaf-outline',
               title: t('recipePreferences'),
-              detail: summarizeUserPreferences(preferences),
+              detail: preferenceSummary,
             },
             ...preferenceRows,
           ] satisfies SettingsRow[]).map((row, index) => (
@@ -533,4 +545,14 @@ function SettingsRowView({
   }
 
   return content;
+}
+
+function getDietaryPreferenceLabels(t: ReturnType<typeof useAppLanguage>['t']) {
+  return {
+    Vegetarian: t('vegetarian'),
+    Vegan: t('vegan'),
+    'Dairy-free': t('dairyFree'),
+    'Gluten-free': t('glutenFree'),
+    'Nut-free': t('nutFree'),
+  };
 }

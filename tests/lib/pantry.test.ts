@@ -7,6 +7,7 @@ import {
   normalizePantryName,
   PantryItemRow,
 } from '@/lib/pantry/pantry-mappers';
+import { isDepletedPantryItem } from '@/lib/pantry/quantity';
 
 describe('normalizePantryName', () => {
   it('trims, lowercases, and collapses spaces', () => {
@@ -78,5 +79,37 @@ describe('mapPantryItemInput', () => {
       expiration_date: '2026-06-01',
       notes: 'wash before using',
     });
+  });
+});
+
+describe('isDepletedPantryItem', () => {
+  it('detects zero numeric quantities and empty levels', () => {
+    expect(
+      isDepletedPantryItem({
+        id: 'zero',
+        name: 'Lemon',
+        quantityUnit: 'portion',
+        quantityValue: 0,
+        storageLocation: 'fridge',
+      }),
+    ).toBe(true);
+    expect(
+      isDepletedPantryItem({
+        id: 'empty',
+        name: 'Soy Sauce',
+        quantityUnit: 'level',
+        quantityLabel: 'empty',
+        storageLocation: 'pantry',
+      }),
+    ).toBe(true);
+    expect(
+      isDepletedPantryItem({
+        id: 'available',
+        name: 'Spinach',
+        quantityUnit: 'portion',
+        quantityValue: 1,
+        storageLocation: 'fridge',
+      }),
+    ).toBe(false);
   });
 });

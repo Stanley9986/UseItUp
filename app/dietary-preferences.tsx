@@ -6,6 +6,7 @@ import { Button, Card, Chip, palette, Screen, SectionTitle, typography } from '@
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
+import { useTranslatedNames } from '@/hooks/use-term-translation';
 import { getErrorMessage } from '@/lib/shared/errors';
 import { safeBack } from '@/lib/shared/navigation';
 import { defaultUserPreferences, getUserPreferences, saveUserPreferences } from '@/lib/preferences/user-preferences';
@@ -21,7 +22,7 @@ const prepTimeOptions = [15, 30, 45, 60] as const;
 
 export default function DietaryPreferencesScreen() {
   const { user } = useAuth();
-  const { t } = useAppLanguage();
+  const { languageCode, t } = useAppLanguage();
   const [preferences, setPreferences] = useState<UserPreferences>(defaultUserPreferences);
   const [draftPreferences, setDraftPreferences] = useState<UserPreferences>(defaultUserPreferences);
   const [ingredientInput, setIngredientInput] = useState('');
@@ -58,6 +59,7 @@ export default function DietaryPreferencesScreen() {
   );
 
   const { isRefreshing, refresh } = useRefresh(() => loadPreferences({ showLoading: false }));
+  const avoidedIngredientMap = useTranslatedNames(draftPreferences.avoidedIngredients);
 
   useEffect(() => {
     loadPreferences();
@@ -161,7 +163,7 @@ export default function DietaryPreferencesScreen() {
             autoCapitalize="none"
             onChangeText={setIngredientInput}
             onSubmitEditing={handleAddAvoidedIngredient}
-            placeholder="peanuts"
+            placeholder={getAvoidedIngredientPlaceholder(languageCode)}
             placeholderTextColor={palette.muted}
             returnKeyType="done"
             style={styles.input}
@@ -173,17 +175,21 @@ export default function DietaryPreferencesScreen() {
         </View>
         {draftPreferences.avoidedIngredients.length ? (
           <View style={styles.ingredientList}>
-            {draftPreferences.avoidedIngredients.map((ingredient) => (
-              <View key={ingredient} style={styles.ingredientPill}>
-                <Text style={styles.ingredientText}>{ingredient}</Text>
-                <Pressable
-                  accessibilityLabel={`${t('removeAvoidedIngredient')}: ${ingredient}`}
-                  hitSlop={8}
-                  onPress={() => handleRemoveAvoidedIngredient(ingredient)}>
-                  <Ionicons color={palette.muted} name="close-circle" size={20} />
-                </Pressable>
-              </View>
-            ))}
+            {draftPreferences.avoidedIngredients.map((ingredient) => {
+              const displayIngredient = avoidedIngredientMap[ingredient] ?? ingredient;
+
+              return (
+                <View key={ingredient} style={styles.ingredientPill}>
+                  <Text style={styles.ingredientText}>{displayIngredient}</Text>
+                  <Pressable
+                    accessibilityLabel={`${t('removeAvoidedIngredient')}: ${displayIngredient}`}
+                    hitSlop={8}
+                    onPress={() => handleRemoveAvoidedIngredient(ingredient)}>
+                    <Ionicons color={palette.muted} name="close-circle" size={20} />
+                  </Pressable>
+                </View>
+              );
+            })}
           </View>
         ) : (
           <Text style={styles.emptyCopy}>{t('noAvoidedIngredients')}</Text>
@@ -198,7 +204,7 @@ export default function DietaryPreferencesScreen() {
             {prepTimeOptions.map((option) => (
               <Chip
                 key={option}
-                label={`${option} min`}
+                label={`${option} ${t('min')}`}
                 onPress={() => handleSelectPrepTime(option)}
                 selected={draftPreferences.maxPrepTimeMinutes === option}
               />
@@ -243,6 +249,23 @@ function getDietaryOptionLabel(option: (typeof dietaryOptions)[number], t: Retur
   }
 
   return t('nutFree');
+}
+
+function getAvoidedIngredientPlaceholder(languageCode: string) {
+  const examples: Record<string, string> = {
+    de: 'Erdnüsse',
+    en: 'peanuts',
+    es: 'cacahuates',
+    fr: 'cacahuètes',
+    it: 'arachidi',
+    ja: 'ピーナッツ',
+    ko: '땅콩',
+    pt: 'amendoins',
+    vi: 'đậu phộng',
+    zh: '花生',
+  };
+
+  return examples[languageCode] ?? examples.en;
 }
 
 const styles = StyleSheet.create({

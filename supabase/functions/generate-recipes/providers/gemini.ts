@@ -1,5 +1,13 @@
 import { RecipePrompt, TermsPrompt, TranslationPrompt } from '../shared/prompt.ts';
 import { recipeSchema, termsSchema, translationSchema } from '../shared/schema.ts';
+import { RecipeProvider } from './types.ts';
+
+export const geminiProvider: RecipeProvider = {
+  generate: generateWithGemini,
+  name: 'gemini',
+  translateRecipes: translateWithGemini,
+  translateTerms: translateTermsWithGemini,
+};
 
 export async function generateWithGemini(prompt: RecipePrompt) {
   return requestGeminiJson({

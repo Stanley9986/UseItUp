@@ -74,6 +74,27 @@ describe('pantry data access', () => {
     ]);
   });
 
+  it('hides depleted pantry items from normal pantry reads', async () => {
+    db().pushQueryResult({
+      data: [
+        pantryRow,
+        { ...pantryRow, id: 'empty-level', quantity_label: 'empty', quantity_unit: 'level' },
+        { ...pantryRow, id: 'zero-count', quantity_label: null, quantity_unit: 'count', quantity_value: 0 },
+      ],
+      error: null,
+    });
+
+    await expect(getPantryItems('user-1')).resolves.toEqual([
+      expect.objectContaining({ id: 'item-1' }),
+    ]);
+  });
+
+  it('treats a depleted pantry item detail lookup as missing', async () => {
+    db().pushQueryResult({ data: { ...pantryRow, quantity_label: 'empty' }, error: null });
+
+    await expect(getPantryItemById('user-1', 'item-1')).resolves.toBeNull();
+  });
+
   it('returns null when a pantry item is not found', async () => {
     db().pushQueryResult({ data: null, error: null });
 

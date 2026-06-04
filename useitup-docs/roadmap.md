@@ -27,6 +27,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - Recipe language preferences are saved in Supabase and included in generated recipe prompts.
 - App language can be selected from the More page and drives static copy across app screens.
 - Spanish app copy is filled out across localized screens; other supported languages currently use partial dictionaries with English fallback.
+- Edge Functions have provider selection env vars for recipe generation, translation, and image lookup so Gemini/OpenAI/DeepSeek/Pexels choices can be swapped without mobile app changes.
 
 ## Section 2 - Tech Debt / Cleanup
 
@@ -43,6 +44,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 ## Section 4 - Quality / Robustness
 
 - Harden the Edge Function with rate limiting, provider fallback, and generation caching.
+- Add Supabase Storage-backed generated image support before enabling `IMAGE_PROVIDER=openai`.
 - Improve duplicate handling for generated recipes, beyond title-based favorite dedupe.
 - Keep adding focused tests with every new feature.
 

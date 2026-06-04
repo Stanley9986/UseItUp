@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 
@@ -104,7 +104,7 @@ export default function EditItemScreen() {
         notes: values.notes,
       });
 
-      router.replace(`/pantry-item/${id}`);
+      safeBack(`/pantry-item/${id}`);
     } catch (error) {
       if (isDuplicatePantryItemError(error)) {
         setMessage(t('duplicatePantryItem', { itemName: titleCase(normalizedName), location: t(values.location) }));
