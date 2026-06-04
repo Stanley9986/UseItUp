@@ -9,6 +9,7 @@ This folder contains starter documentation for the UseItUp mobile app MVP.
 - `data-model.md` — MVP database schema and pantry update logic
 - `workflow-and-screens.md` — user workflow and Figma/mobile screen notes
 - `tech-stack.md` — recommended tech stack and build phases
+- `supabase-workflow.md` — Supabase CLI migration, repair, and Edge Function deployment workflow
 - `codex-instructions.md` — instructions to give Codex when starting implementation
 
 ## Recommended Next Step

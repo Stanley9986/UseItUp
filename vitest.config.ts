@@ -10,4 +10,7 @@ export default defineConfig({
       '@': resolve(rootDir),
     },
   },
+  test: {
+    include: ['tests/**/*.test.ts', 'supabase/functions/**/*.test.ts'],
+  },
 });

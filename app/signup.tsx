@@ -13,10 +13,12 @@ import {
 } from 'react-native';
 
 import { Card, palette, Screen } from '@/components/useitup/ui';
-import { getFriendlyAuthError } from '@/lib/auth-errors';
-import { supabase } from '@/lib/supabase';
+import { useAppLanguage } from '@/contexts/language-context';
+import { getFriendlyAuthError } from '@/lib/shared/auth-errors';
+import { supabase } from '@/lib/shared/supabase';
 
 export default function SignupScreen() {
+  const { t } = useAppLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,12 +38,12 @@ export default function SignupScreen() {
     });
 
     if (error) {
-      setMessage(getFriendlyAuthError(error, 'Unable to create account.'));
+      setMessage(getFriendlyAuthError(error, t('unableToCreateAccount')));
     } else if (data.session) {
-      setMessage('Account created. Taking you to your pantry.');
+      setMessage(t('accountCreatedTakingToPantry'));
       setIsSuccess(true);
     } else {
-      setMessage('We sent a confirmation link to your email. Open it, then return here to log in.');
+      setMessage(t('weSentConfirmationLink'));
       setIsSuccess(true);
       setNeedsVerification(true);
     }
@@ -59,10 +61,10 @@ export default function SignupScreen() {
     });
 
     if (error) {
-      setMessage(getFriendlyAuthError(error, 'Unable to resend confirmation email.'));
+      setMessage(getFriendlyAuthError(error, t('unableToResendConfirmation')));
       setIsSuccess(false);
     } else {
-      setMessage('Confirmation email sent again. Check your inbox.');
+      setMessage(t('confirmationEmailSentAgain'));
       setIsSuccess(true);
       setNeedsVerification(true);
     }
@@ -75,7 +77,7 @@ export default function SignupScreen() {
       <Screen style={styles.screen}>
         <View style={styles.brandBlock}>
           <Text style={styles.brand}>UseItUp</Text>
-          <Text style={styles.tagline}>Create your pantry account and start saving food before it expires.</Text>
+          <Text style={styles.tagline}>{t('createPantryAccount')}</Text>
         </View>
 
         <Card style={styles.formCard}>
@@ -84,19 +86,19 @@ export default function SignupScreen() {
               <Ionicons color={palette.green} name="person-add-outline" size={24} />
             </View>
             <View style={styles.formHeaderCopy}>
-              <Text style={styles.formTitle}>Create account</Text>
-              <Text style={styles.formSubtitle}>Use an email you can verify.</Text>
+              <Text style={styles.formTitle}>{t('createAccount')}</Text>
+              <Text style={styles.formSubtitle}>{t('useEmailYouCanVerify')}</Text>
             </View>
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t('email')}</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
               onChangeText={setEmail}
-              placeholder="you@example.com"
+              placeholder={t('emailPlaceholder')}
               placeholderTextColor={palette.muted}
               style={styles.input}
               value={email}
@@ -104,12 +106,12 @@ export default function SignupScreen() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t('password')}</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="new-password"
               onChangeText={setPassword}
-              placeholder="At least 6 characters"
+              placeholder={t('passwordMinPlaceholder')}
               placeholderTextColor={palette.muted}
               secureTextEntry
               style={styles.input}
@@ -121,7 +123,7 @@ export default function SignupScreen() {
             <View style={styles.successCard}>
               <Ionicons color={palette.green} name="mail-unread-outline" size={24} />
               <View style={styles.successCopy}>
-                <Text style={styles.successTitle}>Verify your email</Text>
+                <Text style={styles.successTitle}>{t('verifyEmail')}</Text>
                 <Text style={styles.successBody}>{message}</Text>
               </View>
             </View>
@@ -130,19 +132,19 @@ export default function SignupScreen() {
           ) : null}
 
           <Pressable disabled={isSubmitting} onPress={handleSignup} style={[styles.primaryButton, isSubmitting && styles.disabledButton]}>
-            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Create Account</Text>}
+            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{t('createAccountButton')}</Text>}
           </Pressable>
 
           {needsVerification ? (
             <Pressable disabled={isSubmitting} onPress={handleResendConfirmation} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Resend Confirmation Email</Text>
+              <Text style={styles.secondaryButtonText}>{t('resendConfirmationEmail')}</Text>
             </Pressable>
           ) : null}
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>Already have an account?</Text>
+            <Text style={styles.switchText}>{t('alreadyHaveAccount')}</Text>
             <Link href={'/login' as Href} style={styles.switchLink}>
-              Log in
+              {t('logIn')}
             </Link>
           </View>
         </Card>

@@ -13,10 +13,12 @@ import {
 } from 'react-native';
 
 import { Card, palette, Screen } from '@/components/useitup/ui';
-import { getFriendlyAuthError } from '@/lib/auth-errors';
-import { supabase } from '@/lib/supabase';
+import { useAppLanguage } from '@/contexts/language-context';
+import { getFriendlyAuthError } from '@/lib/shared/auth-errors';
+import { supabase } from '@/lib/shared/supabase';
 
 export default function ForgotPasswordScreen() {
+  const { t } = useAppLanguage();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
@@ -37,10 +39,10 @@ export default function ForgotPasswordScreen() {
     });
 
     if (error) {
-      setMessage(getFriendlyAuthError(error, 'Unable to send password reset email.'));
+      setMessage(getFriendlyAuthError(error, t('unableToSendPasswordReset')));
     } else {
       setIsSuccess(true);
-      setMessage('Password reset email sent. Check your inbox for the next step.');
+      setMessage(t('passwordResetEmailSent'));
     }
 
     setIsSubmitting(false);
@@ -51,7 +53,7 @@ export default function ForgotPasswordScreen() {
       <Screen style={styles.screen}>
         <View style={styles.brandBlock}>
           <Text style={styles.brand}>UseItUp</Text>
-          <Text style={styles.tagline}>Reset your password and get back to your pantry.</Text>
+          <Text style={styles.tagline}>{t('resetPasswordSubtitle')}</Text>
         </View>
 
         <Card style={styles.formCard}>
@@ -60,19 +62,19 @@ export default function ForgotPasswordScreen() {
               <Ionicons color={palette.green} name="mail-outline" size={24} />
             </View>
             <View style={styles.formHeaderCopy}>
-              <Text style={styles.formTitle}>Forgot password?</Text>
-              <Text style={styles.formSubtitle}>Enter your account email and Supabase will send a reset link.</Text>
+              <Text style={styles.formTitle}>{t('forgotPassword')}</Text>
+              <Text style={styles.formSubtitle}>{t('resetPasswordEmailInstructions')}</Text>
             </View>
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t('email')}</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
               onChangeText={setEmail}
-              placeholder="you@example.com"
+              placeholder={t('emailPlaceholder')}
               placeholderTextColor={palette.muted}
               style={styles.input}
               value={email}
@@ -85,12 +87,12 @@ export default function ForgotPasswordScreen() {
             disabled={isSubmitting}
             onPress={handleResetPassword}
             style={[styles.primaryButton, isSubmitting && styles.disabledButton]}>
-            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Send Reset Email</Text>}
+            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{t('sendResetEmail')}</Text>}
           </Pressable>
 
           <View style={styles.switchRow}>
             <Link href={'/login' as Href} style={styles.switchLink}>
-              Back to login
+              {t('backToLogin')}
             </Link>
           </View>
         </Card>

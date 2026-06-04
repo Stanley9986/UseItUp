@@ -1,25 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Link, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Button, Card, Chip, palette, PantryCard, Screen, SectionTitle } from '@/components/useitup/ui';
+import {
+  Button,
+  Card,
+  Chip,
+  ExpirationText,
+  palette,
+  PantryArtworkImage,
+  QuantityText,
+  Screen,
+  SectionTitle,
+  typography,
+} from '@/components/useitup/ui';
 import { useAuth } from '@/contexts/auth-context';
-import { getPantryItems } from '@/lib/pantry';
+import { useAppLanguage } from '@/contexts/language-context';
+import { useRefresh } from '@/hooks/use-refresh';
+import { useTranslatedNames } from '@/hooks/use-term-translation';
+import { getErrorMessage } from '@/lib/shared/errors';
+import { getPantryItems } from '@/lib/pantry/pantry';
 import { PantryItem, StorageLocation } from '@/types/useitup';
 
 type PantryFilter = 'all' | StorageLocation | 'expiring';
 
-const filters: { label: string; value: PantryFilter }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Fridge', value: 'fridge' },
-  { label: 'Freezer', value: 'freezer' },
-  { label: 'Pantry', value: 'pantry' },
-  { label: 'Expiring Soon', value: 'expiring' },
-];
+const filterValues: PantryFilter[] = ['all', 'fridge', 'freezer', 'pantry', 'expiring'];
 
 export default function PantryScreen() {
   const { user } = useAuth();
+  const { t } = useAppLanguage();
+  const params = useLocalSearchParams<{ filter?: string }>();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PantryFilter>('all');
   const [items, setItems] = useState<PantryItem[]>([]);
@@ -38,17 +50,25 @@ export default function PantryScreen() {
       const nextItems = await getPantryItems(user.id);
       setItems(nextItems);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(getErrorMessage(error, t('unableToLoadPantryItems')));
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [t, user]);
 
   useFocusEffect(
     useCallback(() => {
       loadPantryItems();
     }, [loadPantryItems]),
   );
+
+  useEffect(() => {
+    if (isPantryFilter(params.filter)) {
+      setFilter(params.filter);
+    }
+  }, [params.filter]);
+
+  const { isRefreshing, refresh } = useRefresh(loadPantryItems);
 
   const visibleItems = useMemo(
     () =>
@@ -63,66 +83,90 @@ export default function PantryScreen() {
       }),
     [filter, items, query],
   );
+  const groupedItems = useMemo(() => groupItemsByCategory(visibleItems), [visibleItems]);
+  // Pantry names are user data; translate them for display in the active language.
+  const itemNames = useMemo(() => items.map((item) => item.name), [items]);
+  const pantryNameMap = useTranslatedNames(itemNames);
 
   return (
     <Screen
-      title="Pantry"
-      subtitle="Keep quantities rough and focus on what should be used soon."
-      headerAction={<Button compact href="/add-item" icon="add">Add</Button>}>
+      onRefresh={refresh}
+      refreshing={isRefreshing}
+      title={t('myPantry')}
+      subtitle={t('pantryItemsAvailable', { count: items.length, plural: items.length === 1 ? '' : 's' })}>
+      <View style={styles.actionRow}>
+        <View style={styles.actionButtonSlot}>
+          <Button href="/add-item" icon="add" style={styles.actionButton}>
+            {t('addItem')}
+          </Button>
+        </View>
+        <View style={styles.actionButtonSlot}>
+          <Button href="/(tabs)/recipes" icon="restaurant-outline" secondary style={styles.actionButton}>
+            {t('getRecipes')}
+          </Button>
+        </View>
+      </View>
+
       <View style={styles.search}>
         <Ionicons color={palette.muted} name="search" size={18} />
         <TextInput
-          accessibilityLabel="Search pantry"
+          accessibilityLabel={t('searchPantry')}
           onChangeText={setQuery}
-          placeholder="Search items"
+          placeholder={t('searchItems')}
           placeholderTextColor={palette.muted}
           style={styles.searchInput}
           value={query}
         />
       </View>
       <View style={styles.chips}>
-        {filters.map((option) => (
+        {filterValues.map((value) => (
           <Chip
-            key={option.value}
-            label={option.label}
-            onPress={() => setFilter(option.value)}
-            selected={filter === option.value}
+            key={value}
+            label={value === 'expiring' ? t('expiringSoon') : t(value)}
+            onPress={() => setFilter(value)}
+            selected={filter === value}
           />
         ))}
       </View>
-      <SectionTitle>{visibleItems.length} Tracked Items</SectionTitle>
       {isLoading ? (
         <Card style={styles.stateCard}>
           <ActivityIndicator color={palette.blue} />
-          <Text style={styles.stateText}>Loading pantry items...</Text>
+          <Text style={styles.stateText}>{t('loadingPantryItems')}</Text>
         </Card>
       ) : errorMessage ? (
         <Card style={styles.stateCard}>
           <Ionicons color={palette.red} name="alert-circle-outline" size={24} />
-          <Text style={styles.stateTitle}>Could not load pantry</Text>
+          <Text style={styles.stateTitle}>{t('couldNotLoadPantry')}</Text>
           <Text style={styles.stateText}>{errorMessage}</Text>
           <Button compact onPress={loadPantryItems} secondary icon="refresh-outline">
-            Try Again
+            {t('retry')}
           </Button>
         </Card>
       ) : visibleItems.length ? (
-        <View style={styles.list}>
-          {visibleItems.map((item) => (
-            <PantryCard item={item} key={item.id} showEdit />
+        <View style={styles.groups}>
+          {groupedItems.map((group) => (
+            <View key={group.title} style={styles.group}>
+              <SectionTitle>{t(group.title)}</SectionTitle>
+              <View style={styles.groupList}>
+                {group.items.map((item) => (
+                  <PantryListItem displayName={pantryNameMap[item.name]} item={item} key={item.id} />
+                ))}
+              </View>
+            </View>
           ))}
         </View>
       ) : (
         <Card style={styles.stateCard}>
           <Ionicons color={palette.green} name="basket-outline" size={24} />
-          <Text style={styles.stateTitle}>{items.length ? 'No matching items' : 'Your pantry is empty'}</Text>
+          <Text style={styles.stateTitle}>{items.length ? t('noMatchingItems') : t('yourPantryIsEmpty')}</Text>
           <Text style={styles.stateText}>
             {items.length
-              ? 'Try a different search or filter.'
-              : 'Add your first item so UseItUp can start tracking what should be used soon.'}
+              ? t('tryDifferentSearchOrFilter')
+              : t('addFirstItemForTracking')}
           </Text>
           {!items.length ? (
             <Button compact href="/add-item" icon="add">
-              Add Item
+              {t('addItem')}
             </Button>
           ) : null}
         </Card>
@@ -131,24 +175,76 @@ export default function PantryScreen() {
   );
 }
 
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
+function PantryListItem({ item, displayName }: { item: PantryItem; displayName?: string }) {
+  return (
+    <Link asChild href={`/pantry-item/${item.id}`}>
+      <Pressable>
+        <Card style={styles.pantryItem}>
+          <PantryArtworkImage item={item} style={styles.itemImage} />
+          <View style={styles.itemCopy}>
+            <Text numberOfLines={1} style={styles.itemName}>{displayName ?? item.name}</Text>
+            <View style={styles.itemMeta}>
+              <QuantityText item={item} />
+              <Text style={styles.metaDot}>.</Text>
+              <ExpirationText expirationDate={item.expirationDate} />
+            </View>
+          </View>
+        </Card>
+      </Pressable>
+    </Link>
+  );
+}
+
+type PantryCategoryKey = 'produce' | 'meat' | 'dairy' | 'grain' | 'condiment' | 'other';
+
+function groupItemsByCategory(items: PantryItem[]) {
+  const groups = new Map<PantryCategoryKey, PantryItem[]>();
+
+  items.forEach((item) => {
+    const title = getCategoryKey(item.category);
+    groups.set(title, [...(groups.get(title) ?? []), item]);
+  });
+
+  return [...groups.entries()].map(([title, groupItems]) => ({ title, items: groupItems }));
+}
+
+function getCategoryKey(value: string | undefined): PantryCategoryKey {
+  const category = value?.toLowerCase();
+
+  if (
+    category === 'produce' ||
+    category === 'meat' ||
+    category === 'dairy' ||
+    category === 'grain' ||
+    category === 'condiment'
+  ) {
+    return category;
   }
 
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    return String(error.message);
-  }
+  return 'other';
+}
 
-  return 'Unable to load pantry items.';
+function isPantryFilter(value: string | undefined): value is PantryFilter {
+  return value === 'all' || value === 'fridge' || value === 'freezer' || value === 'pantry' || value === 'expiring';
 }
 
 const styles = StyleSheet.create({
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButtonSlot: {
+    flex: 1,
+  },
+  actionButton: {
+    minHeight: 52,
+    width: '100%',
+  },
   search: {
     alignItems: 'center',
     backgroundColor: palette.card,
     borderColor: palette.line,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 8,
@@ -166,8 +262,50 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
-  list: {
+  groups: {
+    gap: 24,
+  },
+  group: {
     gap: 10,
+  },
+  groupList: {
+    gap: 8,
+  },
+  pantryItem: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 82,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  itemImage: {
+    backgroundColor: palette.greenSoft,
+    borderRadius: 10,
+    height: 58,
+    overflow: 'hidden',
+    width: 58,
+  },
+  itemCopy: {
+    flex: 1,
+    gap: 6,
+    minWidth: 0,
+  },
+  itemName: {
+    color: palette.ink,
+    fontFamily: typography.display,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  itemMeta: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+  },
+  metaDot: {
+    color: palette.muted,
+    fontSize: 14,
   },
   stateCard: {
     alignItems: 'flex-start',

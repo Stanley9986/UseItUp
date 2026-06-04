@@ -30,7 +30,28 @@ export type Recipe = {
   description?: string;
   prepTimeMinutes?: number;
   usesExpiringItems?: boolean;
+  isFavorite?: boolean;
   ingredients: RecipeIngredient[];
   missingIngredients: string[];
   instructions: string[];
+  // Language the stored content was generated/saved in. Drives translate-on-view.
+  language?: string;
+};
+
+export type UserPreferences = {
+  dietaryPreferences: string[];
+  avoidedIngredients: string[];
+  maxPrepTimeMinutes?: number;
+  languageCode?: string;
+};
+
+export type ShoppingListItem = {
+  id: string;
+  name: string;
+  normalizedName: string;
+  sourceRecipeId?: string;
+  sourceRecipeTitle?: string;
+  isChecked: boolean;
+  createdAt: string;
+  updatedAt: string;
 };

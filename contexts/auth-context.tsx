@@ -1,7 +1,7 @@
 import { Session, User } from '@supabase/supabase-js';
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/shared/supabase';
 
 type AuthContextValue = {
   isLoading: boolean;

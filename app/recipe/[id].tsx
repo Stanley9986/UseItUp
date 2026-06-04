@@ -1,53 +1,372 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Card, palette, Screen, SectionTitle } from '@/components/useitup/ui';
-import { findRecipe } from '@/data/mock-useitup';
+import { Button, Card, ConfirmDialog, palette, RecipeArtworkImage, Screen, SectionTitle, typography } from '@/components/useitup/ui';
+import { useAuth } from '@/contexts/auth-context';
+import { useAppLanguage } from '@/contexts/language-context';
+import { useRefresh } from '@/hooks/use-refresh';
+import { useTranslatedRecipe } from '@/hooks/use-recipe-translation';
+import { getErrorMessage } from '@/lib/shared/errors';
+import {
+  addFavoriteRecipe,
+  getFavoriteRecipeById,
+  isTitleFavorited,
+  removeFavoriteRecipeByTitle,
+} from '@/lib/recipes/favorite-recipes';
+import { findGeneratedRecipe, removeGeneratedRecipe } from '@/lib/recipes/generated-recipes';
+import { safeBack } from '@/lib/shared/navigation';
+import { formatIngredientQuantity } from '@/lib/pantry/quantity';
+import { dismissSuggestedRecipe, getSavedRecipeById } from '@/lib/recipes/recipes';
+import { deleteCookSession } from '@/lib/cooking/cook-history';
+import { addShoppingListItemsFromRecipe } from '@/lib/shopping/shopping-list';
+import { getShoppingListSourceRecipeId } from '@/lib/shopping/shopping-list-mappers';
+import { Recipe } from '@/types/useitup';
+
+type ScreenMessage = {
+  tone: 'error' | 'success' | 'info';
+  text: string;
+};
 
 export default function RecipeDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const recipe = findRecipe(id);
-  const availableIngredients = recipe.ingredients.filter((ingredient) => ingredient.isAvailable);
+  const { id, source, sessionId } = useLocalSearchParams<{ id: string; source?: string; sessionId?: string }>();
+  const { user } = useAuth();
+  const { t } = useAppLanguage();
+  const [savedRecipe, setSavedRecipe] = useState<Recipe | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  // True when the recipe was loaded from the favorites table rather than the
+  // pantry-derived suggestions, which changes how it is deleted and whether it
+  // can be cooked.
+  const [isFavoriteSource, setIsFavoriteSource] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSavingFavorite, setIsSavingFavorite] = useState(false);
+  const [isAddingShoppingList, setIsAddingShoppingList] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [message, setMessage] = useState<ScreenMessage | null>(null);
+  const recipe = useMemo(() => savedRecipe ?? findGeneratedRecipe(id) ?? null, [id, savedRecipe]);
+  // displayRecipe is the recipe rendered to the user, translated into the active
+  // language when needed. recipe (the original) is kept for actions and
+  // persistence so favorites/edits stay in the source language.
+  const { recipe: displayRecipe, isTranslating } = useTranslatedRecipe(recipe);
+  const isHistorySource = source === 'history';
+  const canUpdatePantry = !isHistorySource && Boolean(recipe);
+  const canManageRecipe = Boolean(user && id && isUuid(id) && recipe);
+  const availableIngredients = displayRecipe?.ingredients.filter((ingredient) => ingredient.isAvailable) ?? [];
+  // Only pantry-linked ingredients are decremented when cooking, so they define
+  // the recipe's real pantry impact.
+  const pantryIngredients = displayRecipe?.ingredients.filter((ingredient) => ingredient.pantryItemId) ?? [];
+
+  const loadRecipe = useCallback(
+    async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
+      if (!user || !id || !isUuid(id)) {
+        return;
+      }
+
+      try {
+        if (showLoading) {
+          setIsLoading(true);
+        }
+        setMessage(null);
+
+        const suggestedRecipe = await getSavedRecipeById(user.id, id);
+        const favoriteRecipe = suggestedRecipe ? null : await getFavoriteRecipeById(user.id, id);
+        const resolvedRecipe = suggestedRecipe ?? favoriteRecipe;
+
+        if (resolvedRecipe) {
+          setSavedRecipe(resolvedRecipe);
+          setIsFavoriteSource(Boolean(favoriteRecipe));
+        }
+
+        if (favoriteRecipe) {
+          setIsFavorite(true);
+        } else if (resolvedRecipe) {
+          setIsFavorite(await isTitleFavorited(user.id, resolvedRecipe.title));
+        } else {
+          setIsFavorite(false);
+        }
+      } catch (error) {
+        setMessage({
+          tone: 'error',
+          text: getErrorMessage(error, t('recipeDetailFallbackLoadError')),
+        });
+      } finally {
+        if (showLoading) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [id, t, user],
+  );
+
+  const { isRefreshing, refresh } = useRefresh(() => loadRecipe({ showLoading: false }));
+
+  useFocusEffect(
+    useCallback(() => {
+      loadRecipe();
+    }, [loadRecipe]),
+  );
+
+  async function handleToggleFavorite() {
+    if (!user || !canManageRecipe || isSavingFavorite || !recipe) {
+      return;
+    }
+
+    const nextFavorite = !isFavorite;
+
+    setIsSavingFavorite(true);
+    setMessage(null);
+
+    try {
+      if (nextFavorite) {
+        await addFavoriteRecipe(user.id, recipe);
+      } else {
+        await removeFavoriteRecipeByTitle(user.id, recipe.title);
+      }
+      setIsFavorite(nextFavorite);
+    } catch (error) {
+      setMessage({ tone: 'error', text: getErrorMessage(error, t('unableToUpdateFavorite')) });
+    } finally {
+      setIsSavingFavorite(false);
+    }
+  }
+
+  async function handleDeleteRecipe() {
+    if (!user || !canManageRecipe || isDeleting || !recipe) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setMessage(null);
+
+    try {
+      // From cook history, "delete" removes the history entry, not a suggestion
+      // (an old cooked recipe is usually no longer in the suggestion list).
+      if (isHistorySource) {
+        if (typeof sessionId === 'string' && sessionId) {
+          await deleteCookSession(user.id, sessionId);
+        }
+        // Return to the existing history screen (which refreshes on focus)
+        // rather than pushing a second one onto the stack.
+        safeBack('/cook-history');
+        return;
+      }
+
+      if (isFavoriteSource) {
+        await removeFavoriteRecipeByTitle(user.id, recipe.title);
+      } else {
+        await dismissSuggestedRecipe(user.id, recipe.id);
+      }
+      removeGeneratedRecipe(recipe.id);
+      router.replace('/(tabs)/recipes');
+    } catch (error) {
+      setMessage({ tone: 'error', text: getErrorMessage(error, t('deleteRecipeError')) });
+      setIsDeleting(false);
+    }
+  }
+
+  async function handleAddMissingToShoppingList() {
+    if (!user || !recipe || isAddingShoppingList || !recipe.missingIngredients.length) {
+      return;
+    }
+
+    setIsAddingShoppingList(true);
+    setMessage(null);
+
+    try {
+      const addedItems = await addShoppingListItemsFromRecipe({
+        ingredients: recipe.missingIngredients,
+        recipeId: getShoppingListSourceRecipeId({
+          isFavoriteSource,
+          recipeId: isUuid(recipe.id) ? recipe.id : undefined,
+        }),
+        recipeTitle: recipe.title,
+        userId: user.id,
+      });
+      setMessage({
+        tone: addedItems.length ? 'success' : 'info',
+        text: addedItems.length
+          ? t('itemsAddedToShoppingList', { count: addedItems.length, plural: addedItems.length === 1 ? '' : 's' })
+          : t('noMissingIngredientsToAdd'),
+      });
+    } catch (error) {
+      setMessage({
+        tone: 'error',
+        text: getErrorMessage(error, t('unableToAddMissingToShoppingList')),
+      });
+    } finally {
+      setIsAddingShoppingList(false);
+    }
+  }
+
+  if (!recipe) {
+    return (
+      <Screen
+        title={isLoading ? t('loadingRecipe') : t('recipeNotFound')}
+        subtitle={isLoading ? t('fetchingRecipeFromLibrary') : undefined}
+        headerAction={<Button compact onPress={() => safeBack('/(tabs)/recipes')} secondary icon="arrow-back">{t('back')}</Button>}>
+        <Card style={styles.loadingCard}>
+          {isLoading ? (
+            <>
+              <ActivityIndicator color={palette.blue} />
+              <Text style={styles.body}>{t('loadingRecipe')}</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons color={palette.green} name="information-circle-outline" size={18} />
+              <Text style={styles.body}>{t('recipeNotFoundCopy')}</Text>
+            </>
+          )}
+        </Card>
+      </Screen>
+    );
+  }
+
+  const view = displayRecipe ?? recipe;
 
   return (
     <Screen
-      title={recipe.title}
-      subtitle={recipe.description}
-      headerAction={<Button compact onPress={() => router.back()} secondary icon="arrow-back">Back</Button>}>
+      onRefresh={refresh}
+      refreshing={isRefreshing}
+      title={view.title}
+      subtitle={view.description}
+      headerAction={
+        <Button compact onPress={() => safeBack(isHistorySource ? '/cook-history' : '/(tabs)/recipes')} secondary icon="arrow-back">
+          {t('back')}
+        </Button>
+      }>
+      {isLoading ? (
+        <Card style={styles.loadingCard}>
+          <ActivityIndicator color={palette.blue} />
+          <Text style={styles.body}>{t('loadingSavedRecipe')}</Text>
+        </Card>
+      ) : null}
+      {message ? (
+        <View
+          style={[
+            styles.messageBox,
+            message.tone === 'error' ? styles.errorMessageBox : styles.successMessageBox,
+          ]}>
+          <Ionicons
+            color={message.tone === 'error' ? palette.red : palette.green}
+            name={message.tone === 'error' ? 'alert-circle-outline' : 'checkmark-circle-outline'}
+            size={18}
+          />
+          <Text style={[styles.messageText, message.tone === 'error' ? styles.errorMessageText : styles.successMessageText]}>
+            {message.text}
+          </Text>
+          {message.tone === 'success' ? (
+            <Text onPress={() => router.push('/shopping-list')} style={styles.messageAction}>
+              {t('viewList')}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      <RecipeArtworkImage recipe={recipe} style={styles.recipeHeroImage} />
+
       <View style={styles.summary}>
-        <Meta icon="time-outline" label={`${recipe.prepTimeMinutes ?? '--'} min`} />
-        {recipe.usesExpiringItems ? <Meta icon="leaf-outline" label="Uses expiring items" /> : null}
+        <Meta icon="time-outline" label={`${recipe.prepTimeMinutes ?? '--'} ${t('min')}`} />
+        {recipe.usesExpiringItems ? <Meta icon="leaf-outline" label={t('usesExpiringItems')} /> : null}
+        {isFavorite ? <Meta icon="star" label={t('favorite')} /> : null}
+        {isTranslating ? <Meta icon="language-outline" label={t('loading')} /> : null}
       </View>
 
+      {canManageRecipe ? (
+        <View style={styles.managementActions}>
+          <Pressable
+            accessibilityLabel={isFavorite ? t('removeFavorite') : t('addFavorite')}
+            disabled={isSavingFavorite}
+            onPress={handleToggleFavorite}
+            style={[styles.starButton, isSavingFavorite && styles.disabledButton]}>
+            <Ionicons color={isFavorite ? palette.gold : palette.muted} name={isFavorite ? 'star' : 'star-outline'} size={28} />
+          </Pressable>
+          {isFavoriteSource ? (
+            <Button compact href={`/edit-recipe/${recipe.id}?type=favorite`} icon="create-outline" secondary>
+              {t('edit')}
+            </Button>
+          ) : (
+            <Button compact href={`/edit-recipe/${recipe.id}?type=suggested`} icon="create-outline" secondary>
+              {t('edit')}
+            </Button>
+          )}
+          <Button compact icon="trash-outline" onPress={() => setIsConfirmingDelete(true)} secondary>
+            {t('delete')}
+          </Button>
+        </View>
+      ) : null}
+
+      <ConfirmDialog
+        busy={isDeleting}
+        confirmLabel={
+          isDeleting
+            ? t('removing')
+            : isHistorySource
+              ? t('removeFromHistoryConfirm')
+              : isFavoriteSource
+                ? t('removeFavoriteConfirm')
+                : t('removeRecipeConfirm')
+        }
+        destructive
+        message={
+          isHistorySource
+            ? t('removeFromHistoryMessage')
+            : isFavoriteSource
+              ? t('removeRecipeFavoriteMessage')
+              : t('removeRecipeSuggestionMessage')
+        }
+        onCancel={() => setIsConfirmingDelete(false)}
+        onConfirm={handleDeleteRecipe}
+        title={
+          isHistorySource
+            ? t('removeFromHistoryQuestion')
+            : isFavoriteSource
+              ? t('removeFavoriteQuestion')
+              : t('removeSuggestionQuestion')
+        }
+        visible={isConfirmingDelete}
+      />
+
       <View style={styles.section}>
-        <SectionTitle>Ingredients</SectionTitle>
+        <SectionTitle>{t('ingredients')}</SectionTitle>
         <Card>
           {availableIngredients.map((ingredient) => (
             <IngredientRow
               key={ingredient.name}
               label={ingredient.name}
-              detail={[ingredient.quantityValue, ingredient.quantityUnit].filter(Boolean).join(' ')}
+              detail={formatIngredientQuantity(ingredient.quantityValue, ingredient.quantityUnit, t)}
             />
           ))}
         </Card>
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Missing Ingredients</SectionTitle>
+        <SectionTitle>{t('missingIngredients')}</SectionTitle>
         <Card>
           <Text style={styles.body}>
-            {recipe.missingIngredients.length
-              ? recipe.missingIngredients.join(', ')
-              : 'Nothing essential is missing for this recipe.'}
+            {view.missingIngredients.length
+              ? view.missingIngredients.join(', ')
+              : t('nothingEssentialMissing')}
           </Text>
+          {recipe.missingIngredients.length ? (
+            <Button
+              compact
+              disabled={isAddingShoppingList}
+              icon="cart-outline"
+              onPress={handleAddMissingToShoppingList}
+              secondary>
+              {isAddingShoppingList ? t('adding') : t('addMissingToShoppingList')}
+            </Button>
+          ) : null}
         </Card>
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Instructions</SectionTitle>
+        <SectionTitle>{t('instructions')}</SectionTitle>
         <Card>
-          {recipe.instructions.map((instruction, index) => (
+          {view.instructions.map((instruction, index) => (
             <View key={instruction} style={styles.step}>
               <Text style={styles.stepNumber}>{index + 1}</Text>
               <Text style={styles.body}>{instruction}</Text>
@@ -57,25 +376,41 @@ export default function RecipeDetailScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionTitle>Pantry Impact</SectionTitle>
+        <SectionTitle>{t('pantryImpact')}</SectionTitle>
         <Card>
-          {recipe.id === 'steak-rice-bowl' ? (
+          {pantryIngredients.length ? (
             <>
-              <ImpactRow after="1 portion" before="2 portions" item="Steak" />
-              <ImpactRow after="low" before="medium" item="Spinach" />
+              {pantryIngredients.map((ingredient) => (
+                <ImpactRow
+                  key={ingredient.name}
+                  item={ingredient.name}
+                  detail={formatIngredientQuantity(ingredient.quantityValue, ingredient.quantityUnit, t) || t('amountVaries')}
+                />
+              ))}
+              {!isHistorySource ? (
+                <Text style={styles.body}>
+                  {t('afterCookingUpdatePantry')}
+                </Text>
+              ) : null}
             </>
           ) : (
-            <>
-              <ImpactRow after="6 count" before="8 count" item="Eggs" />
-              <ImpactRow after="low" before="medium" item="Spinach" />
-            </>
+            <Text style={styles.body}>{t('thisRecipeHasNoPantryIngredients')}</Text>
           )}
         </Card>
       </View>
 
-      <Button href="/update-pantry" icon="checkmark-circle-outline">
-        I Cooked This
-      </Button>
+      {canUpdatePantry ? (
+        <Button
+          href={isFavoriteSource ? `/update-pantry?favoriteId=${recipe.id}` : `/update-pantry?recipeId=${recipe.id}`}
+          icon="checkmark-circle-outline">
+          {t('cookedThis')}
+        </Button>
+      ) : !isHistorySource ? (
+        <Card style={styles.loadingCard}>
+          <Ionicons color={palette.green} name="information-circle-outline" size={18} />
+          <Text style={styles.body}>{t('generateRecipesToUpdatePantry')}</Text>
+        </Card>
+      ) : null}
     </Screen>
   );
 }
@@ -90,30 +425,56 @@ function Meta({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: st
 }
 
 function IngredientRow({ label, detail }: { label: string; detail: string }) {
+  const { t } = useAppLanguage();
+
   return (
     <View style={styles.row}>
       <Text style={styles.rowTitle}>{label}</Text>
-      <Text style={styles.body}>{detail || 'to taste'}</Text>
+      <Text style={styles.body}>{detail || t('toTaste')}</Text>
     </View>
   );
 }
 
-function ImpactRow({ after, before, item }: { after: string; before: string; item: string }) {
+function ImpactRow({ detail, item }: { detail: string; item: string }) {
   return (
     <View style={styles.row}>
       <Text style={styles.rowTitle}>{item}</Text>
-      <Text style={styles.body}>
-        {before} to {after}
-      </Text>
+      <Text style={styles.body}>{detail}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  recipeHeroImage: {
+    backgroundColor: palette.greenSoft,
+    borderRadius: 14,
+    height: 190,
+    overflow: 'hidden',
+    width: '100%',
+  },
   summary: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  managementActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  starButton: {
+    alignItems: 'center',
+    backgroundColor: palette.card,
+    borderColor: palette.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: 'center',
+    width: 54,
+  },
+  disabledButton: {
+    opacity: 0.55,
   },
   section: {
     gap: 9,
@@ -144,6 +505,7 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     color: palette.ink,
+    fontFamily: typography.display,
     flex: 1,
     fontSize: 15,
     fontWeight: '800',
@@ -172,4 +534,49 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     textAlign: 'center',
   },
+  loadingCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  messageBox: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    padding: 10,
+  },
+  errorMessageBox: {
+    backgroundColor: '#fff4f1',
+    borderColor: '#f1c8bd',
+  },
+  successMessageBox: {
+    backgroundColor: palette.greenSoft,
+    borderColor: '#d7d0b8',
+  },
+  messageText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  errorMessageText: {
+    color: palette.red,
+  },
+  successMessageText: {
+    color: palette.green,
+  },
+  messageAction: {
+    color: palette.blue,
+    fontSize: 14,
+    fontWeight: '900',
+    paddingVertical: 6,
+  },
 });
+
+function isUuid(value?: string) {
+  return Boolean(
+    value?.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i),
+  );
+}

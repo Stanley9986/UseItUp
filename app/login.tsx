@@ -13,10 +13,12 @@ import {
 } from 'react-native';
 
 import { Card, palette, Screen } from '@/components/useitup/ui';
-import { getFriendlyAuthError } from '@/lib/auth-errors';
-import { supabase } from '@/lib/supabase';
+import { useAppLanguage } from '@/contexts/language-context';
+import { getFriendlyAuthError } from '@/lib/shared/auth-errors';
+import { supabase } from '@/lib/shared/supabase';
 
 export default function LoginScreen() {
+  const { t } = useAppLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,7 +34,7 @@ export default function LoginScreen() {
     });
 
     if (error) {
-      setMessage(getFriendlyAuthError(error, 'Unable to log in.'));
+      setMessage(getFriendlyAuthError(error, t('unableToLogIn')));
     }
 
     setIsSubmitting(false);
@@ -43,7 +45,7 @@ export default function LoginScreen() {
       <Screen style={styles.screen}>
         <View style={styles.brandBlock}>
           <Text style={styles.brand}>UseItUp</Text>
-          <Text style={styles.tagline}>Sign in to track your pantry and cook what you already have.</Text>
+          <Text style={styles.tagline}>{t('loginTagline')}</Text>
         </View>
 
         <Card style={styles.formCard}>
@@ -52,19 +54,19 @@ export default function LoginScreen() {
               <Ionicons color={palette.green} name="lock-closed-outline" size={24} />
             </View>
             <View style={styles.formHeaderCopy}>
-              <Text style={styles.formTitle}>Welcome back</Text>
-              <Text style={styles.formSubtitle}>Use your email and password to continue.</Text>
+              <Text style={styles.formTitle}>{t('welcomeBack')}</Text>
+              <Text style={styles.formSubtitle}>{t('useEmailPasswordToContinue')}</Text>
             </View>
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t('email')}</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
               onChangeText={setEmail}
-              placeholder="you@example.com"
+              placeholder={t('emailPlaceholder')}
               placeholderTextColor={palette.muted}
               style={styles.input}
               value={email}
@@ -72,12 +74,12 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t('password')}</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="password"
               onChangeText={setPassword}
-              placeholder="Your password"
+              placeholder={t('yourPassword')}
               placeholderTextColor={palette.muted}
               secureTextEntry
               style={styles.input}
@@ -88,17 +90,17 @@ export default function LoginScreen() {
           {message ? <Text style={styles.errorText}>{message}</Text> : null}
 
           <Link href={'/forgot-password' as Href} style={styles.forgotLink}>
-            Forgot password?
+            {t('forgotPassword')}
           </Link>
 
           <Pressable disabled={isSubmitting} onPress={handleLogin} style={[styles.primaryButton, isSubmitting && styles.disabledButton]}>
-            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Log In</Text>}
+            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{t('logInButton')}</Text>}
           </Pressable>
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>New to UseItUp?</Text>
+            <Text style={styles.switchText}>{t('newToUseItUp')}</Text>
             <Link href={'/signup' as Href} style={styles.switchLink}>
-              Create an account
+              {t('createAccount')}
             </Link>
           </View>
         </Card>
