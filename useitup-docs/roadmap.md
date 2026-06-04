@@ -43,6 +43,9 @@ This file tracks the working backlog for UseItUp so project direction survives c
 
 ## Section 3 - Core Features / Product Value
 
+- Show concrete ingredient amounts in recipes. Generated recipes currently leave `quantityValue`/`quantityUnit` null, so the detail screen falls back to "to taste" for every ingredient. Make those two fields required in `recipeSchema` and add a generation-prompt line requiring a number plus a common cooking unit (g, ml, cup, tbsp, tsp, piece, clove) per ingredient, reserving "to taste" for true seasonings. Edge-only change (deploy + regenerate to see it); the display layer already formats value + unit.
+- Recognize well-known named dishes during generation. The prompt is purely pantry-driven, so ingredients for a known dish (e.g. tteokbokki) become a generic stir-fry. Add a prompt line: when the available ingredients clearly correspond to a well-known named dish, make that dish and use its authentic name, while still favoring items that expire soon. Edge-only prompt change.
+- Cuisine preference setting (deferred). Let users bias generation toward cuisines they like (e.g. a multi-select in recipe preferences, stored alongside dietary preferences, injected into the prompt). Distinct from the named-dish fix above; only build if users ask to steer cuisine after that ships.
 - Upgrade expiry reminders from local scheduled notifications to remote push if the app needs server-driven alerts later.
 - Add barcode scanning to make pantry item entry faster.
 
