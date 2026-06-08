@@ -1,4 +1,5 @@
 import { RecipePrompt, TermsPrompt, TranslationPrompt } from '../shared/prompt.ts';
+import { createProviderError, ProviderError } from '../shared/provider-errors.ts';
 import { fetchWithTimeout } from '../shared/request.ts';
 import { recipeSchema, termsSchema, translationSchema } from '../shared/schema.ts';
 import { RecipeProvider } from './types.ts';
@@ -53,7 +54,7 @@ async function requestOpenAICompatibleJson(
   const apiKey = Deno.env.get(config.apiKeyEnv);
 
   if (!apiKey) {
-    throw new Error(`Missing ${config.apiKeyEnv} secret`);
+    throw new ProviderError(`Missing ${config.apiKeyEnv} secret`, 'invalid_api_key');
   }
 
   const baseUrl = normalizeBaseUrl(Deno.env.get(config.baseUrlEnv) ?? config.defaultBaseUrl);
@@ -95,7 +96,7 @@ async function requestOpenAICompatibleJson(
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(data?.error?.message ?? `${config.name} request failed`);
+    throw createProviderError(data?.error?.message ?? `${config.name} request failed`, response.status);
   }
 
   const outputText = data?.choices?.[0]?.message?.content;

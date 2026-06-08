@@ -1,6 +1,7 @@
 import { createClientCache } from '@/lib/shared/client-cache';
 import { supabase } from '@/lib/shared/supabase';
 import { translateTerms } from '@/lib/i18n/term-translation';
+import { SupportedLanguageCode } from '@/lib/i18n/languages';
 import { Recipe } from '@/types/useitup';
 
 const defaultLanguageCode = 'en';
@@ -16,6 +17,11 @@ export type RecipeTranslation = {
 type TranslateResponse = {
   translations?: unknown;
   cache?: { hits?: number; misses?: number };
+};
+
+export type PreparedRecipesResult = {
+  recipes: Recipe[];
+  recipeTranslationFailed: boolean;
 };
 
 const translationCache = createClientCache<RecipeTranslation>({
@@ -73,16 +79,24 @@ export function shouldTranslateRecipe(recipe: Recipe, targetLanguage: string) {
 // request so a language switch costs at most one provider call.
 export async function translateRecipes(
   recipes: Recipe[],
-  targetLanguage: string,
+  targetLanguage: SupportedLanguageCode,
 ): Promise<Record<string, RecipeTranslation>> {
+  return (await translateRecipesWithStatus(recipes, targetLanguage)).translations;
+}
+
+export async function translateRecipesWithStatus(
+  recipes: Recipe[],
+  targetLanguage: SupportedLanguageCode,
+): Promise<{ translations: Record<string, RecipeTranslation>; failed: boolean }> {
   const needing = recipes.filter((recipe) => shouldTranslateRecipe(recipe, targetLanguage));
 
   if (!needing.length) {
-    return {};
+    return { translations: {}, failed: false };
   }
 
   const result: Record<string, RecipeTranslation> = {};
   const uncached: Recipe[] = [];
+  let failed = false;
 
   for (const recipe of needing) {
     const cached = await translationCache.get(cacheKey(recipe, targetLanguage));
@@ -96,10 +110,11 @@ export async function translateRecipes(
 
   if (uncached.length) {
     const fetched = await fetchTranslations(uncached, targetLanguage);
+    failed = fetched.failed;
 
     await Promise.all(
       uncached.map(async (recipe) => {
-        const translation = fetched[recipe.id];
+        const translation = fetched.translations[recipe.id];
 
         if (translation) {
           result[recipe.id] = translation;
@@ -109,7 +124,7 @@ export async function translateRecipes(
     );
   }
 
-  return result;
+  return { translations: result, failed };
 }
 
 // Produce a display copy of a recipe with translated text applied. Any field the
@@ -142,9 +157,16 @@ export function applyRecipeTranslation(recipe: Recipe, translation?: RecipeTrans
 // that echoed English pantry names for its ingredients.
 export async function prepareTranslatedRecipes(
   recipes: Recipe[],
-  targetLanguage: string,
+  targetLanguage: SupportedLanguageCode,
 ): Promise<Recipe[]> {
-  const translations = await translateRecipes(recipes, targetLanguage);
+  return (await prepareTranslatedRecipesWithStatus(recipes, targetLanguage)).recipes;
+}
+
+export async function prepareTranslatedRecipesWithStatus(
+  recipes: Recipe[],
+  targetLanguage: SupportedLanguageCode,
+): Promise<PreparedRecipesResult> {
+  const { translations, failed } = await translateRecipesWithStatus(recipes, targetLanguage);
   let display = recipes.map((recipe) => applyRecipeTranslation(recipe, translations[recipe.id]));
 
   // English is the assumed source language for item names, so only term-translate
@@ -169,7 +191,10 @@ export async function prepareTranslatedRecipes(
     }
   }
 
-  return display;
+  return {
+    recipes: display,
+    recipeTranslationFailed: failed,
+  };
 }
 
 export function clearRecipeTranslationClientCache() {
@@ -192,7 +217,7 @@ async function fetchTranslations(recipes: Recipe[], targetLanguage: string) {
   });
 
   if (error || !Array.isArray(data?.translations)) {
-    return {} as Record<string, RecipeTranslation>;
+    return { translations: {} as Record<string, RecipeTranslation>, failed: true };
   }
 
   const translations = data.translations;
@@ -206,7 +231,7 @@ async function fetchTranslations(recipes: Recipe[], targetLanguage: string) {
     }
   });
 
-  return byRecipeId;
+  return { translations: byRecipeId, failed: false };
 }
 
 function normalizeTranslation(value: unknown): RecipeTranslation | null {

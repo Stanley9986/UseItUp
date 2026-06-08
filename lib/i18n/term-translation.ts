@@ -1,5 +1,7 @@
 import { createClientCache } from '@/lib/shared/client-cache';
 import { supabase } from '@/lib/shared/supabase';
+import { SupportedLanguageCode } from '@/lib/i18n/languages';
+import { getLocalPantryTermTranslation } from '@/lib/i18n/pantry-term-dictionary';
 
 type TermsResponse = {
   terms?: Record<string, string>;
@@ -24,7 +26,7 @@ function cacheKey(term: string, targetLanguage: string) {
 // to the batched terms endpoint in a single call.
 export async function translateTerms(
   names: string[],
-  targetLanguage: string,
+  targetLanguage: SupportedLanguageCode,
 ): Promise<Record<string, string>> {
   const cleaned = names.filter((name) => typeof name === 'string' && name.trim().length > 0);
 
@@ -37,6 +39,13 @@ export async function translateTerms(
   const uncached: string[] = [];
 
   for (const term of unique) {
+    const local = getLocalPantryTermTranslation(term, targetLanguage);
+
+    if (local) {
+      resolved[term] = local;
+      continue;
+    }
+
     const cached = await termCache.get(cacheKey(term, targetLanguage));
 
     if (cached != null) {
@@ -69,6 +78,10 @@ export async function translateTerms(
   });
 
   return out;
+}
+
+export function clearTermTranslationClientCache() {
+  termCache.clear();
 }
 
 async function fetchTerms(terms: string[], targetLanguage: string) {

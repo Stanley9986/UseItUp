@@ -32,8 +32,8 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - List and detail screens reload on focus, so deleting or editing no longer leaves stale duplicate screens; deleting from cook history removes the history entry.
 - Edge Functions have provider selection env vars for recipe generation, translation, and image lookup so Gemini/OpenAI/DeepSeek/Pexels choices can be swapped without mobile app changes.
 - lib modules are grouped into domain folders (recipes, pantry, cooking, i18n, shopping, reminders, preferences, shared) and the on-device caches share one client-cache utility.
-- Migrations run through 016 (recipe source-language column, content-addressed translation cache, OpenAI food-image provider allowance).
-- The Edge Function falls back across providers on error or timeout (`PROVIDER_FALLBACK_ORDER`), caps each provider request (`PROVIDER_TIMEOUT_MS`), and the Recipes screen briefly disables regenerate after a run to avoid double-fire.
+- Migrations run through 017 (recipe source-language column, content-addressed translation cache, OpenAI food-image provider allowance, Edge Function rate-limit storage).
+- The Edge Function falls back across providers only for retryable provider failures (`PROVIDER_FALLBACK_ORDER`), caps each provider request (`PROVIDER_TIMEOUT_MS`), rate-limits LLM generation/translation per user, and the Recipes screen briefly disables regenerate after a run to avoid double-fire.
 
 ## Section 2 - Tech Debt / Cleanup
 
@@ -47,12 +47,12 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - Recognize well-known named dishes during generation. The prompt is purely pantry-driven, so ingredients for a known dish (e.g. tteokbokki) become a generic stir-fry. Add a prompt line: when the available ingredients clearly correspond to a well-known named dish, make that dish and use its authentic name, while still favoring items that expire soon. Edge-only prompt change.
 - Cuisine preference setting (deferred). Let users bias generation toward cuisines they like (e.g. a multi-select in recipe preferences, stored alongside dietary preferences, injected into the prompt). Distinct from the named-dish fix above; only build if users ask to steer cuisine after that ships.
 - Upgrade expiry reminders from local scheduled notifications to remote push if the app needs server-driven alerts later.
-- Add barcode scanning to make pantry item entry faster.
+- Add a pantry intake agent for faster item entry. It should support product barcode scanning and natural-language input such as "I bought two Greek yogurts and a bag of spinach"; use an LLM tool-calling flow to look up products, normalize item names, suggest quantity/unit, storage location, category, and expiration date, then show pantry item drafts for user confirmation before saving.
 
 ## Section 4 - Quality / Robustness
 
-- Add a per-user generation cost cap (cost control, not rate compliance) before a public launch. DeepSeek imposes no requests-per-minute limit, only a high concurrency cap (500/2500), so dedicated rate limiting is not needed at current scale; provider fallback and request timeouts are already in place.
-- Cache recipe generation results where appropriate (translation results are already cached; generation is still fresh per request).
+- Tune backend abuse prevention and provider-failure handling from real usage data before public launch. Recipe generation intentionally remains fresh per request so users get variety; translation results are cached.
+- Reduce LLM usage for pantry/item-name translation. Add a local common-food translation dictionary for the ten supported app languages and use it before calling the term-translation Edge Function. Normalize names first (lowercase, trim, basic singular/plural handling, strip common descriptors like fresh/organic/baby when safe). Fallback order should be local dictionary -> cached term translation -> LLM term translation -> original name. Keep recipe prose translation on the LLM. Consider Wikidata labels for future expansion because structured data is CC0; be cautious with bulk Open Food Facts taxonomy/product data because it is ODbL and has attribution/share-alike obligations.
 - Add Supabase Storage-backed generated image support before enabling `IMAGE_PROVIDER=openai`.
 - Improve duplicate handling for generated recipes, beyond title-based favorite dedupe.
 - Keep adding focused tests with every new feature.
@@ -61,10 +61,16 @@ This file tracks the working backlog for UseItUp so project direction survives c
 
 - Keep environment setup and deployment docs current.
 - Add EAS build/submit config for TestFlight and Play Store testing.
+- Add Expo web/Vercel deployment support so the same Expo Router app can run as mobile apps and a hosted web app. Current app config already uses `expo.web.output = "static"` and has `react-native-web`; expected Vercel settings are build command `npx expo export --platform web` and output directory `dist`.
+- Web deployment risks to handle before treating web as supported:
+  - Audit native-only modules and add web fallbacks/guards, especially `expo-notifications`, `expo-haptics`, and `@react-native-community/datetimepicker`.
+  - Expiry reminders can remain mobile-only initially; web should not try to schedule local native notifications.
+  - Supabase auth needs web redirect URLs/site URL configured once a Vercel preview/production URL exists, while preserving mobile deep-link behavior.
+  - Vercel should host only the static Expo web frontend; Supabase remains the backend for auth, database, Edge Functions, recipe generation, translation, and image lookup.
+  - Add web verification to the release checklist: run `npx expo export --platform web`, test the generated `dist` app or Vercel preview, and smoke-test login, pantry CRUD, recipe generation, translation, date picking, and responsive layouts.
 
 ## Later / Nice-to-Have
 
-- Premium usage limits and payments.
 - More advanced recipe search and filters.
 - Partial/streaming recipe generation UI.
 - More detailed household or multi-user support.

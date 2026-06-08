@@ -8,6 +8,8 @@ import {
   sanitizeTranslationRecipe,
 } from './shared/prompt.ts';
 import { buildProviderChain, callWithFallback } from './providers/index.ts';
+import { getPublicProviderError } from './shared/provider-errors.ts';
+import { checkRateLimit, getJwtSubjectFromRequest, readPositiveIntegerEnv } from './shared/rate-limit.ts';
 import {
   buildIngredientNameMap,
   hashRecipeSource,
@@ -24,6 +26,7 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
+  const requestSubject = getJwtSubjectFromRequest(request);
   const body = await request.json().catch(() => null);
 
   // Translate-on-view: clients send recipe content (recipes) or short item
@@ -33,16 +36,25 @@ Deno.serve(async (request) => {
     const translateInput = body.translate;
 
     if (Array.isArray(translateInput.terms)) {
-      return handleTranslateTerms(translateInput);
+      return handleTranslateTerms(translateInput, requestSubject);
     }
 
-    return handleTranslate(translateInput);
+    return handleTranslate(translateInput, requestSubject);
   }
 
   const pantryItems = Array.isArray(body?.pantryItems) ? body.pantryItems : [];
 
   if (!pantryItems.length) {
     return jsonResponse({ recipes: [] });
+  }
+
+  const generationLimit = await checkRateLimit({
+    key: `generate-recipes:generation:${requestSubject}`,
+    limit: getGenerationRateLimit(),
+  });
+
+  if (!generationLimit.allowed) {
+    return rateLimitResponse('generation_rate_limited', generationLimit.retryAfterSeconds);
   }
 
   const prompt = createRecipePrompt({
@@ -60,11 +72,14 @@ Deno.serve(async (request) => {
 
     return jsonResponse(recipes);
   } catch (error) {
+    const publicError = getPublicProviderError(error, 'Recipe generation');
+
     return jsonResponse(
       {
-        error: error instanceof Error ? error.message : 'Recipe generation failed',
+        code: publicError.code,
+        error: publicError.error,
       },
-      500,
+      publicError.status,
     );
   }
 });
@@ -73,7 +88,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-async function handleTranslate(input: Record<string, unknown>) {
+async function handleTranslate(input: Record<string, unknown>, requestSubject: string) {
   const targetLanguage = normalizeLanguageCode(input.targetLanguage);
   const sources = Array.isArray(input.recipes) ? input.recipes.map(sanitizeTranslationRecipe) : [];
 
@@ -98,6 +113,15 @@ async function handleTranslate(input: Record<string, unknown>) {
   let missTranslations = [];
 
   if (missSources.length) {
+    const translationLimit = await checkRateLimit({
+      key: `generate-recipes:translation:${requestSubject}`,
+      limit: getTranslationRateLimit(),
+    });
+
+    if (!translationLimit.allowed) {
+      return rateLimitResponse('translation_rate_limited', translationLimit.retryAfterSeconds);
+    }
+
     try {
       const { result, providerName } = await callWithFallback(getTranslationChain(), (provider) =>
         provider.translateRecipes(createTranslationPrompt({ targetLanguage, recipes: missSources })),
@@ -111,9 +135,11 @@ async function handleTranslate(input: Record<string, unknown>) {
         ),
       );
     } catch (error) {
+      const publicError = getPublicProviderError(error, 'Recipe translation');
+
       return jsonResponse(
-        { error: error instanceof Error ? error.message : 'Recipe translation failed' },
-        500,
+        { code: publicError.code, error: publicError.error },
+        publicError.status,
       );
     }
   }
@@ -133,7 +159,7 @@ async function handleTranslate(input: Record<string, unknown>) {
   });
 }
 
-async function handleTranslateTerms(input: Record<string, unknown>) {
+async function handleTranslateTerms(input: Record<string, unknown>, requestSubject: string) {
   const targetLanguage = normalizeLanguageCode(input.targetLanguage);
   const terms = Array.isArray(input.terms)
     ? input.terms.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
@@ -162,6 +188,15 @@ async function handleTranslateTerms(input: Record<string, unknown>) {
   });
 
   if (missTerms.length) {
+    const translationLimit = await checkRateLimit({
+      key: `generate-recipes:translation:${requestSubject}`,
+      limit: getTranslationRateLimit(),
+    });
+
+    if (!translationLimit.allowed) {
+      return rateLimitResponse('translation_rate_limited', translationLimit.retryAfterSeconds);
+    }
+
     try {
       const { result, providerName } = await callWithFallback(getTranslationChain(), (provider) =>
         provider.translateTerms(createTermsPrompt({ targetLanguage, terms: missTerms })),
@@ -201,6 +236,29 @@ async function handleTranslateTerms(input: Record<string, unknown>) {
   });
 
   return jsonResponse({ terms: termsOut });
+}
+
+function rateLimitResponse(code: 'generation_rate_limited' | 'translation_rate_limited', retryAfterSeconds = 0) {
+  const error = code === 'generation_rate_limited'
+    ? 'Recipe generation is temporarily limited. Please try again later.'
+    : 'Translation is temporarily limited. Please try again later.';
+
+  return jsonResponse(
+    {
+      code,
+      error,
+      retryAfterSeconds,
+    },
+    429,
+  );
+}
+
+function getGenerationRateLimit() {
+  return readPositiveIntegerEnv('GENERATION_RATE_LIMIT_PER_HOUR', 10);
+}
+
+function getTranslationRateLimit() {
+  return readPositiveIntegerEnv('TRANSLATION_RATE_LIMIT_PER_HOUR', 120);
 }
 
 async function getCachedTerm(sourceHash: string, targetLanguage: string) {

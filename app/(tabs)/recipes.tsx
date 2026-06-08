@@ -29,11 +29,12 @@ import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTranslatedRecipes } from '@/hooks/use-recipe-translation';
 import { getErrorMessage } from '@/lib/shared/errors';
+import { TranslationKey } from '@/lib/i18n/translations';
 import { addFavoriteRecipe, getFavoriteRecipesPage, removeFavoriteRecipeByTitle } from '@/lib/recipes/favorite-recipes';
 import { setGeneratedRecipes } from '@/lib/recipes/generated-recipes';
 import { appendPageItems, defaultPageSize } from '@/lib/shared/pagination';
 import { getPantryItems } from '@/lib/pantry/pantry';
-import { generateRecipes } from '@/lib/recipes/recipe-generator';
+import { generateRecipes, getRecipeGenerationErrorKey } from '@/lib/recipes/recipe-generator';
 import { isRecipeFavorited, normalizeRecipeTitle } from '@/lib/recipes/recipe-list';
 import { getSavedRecipesPage, replaceSuggestedRecipes } from '@/lib/recipes/recipes';
 import { defaultUserPreferences, getUserPreferences } from '@/lib/preferences/user-preferences';
@@ -46,7 +47,8 @@ type FavoriteToast = {
 };
 type ScreenMessage = {
   tone: 'error' | 'info';
-  text: string;
+  text?: string;
+  translationKey?: TranslationKey;
 };
 
 const sortValues: RecipeSort[] = ['expiring', 'quick', 'missing'];
@@ -92,8 +94,15 @@ export default function RecipesScreen() {
   );
   // Translate each list in one batched call; cards render the translated copy
   // but keep the original for artwork and favorite actions.
-  const { recipes: displaySuggestedView } = useTranslatedRecipes(suggestedView);
-  const { recipes: displayFavorites } = useTranslatedRecipes(favorites);
+  const {
+    recipes: displaySuggestedView,
+    recipeTranslationFailed: suggestedTranslationFailed,
+  } = useTranslatedRecipes(suggestedView);
+  const {
+    recipes: displayFavorites,
+    recipeTranslationFailed: favoriteTranslationFailed,
+  } = useTranslatedRecipes(favorites);
+  const recipeTranslationFailed = suggestedTranslationFailed || favoriteTranslationFailed;
   const favoriteCanScroll = favoriteContentWidth > favoriteRailWidth + 1;
   const generationSteps = useMemo(
     () => [
@@ -111,6 +120,7 @@ export default function RecipesScreen() {
     ],
     [t],
   );
+  const messageText = message?.translationKey ? t(message.translationKey) : message?.text;
 
   const loadSuggestedRecipes = useCallback(async ({ page = 0, reset = true }: { page?: number; reset?: boolean } = {}) => {
     if (!user) {
@@ -273,7 +283,12 @@ export default function RecipesScreen() {
       setSuggestedNextPage(1);
       setHasMoreSuggested(false);
     } catch (error) {
-      setMessage({ tone: 'error', text: getErrorMessage(error, t('unableToGenerateRecipes')) });
+      const translationKey = getRecipeGenerationErrorKey(error);
+      setMessage(
+        translationKey
+          ? { tone: 'error', translationKey }
+          : { tone: 'error', text: getErrorMessage(error, t('unableToGenerateRecipes')) },
+      );
     } finally {
       setIsGenerating(false);
       setIsCoolingDown(true);
@@ -398,7 +413,7 @@ export default function RecipesScreen() {
               ? t('pantryItemsReady', { count: pantryItems.length })
               : t('addPantryItemsBeforeGenerating')}
         </Text>
-        {message ? (
+        {message && messageText ? (
           <View style={[styles.messageBox, message.tone === 'error' ? styles.errorMessageBox : styles.infoMessageBox]}>
             <Ionicons
               color={message.tone === 'error' ? palette.red : palette.blue}
@@ -406,7 +421,7 @@ export default function RecipesScreen() {
               size={18}
             />
             <Text style={[styles.messageText, message.tone === 'error' ? styles.errorMessageText : styles.infoMessageText]}>
-              {message.text}
+              {messageText}
             </Text>
           </View>
         ) : null}
@@ -441,6 +456,14 @@ export default function RecipesScreen() {
           />
         ))}
       </View>
+      {recipeTranslationFailed ? (
+        <View style={[styles.messageBox, styles.warningMessageBox]}>
+          <Ionicons color={palette.red} name="language-outline" size={18} />
+          <Text style={[styles.messageText, styles.warningMessageText]}>
+            {t('recipeTranslationUnavailable')}
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.list}>
         {favorites.length ? (
           <View style={styles.section}>
@@ -589,6 +612,10 @@ const styles = StyleSheet.create({
     backgroundColor: palette.blueSoft,
     borderColor: '#c7d8ff',
   },
+  warningMessageBox: {
+    backgroundColor: '#fff4f1',
+    borderColor: '#f1c8bd',
+  },
   messageText: {
     flex: 1,
     fontSize: 14,
@@ -600,6 +627,9 @@ const styles = StyleSheet.create({
   },
   infoMessageText: {
     color: palette.blue,
+  },
+  warningMessageText: {
+    color: palette.red,
   },
   progressBox: {
     alignItems: 'center',

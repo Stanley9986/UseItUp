@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { buildProviderChain, callWithFallback, getRecipeProvider, getTranslationProvider } from './index';
 import { RecipeProvider } from './types';
+import { ProviderError } from '../shared/provider-errors';
 
 function fakeProvider(name: string, generate: () => Promise<unknown>): RecipeProvider {
   return {
@@ -58,7 +59,7 @@ describe('callWithFallback', () => {
   it('returns the first success and which provider produced it', async () => {
     const chain = [
       fakeProvider('a', async () => {
-        throw new Error('a down');
+        throw new ProviderError('a down', 'provider_unavailable', 503);
       }),
       fakeProvider('b', async () => 'from-b'),
     ];
@@ -72,13 +73,24 @@ describe('callWithFallback', () => {
   it('throws the last error when every provider fails', async () => {
     const chain = [
       fakeProvider('a', async () => {
-        throw new Error('a down');
+        throw new ProviderError('a down', 'provider_unavailable', 503);
       }),
       fakeProvider('b', async () => {
-        throw new Error('b down');
+        throw new ProviderError('b down', 'provider_unavailable', 503);
       }),
     ];
 
     await expect(callWithFallback(chain, (p) => p.generate())).rejects.toThrow('b down');
+  });
+
+  it('does not fallback for non-retryable provider errors', async () => {
+    const chain = [
+      fakeProvider('a', async () => {
+        throw new ProviderError('bad key', 'invalid_api_key', 401);
+      }),
+      fakeProvider('b', async () => 'from-b'),
+    ];
+
+    await expect(callWithFallback(chain, (p) => p.generate())).rejects.toThrow('bad key');
   });
 });

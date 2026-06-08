@@ -2,6 +2,7 @@ import { deepSeekProvider } from './deepseek.ts';
 import { geminiProvider } from './gemini.ts';
 import { openAIProvider } from './openai.ts';
 import { RecipeProvider } from './types.ts';
+import { isRetryableProviderError } from '../shared/provider-errors.ts';
 
 const providers: Record<string, RecipeProvider> = {
   deepseek: deepSeekProvider,
@@ -58,6 +59,10 @@ export async function callWithFallback<T>(
       return { result: await call(provider), providerName: provider.name };
     } catch (error) {
       lastError = error;
+
+      if (!isRetryableProviderError(error)) {
+        throw error;
+      }
     }
   }
 

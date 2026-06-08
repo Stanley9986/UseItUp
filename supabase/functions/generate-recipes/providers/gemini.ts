@@ -1,4 +1,5 @@
 import { RecipePrompt, TermsPrompt, TranslationPrompt } from '../shared/prompt.ts';
+import { createProviderError, ProviderError } from '../shared/provider-errors.ts';
 import { fetchWithTimeout } from '../shared/request.ts';
 import { recipeSchema, termsSchema, translationSchema } from '../shared/schema.ts';
 import { RecipeProvider } from './types.ts';
@@ -54,7 +55,7 @@ async function requestGeminiJson({
   const apiKey = Deno.env.get('GEMINI_API_KEY');
 
   if (!apiKey) {
-    throw new Error('Missing GEMINI_API_KEY secret');
+    throw new ProviderError('Missing GEMINI_API_KEY secret', 'invalid_api_key');
   }
 
   const model = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash';
@@ -93,7 +94,7 @@ async function requestGeminiJson({
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(data?.error?.message ?? 'Gemini request failed');
+    throw createProviderError(data?.error?.message ?? 'Gemini request failed', response.status);
   }
 
   const candidate = data?.candidates?.[0];

@@ -24,8 +24,10 @@ import {
   applyRecipeTranslation,
   clearRecipeTranslationClientCache,
   getRecipeTranslationSignature,
+  prepareTranslatedRecipesWithStatus,
   shouldTranslateRecipe,
   translateRecipes,
+  translateRecipesWithStatus,
 } from '@/lib/recipes/recipe-translation';
 import { Recipe } from '@/types/useitup';
 
@@ -197,5 +199,28 @@ describe('translateRecipes', () => {
     await translateRecipes([recipe], 'zh');
 
     expect(supabaseFunctionsMock.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports uncached translation failures without blanking original recipes', async () => {
+    supabaseFunctionsMock.invoke.mockResolvedValue({
+      data: { code: 'translation_rate_limited', error: 'Translation is temporarily limited.' },
+      error: new Error('Function returned 429'),
+    });
+
+    const result = await translateRecipesWithStatus([recipe], 'es');
+
+    expect(result).toEqual({ translations: {}, failed: true });
+  });
+
+  it('prepares original recipe display with a failed status when translation is limited', async () => {
+    supabaseFunctionsMock.invoke.mockResolvedValue({
+      data: { code: 'translation_rate_limited', error: 'Translation is temporarily limited.' },
+      error: new Error('Function returned 429'),
+    });
+
+    const result = await prepareTranslatedRecipesWithStatus([recipe], 'es');
+
+    expect(result.recipeTranslationFailed).toBe(true);
+    expect(result.recipes[0].title).toBe('Lemon Herb Chicken');
   });
 });

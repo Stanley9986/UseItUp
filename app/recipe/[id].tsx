@@ -50,7 +50,7 @@ export default function RecipeDetailScreen() {
   // displayRecipe is the recipe rendered to the user, translated into the active
   // language when needed. recipe (the original) is kept for actions and
   // persistence so favorites/edits stay in the source language.
-  const { recipe: displayRecipe, isTranslating } = useTranslatedRecipe(recipe);
+  const { recipe: displayRecipe, isTranslating, recipeTranslationFailed } = useTranslatedRecipe(recipe);
   const isHistorySource = source === 'history';
   const canUpdatePantry = !isHistorySource && Boolean(recipe);
   const canManageRecipe = Boolean(user && id && isUuid(id) && recipe);
@@ -262,6 +262,14 @@ export default function RecipeDetailScreen() {
               {t('viewList')}
             </Text>
           ) : null}
+        </View>
+      ) : null}
+      {recipeTranslationFailed ? (
+        <View style={[styles.messageBox, styles.errorMessageBox]}>
+          <Ionicons color={palette.red} name="language-outline" size={18} />
+          <Text style={[styles.messageText, styles.errorMessageText]}>
+            {t('recipeTranslationUnavailable')}
+          </Text>
         </View>
       ) : null}
 
