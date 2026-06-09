@@ -51,6 +51,14 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key
 
 Do not commit `.env`. Use `.env.example` as the shared template for collaborators.
 
+### Environment Variables And Secrets
+
+Use `.env.example` for local Expo development. Use `.env.production.example` as the production deployment checklist.
+
+- Public app values such as `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` belong in local `.env`, EAS build environment variables, or Vercel environment variables.
+- Supabase Edge Function secrets such as AI provider keys, `PEXELS_API_KEY`, and `SERVICE_ROLE_KEY` must be set in the Supabase Dashboard under **Project Settings > Edge Functions > Secrets**, or with `npx supabase secrets set NAME=value`.
+- Never commit real `.env` files or expose `SERVICE_ROLE_KEY` through an `EXPO_PUBLIC_*` variable.
+
 Database migrations live in this folder:
 
 ```text
