@@ -19,7 +19,7 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
-import { useTranslatedNames } from '@/hooks/use-term-translation';
+import { useTranslatedItemNames } from '@/hooks/use-term-translation';
 import { getErrorMessage } from '@/lib/shared/errors';
 import { getPantryItems } from '@/lib/pantry/pantry';
 import { PantryItem, StorageLocation } from '@/types/useitup';
@@ -85,8 +85,11 @@ export default function PantryScreen() {
   );
   const groupedItems = useMemo(() => groupItemsByCategory(visibleItems), [visibleItems]);
   // Pantry names are user data; translate them for display in the active language.
-  const itemNames = useMemo(() => items.map((item) => item.name), [items]);
-  const pantryNameMap = useTranslatedNames(itemNames);
+  const itemNames = useMemo(
+    () => items.map((item) => ({ name: item.name, sourceLanguage: item.language })),
+    [items],
+  );
+  const pantryNameMap = useTranslatedItemNames(itemNames);
 
   return (
     <Screen

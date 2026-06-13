@@ -23,7 +23,7 @@ import {
 import { PantryItem } from '@/types/useitup';
 
 export default function EditItemScreen() {
-  const { t } = useAppLanguage();
+  const { t, languageCode } = useAppLanguage();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const [item, setItem] = useState<PantryItem | null>(null);
@@ -102,6 +102,7 @@ export default function EditItemScreen() {
         quantityLabel: values.quantityType === 'level' ? quantityLabelFromLevel(values.level) : undefined,
         expirationDate,
         notes: values.notes,
+        language: languageCode,
       });
 
       safeBack(`/pantry-item/${id}`);

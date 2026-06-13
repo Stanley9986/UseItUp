@@ -8,7 +8,7 @@ import { Button, Card, palette, PantryArtworkImage, QuantityText, Screen, Sectio
 import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
-import { useTranslatedNames } from '@/hooks/use-term-translation';
+import { useTranslatedItemNames } from '@/hooks/use-term-translation';
 import {
   defaultExpiryReminderSettings,
   ExpiryReminderSettings,
@@ -79,10 +79,10 @@ export default function ExpiringSoonScreen() {
     [expiringItems, expiringPage],
   );
   const visibleExpiringNames = useMemo(
-    () => visibleExpiringPage.items.map((item) => item.name),
+    () => visibleExpiringPage.items.map((item) => ({ name: item.name, sourceLanguage: item.language })),
     [visibleExpiringPage.items],
   );
-  const expiringNameMap = useTranslatedNames(visibleExpiringNames);
+  const expiringNameMap = useTranslatedItemNames(visibleExpiringNames);
   const expiringGroups = useMemo(
     () => groupExpiringReminderItems(visibleExpiringPage.items),
     [visibleExpiringPage.items],

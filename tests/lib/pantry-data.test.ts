@@ -30,6 +30,7 @@ const pantryRow: PantryItemRow = {
   quantity_label: 'half',
   expiration_date: '2026-06-01',
   notes: null,
+  language: null,
   created_at: '2026-05-29T12:00:00Z',
   updated_at: '2026-05-29T12:00:00Z',
 };
@@ -62,6 +63,7 @@ describe('pantry data access', () => {
         quantityLabel: 'half',
         expirationDate: '2026-06-01',
         notes: undefined,
+        language: undefined,
       },
     ]);
 
@@ -135,6 +137,7 @@ describe('pantry data access', () => {
             quantity_label: 'half',
             expiration_date: '2026-06-01',
             notes: null,
+            language: null,
           },
         ],
       },

@@ -84,6 +84,25 @@ export function clearTermTranslationClientCache() {
   termCache.clear();
 }
 
+// A user-entered name needs translation when its source language differs from
+// the active language. A null/unknown source is assumed to be English (legacy
+// pantry rows created before items tracked a source language), so such names
+// only translate when the active language is not English.
+export function itemNameNeedsTranslation(
+  sourceLanguage: string | null | undefined,
+  activeLanguage: SupportedLanguageCode,
+): boolean {
+  if (sourceLanguage === activeLanguage) {
+    return false;
+  }
+
+  if (sourceLanguage == null) {
+    return activeLanguage !== 'en';
+  }
+
+  return true;
+}
+
 async function fetchTerms(terms: string[], targetLanguage: string) {
   const { data, error } = await supabase.functions.invoke<TermsResponse>('generate-recipes', {
     body: { translate: { targetLanguage, terms } },

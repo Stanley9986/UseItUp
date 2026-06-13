@@ -12,6 +12,7 @@ export type PantryItemRow = {
   quantity_label: QuantityLabel | null;
   expiration_date: string | null;
   notes: string | null;
+  language: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -25,6 +26,7 @@ export type PantryItemInput = {
   quantityLabel?: QuantityLabel;
   expirationDate?: string;
   notes?: string;
+  language?: string;
 };
 
 export function normalizePantryName(name: string) {
@@ -47,6 +49,7 @@ export function mapPantryItemRow(row: PantryItemRow): PantryItem {
     quantityLabel: row.quantity_label ?? undefined,
     expirationDate: row.expiration_date ?? undefined,
     notes: row.notes ?? undefined,
+    language: row.language ?? undefined,
   };
 }
 
@@ -63,6 +66,7 @@ export function mapPantryItemInput(input: PantryItemInput) {
     quantity_label: input.quantityLabel ?? null,
     expiration_date: input.expirationDate ?? null,
     notes: input.notes?.trim() || null,
+    language: input.language ?? null,
   };
 }
 

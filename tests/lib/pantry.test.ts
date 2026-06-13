@@ -37,6 +37,7 @@ describe('mapPantryItemRow', () => {
       quantity_label: 'half',
       expiration_date: '2026-06-01',
       notes: null,
+      language: 'zh',
       created_at: '2026-05-29T12:00:00Z',
       updated_at: '2026-05-29T12:00:00Z',
     };
@@ -52,7 +53,29 @@ describe('mapPantryItemRow', () => {
       quantityLabel: 'half',
       expirationDate: '2026-06-01',
       notes: undefined,
+      language: 'zh',
     });
+  });
+
+  it('leaves language undefined for legacy rows', () => {
+    const row: PantryItemRow = {
+      id: 'item-2',
+      user_id: 'user-1',
+      name: 'Spinach',
+      normalized_name: 'spinach',
+      category: null,
+      storage_location: 'fridge',
+      quantity_value: 1,
+      quantity_unit: 'portion',
+      quantity_label: null,
+      expiration_date: null,
+      notes: null,
+      language: null,
+      created_at: '2026-05-29T12:00:00Z',
+      updated_at: '2026-05-29T12:00:00Z',
+    };
+
+    expect(mapPantryItemRow(row).language).toBeUndefined();
   });
 });
 
@@ -78,7 +101,20 @@ describe('mapPantryItemInput', () => {
       quantity_label: 'medium',
       expiration_date: '2026-06-01',
       notes: 'wash before using',
+      language: null,
     });
+  });
+
+  it('passes the entered source language through', () => {
+    expect(
+      mapPantryItemInput({
+        name: '西红柿',
+        storageLocation: 'fridge',
+        quantityUnit: 'portion',
+        quantityValue: 2,
+        language: 'zh',
+      }).language,
+    ).toBe('zh');
   });
 });
 

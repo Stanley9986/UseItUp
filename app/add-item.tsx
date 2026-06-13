@@ -16,7 +16,7 @@ import { deleteShoppingListItem } from '@/lib/shopping/shopping-list';
 import { getSingleSearchParam } from '@/lib/shopping/shopping-list-mappers';
 
 export default function AddItemScreen() {
-  const { t } = useAppLanguage();
+  const { t, languageCode } = useAppLanguage();
   const { itemName, shoppingItemId } = useLocalSearchParams<{
     itemName?: string | string[];
     shoppingItemId?: string | string[];
@@ -67,6 +67,7 @@ export default function AddItemScreen() {
         quantityLabel: values.quantityType === 'level' ? quantityLabelFromLevel(values.level) : undefined,
         expirationDate,
         notes: values.notes,
+        language: languageCode,
       });
     } catch (error) {
       if (isDuplicatePantryItemError(error)) {

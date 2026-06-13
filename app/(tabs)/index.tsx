@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAppLanguage } from '@/contexts/language-context';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTranslatedRecipes } from '@/hooks/use-recipe-translation';
-import { useTranslatedNames } from '@/hooks/use-term-translation';
+import { useTranslatedItemNames } from '@/hooks/use-term-translation';
 import {
   buildExpiryReminderPlan,
   defaultExpiryReminderSettings,
@@ -105,10 +105,10 @@ export default function HomeScreen() {
   );
   const expiringPreviewItems = expiringItems.slice(0, 3);
   const expiringPreviewNames = useMemo(
-    () => expiringPreviewItems.map((item) => item.name),
+    () => expiringPreviewItems.map((item) => ({ name: item.name, sourceLanguage: item.language })),
     [expiringPreviewItems],
   );
-  const expiringNameMap = useTranslatedNames(expiringPreviewNames);
+  const expiringNameMap = useTranslatedItemNames(expiringPreviewNames);
 
   const fridgeCount = pantryItems.filter((item) => item.storageLocation === 'fridge').length;
   const freezerCount = pantryItems.filter((item) => item.storageLocation === 'freezer').length;

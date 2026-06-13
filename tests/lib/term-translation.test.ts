@@ -21,7 +21,11 @@ vi.mock('@/lib/shared/supabase', () => ({
 }));
 
 import { getLocalPantryTermTranslation, normalizePantryTerm } from '@/lib/i18n/pantry-term-dictionary';
-import { clearTermTranslationClientCache, translateTerms } from '@/lib/i18n/term-translation';
+import {
+  clearTermTranslationClientCache,
+  itemNameNeedsTranslation,
+  translateTerms,
+} from '@/lib/i18n/term-translation';
 
 describe('pantry term dictionary', () => {
   it('translates common pantry terms locally', () => {
@@ -48,6 +52,27 @@ describe('pantry term dictionary', () => {
     expect(getLocalPantryTermTranslation('scallion', 'ja')).toBe('ねぎ');
     expect(getLocalPantryTermTranslation('green onion', 'ja')).toBe('ねぎ');
     expect(getLocalPantryTermTranslation('coriander', 'es')).toBe('cilantro');
+  });
+});
+
+describe('itemNameNeedsTranslation', () => {
+  it('skips names already in the active language', () => {
+    // Scenario B: a Chinese-entered name viewed in Chinese needs no translation.
+    expect(itemNameNeedsTranslation('zh', 'zh')).toBe(false);
+    expect(itemNameNeedsTranslation('en', 'en')).toBe(false);
+  });
+
+  it('translates names whose source differs from the active language', () => {
+    // Scenario A (en -> zh) and Scenario C (zh -> en) both need translation.
+    expect(itemNameNeedsTranslation('en', 'zh')).toBe(true);
+    expect(itemNameNeedsTranslation('zh', 'en')).toBe(true);
+    expect(itemNameNeedsTranslation('zh', 'ja')).toBe(true);
+  });
+
+  it('treats unknown source as English for legacy rows', () => {
+    expect(itemNameNeedsTranslation(null, 'en')).toBe(false);
+    expect(itemNameNeedsTranslation(undefined, 'en')).toBe(false);
+    expect(itemNameNeedsTranslation(null, 'zh')).toBe(true);
   });
 });
 

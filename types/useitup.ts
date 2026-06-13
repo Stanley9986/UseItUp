@@ -13,6 +13,8 @@ export type PantryItem = {
   quantityLabel?: QuantityLabel;
   expirationDate?: string;
   notes?: string;
+  // Language the name was entered in. Drives translate-on-view for item names.
+  language?: string;
 };
 
 export type RecipeIngredient = {
