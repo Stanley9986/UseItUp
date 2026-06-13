@@ -76,7 +76,7 @@ export const recipeSchema = {
                 isAvailable: { type: 'boolean' },
                 isOptional: { type: 'boolean' },
               },
-              required: ['name', 'isAvailable', 'isOptional'],
+              required: ['name', 'quantityValue', 'quantityUnit', 'isAvailable', 'isOptional'],
             },
           },
           missingIngredients: {

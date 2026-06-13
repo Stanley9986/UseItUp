@@ -23,6 +23,8 @@ export function createRecipePrompt({ pantryItems, preferences }: RecipePromptInp
       'Use at most 5 short instructions per recipe.',
       'Keep each instruction under 100 characters.',
       'Use no more than 8 ingredients per recipe.',
+      'Give every ingredient a numeric quantityValue and a common cooking unit in quantityUnit (g, ml, cup, tbsp, tsp, piece, clove).',
+      'Set quantityValue and quantityUnit to null only for seasonings measured to taste.',
       'Respect dietary preferences and avoided ingredients from the user payload.',
       'Write all user-facing recipe content in the requested language.',
       'Write ingredient names in the requested language too, including ones that match pantry items; keep the matching pantryItemId so the link is preserved.',
