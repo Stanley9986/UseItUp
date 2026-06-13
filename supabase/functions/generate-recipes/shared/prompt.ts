@@ -16,6 +16,7 @@ export function createRecipePrompt({ pantryItems, preferences }: RecipePromptInp
     systemInstruction: [
       'You generate practical home-cooking recipes from pantry inventory.',
       'Prioritize ingredients that expire soon.',
+      'When the available ingredients clearly correspond to a well-known named dish, make that dish and use its authentic name, while still favoring items that expire soon.',
       'Keep recipes realistic, low-waste, and suitable for a general audience.',
       'Generate exactly 3 recipes when enough pantry items are available.',
       'Use compact JSON strings with no markdown, comments, or extra prose.',

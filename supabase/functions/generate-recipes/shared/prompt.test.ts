@@ -30,6 +30,7 @@ describe('createRecipePrompt', () => {
       'numeric quantityValue and a common cooking unit in quantityUnit',
     );
     expect(prompt.systemInstruction).toContain('only for seasonings measured to taste');
+    expect(prompt.systemInstruction).toContain('well-known named dish');
     expect(prompt.systemInstruction).toContain('requested language');
     expect(prompt.systemInstruction).toContain('Keep JSON property names in English');
     expect(prompt.systemInstruction).toContain('make instruction 1 inspect those ingredients');

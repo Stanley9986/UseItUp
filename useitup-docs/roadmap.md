@@ -35,6 +35,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - Migrations run through 017 (recipe source-language column, content-addressed translation cache, OpenAI food-image provider allowance, Edge Function rate-limit storage).
 - The Edge Function falls back across providers only for retryable provider failures (`PROVIDER_FALLBACK_ORDER`), caps each provider request (`PROVIDER_TIMEOUT_MS`), rate-limits LLM generation/translation per user, and the Recipes screen briefly disables regenerate after a run to avoid double-fire.
 - Generated recipes require concrete ingredient amounts: `quantityValue`/`quantityUnit` are required in `recipeSchema` and the generation prompt demands a number plus a common cooking unit per ingredient, reserving null ("to taste") for true seasonings. Needs an Edge Function deploy to take effect in production.
+- The generation prompt recognizes well-known named dishes: when available ingredients clearly correspond to one (e.g. tteokbokki), the model makes that dish under its authentic name instead of a generic recipe, while still favoring expiring items. Needs an Edge Function deploy to take effect in production.
 
 ## Section 2 - Tech Debt / Cleanup
 
@@ -44,7 +45,6 @@ This file tracks the working backlog for UseItUp so project direction survives c
 
 ## Section 3 - Core Features / Product Value
 
-- Recognize well-known named dishes during generation. The prompt is purely pantry-driven, so ingredients for a known dish (e.g. tteokbokki) become a generic stir-fry. Add a prompt line: when the available ingredients clearly correspond to a well-known named dish, make that dish and use its authentic name, while still favoring items that expire soon. Edge-only prompt change.
 - Cuisine preference setting (deferred). Let users bias generation toward cuisines they like (e.g. a multi-select in recipe preferences, stored alongside dietary preferences, injected into the prompt). Distinct from the named-dish fix above; only build if users ask to steer cuisine after that ships.
 - Upgrade expiry reminders from local scheduled notifications to remote push if the app needs server-driven alerts later.
 - Add a pantry intake agent for faster item entry. It should support product barcode scanning and natural-language input such as "I bought two Greek yogurts and a bag of spinach"; use an LLM tool-calling flow to look up products, normalize item names, suggest quantity/unit, storage location, category, and expiration date, then show pantry item drafts for user confirmation before saving.
