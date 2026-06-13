@@ -33,6 +33,21 @@ describe('pantry term dictionary', () => {
   it('normalizes common descriptors and plurals', () => {
     expect(normalizePantryTerm('Organic Eggs')).toBe('egg');
     expect(normalizePantryTerm('baby spinach')).toBe('spinach');
+    expect(normalizePantryTerm('Fresh Tomatoes')).toBe('tomato');
+  });
+
+  it('keeps multi-word foods whose names contain a descriptor word', () => {
+    // "ground" and "sour" are descriptor words, but these foods have their own
+    // dictionary entries that must win before descriptor stripping.
+    expect(getLocalPantryTermTranslation('Ground Beef', 'ko')).toBe('다진 소고기');
+    expect(getLocalPantryTermTranslation('Sour Cream', 'fr')).toBe('crème aigre');
+    expect(normalizePantryTerm('Ground Beef')).toBe('ground beef');
+  });
+
+  it('translates aliases through shared entries', () => {
+    expect(getLocalPantryTermTranslation('scallion', 'ja')).toBe('ねぎ');
+    expect(getLocalPantryTermTranslation('green onion', 'ja')).toBe('ねぎ');
+    expect(getLocalPantryTermTranslation('coriander', 'es')).toBe('cilantro');
   });
 });
 

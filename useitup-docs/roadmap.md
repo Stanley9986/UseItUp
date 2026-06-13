@@ -36,6 +36,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - The Edge Function falls back across providers only for retryable provider failures (`PROVIDER_FALLBACK_ORDER`), caps each provider request (`PROVIDER_TIMEOUT_MS`), rate-limits LLM generation/translation per user, and the Recipes screen briefly disables regenerate after a run to avoid double-fire.
 - Generated recipes require concrete ingredient amounts: `quantityValue`/`quantityUnit` are required in `recipeSchema` and the generation prompt demands a number plus a common cooking unit per ingredient, reserving null ("to taste") for true seasonings. Needs an Edge Function deploy to take effect in production.
 - The generation prompt recognizes well-known named dishes: when available ingredients clearly correspond to one (e.g. tteokbokki), the model makes that dish under its authentic name instead of a generic recipe, while still favoring expiring items. Needs an Edge Function deploy to take effect in production.
+- Pantry/ingredient-name translation tries a local common-food dictionary (~120 foods across the nine non-English app languages, with descriptor/plural normalization and shared alias entries like scallion/green onion) before the cached and LLM term-translation fallbacks, cutting LLM calls for everyday items.
 
 ## Section 2 - Tech Debt / Cleanup
 
@@ -52,7 +53,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 ## Section 4 - Quality / Robustness
 
 - Tune backend abuse prevention and provider-failure handling from real usage data before public launch. Recipe generation intentionally remains fresh per request so users get variety; translation results are cached.
-- Reduce LLM usage for pantry/item-name translation. Add a local common-food translation dictionary for the ten supported app languages and use it before calling the term-translation Edge Function. Normalize names first (lowercase, trim, basic singular/plural handling, strip common descriptors like fresh/organic/baby when safe). Fallback order should be local dictionary -> cached term translation -> LLM term translation -> original name. Keep recipe prose translation on the LLM. Consider Wikidata labels for future expansion because structured data is CC0; be cautious with bulk Open Food Facts taxonomy/product data because it is ODbL and has attribution/share-alike obligations.
+- Expand the local common-food translation dictionary further. The fallback order (local dictionary -> cached term translation -> LLM term translation -> original name), name normalization (lowercase, trim, singular/plural, descriptor stripping), and ~120-food coverage are in place in `lib/i18n/pantry-term-dictionary.ts`; recipe prose translation stays on the LLM. For broader coverage consider Wikidata labels (structured data is CC0); be cautious with bulk Open Food Facts taxonomy/product data because it is ODbL and has attribution/share-alike obligations.
 - Add Supabase Storage-backed generated image support before enabling `IMAGE_PROVIDER=openai`.
 - Improve duplicate handling for generated recipes, beyond title-based favorite dedupe.
 - Keep adding focused tests with every new feature.
