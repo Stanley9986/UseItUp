@@ -1,3 +1,4 @@
+import { dedupeGeneratedRecipes } from '@/lib/recipes/recipe-dedupe';
 import { Recipe, RecipeIngredient } from '@/types/useitup';
 
 export function normalizeGeneratedRecipes(data: unknown): Recipe[] {
@@ -5,7 +6,9 @@ export function normalizeGeneratedRecipes(data: unknown): Recipe[] {
     return [];
   }
 
-  return data.recipes.map(normalizeRecipe).filter(isRecipe);
+  // The generator occasionally returns near-identical recipes in one batch;
+  // drop duplicates so the user sees distinct suggestions.
+  return dedupeGeneratedRecipes(data.recipes.map(normalizeRecipe).filter(isRecipe));
 }
 
 function normalizeRecipe(value: unknown, index: number): Recipe | null {

@@ -74,6 +74,17 @@ describe('normalizeGeneratedRecipes', () => {
     ]);
   });
 
+  it('drops near-duplicate recipes within a batch', () => {
+    const result = normalizeGeneratedRecipes({
+      recipes: [
+        { title: 'Tomato Pasta', ingredients: [{ name: 'Pasta', isAvailable: true }] },
+        { title: 'Pasta with Tomatoes', ingredients: [{ name: 'Pasta', isAvailable: true }] },
+      ],
+    });
+
+    expect(result.map((item) => item.title)).toEqual(['Tomato Pasta']);
+  });
+
   it('returns an empty array for invalid payloads', () => {
     expect(normalizeGeneratedRecipes({ recipes: null })).toEqual([]);
     expect(normalizeGeneratedRecipes(null)).toEqual([]);
