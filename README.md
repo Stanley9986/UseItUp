@@ -65,14 +65,21 @@ Database migrations live in this folder:
 supabase/migrations/
 ```
 
-For manual setup, open the Supabase SQL Editor and run the migration files in order:
+For manual setup, open the Supabase SQL Editor and run every migration file in
+`supabase/migrations/` in numeric order (currently `001` through `018`), for example:
 
 ```text
 001_create_pantry_items.sql
 002_add_pantry_item_normalized_name.sql
+...
+018_add_pantry_item_language.sql
 ```
 
-The migrations create the pantry table, enable Row Level Security, add authenticated-user policies, and grant the app access through Supabase's authenticated role.
+The migrations create the pantry table, enable Row Level Security, add
+authenticated-user policies, grant the app access through Supabase's
+authenticated role, and add later tables/columns for recipes, favorites, cook
+history, translation caches, image caches, and rate-limit storage. Run all of
+them; the app expects the full schema, not just the first two.
 
 ### Auth Redirect URLs
 
@@ -90,24 +97,38 @@ For mobile password reset flows in Expo Go, the reset link may open in the brows
 
 ### Edge Function Deploy
 
-The Edge Function source lives in:
+The app uses two Edge Functions, both under `supabase/functions/`:
 
 ```text
-supabase/functions/generate-recipes/
+supabase/functions/generate-recipes/   # recipe generation AND translate-on-view
+supabase/functions/recipe-image/       # Pexels/AI image lookup with caching
 ```
 
-Install/use the Supabase CLI through `npx`:
+`generate-recipes` handles both AI recipe generation and the translate-on-view
+flow, so a single deploy covers both; they share the AI provider secret.
+
+Install/use the Supabase CLI through `npx` and link once per machine:
 
 ```bash
 npx supabase login
 npx supabase link --project-ref your-project-ref
 ```
 
-Deploy the function:
+Deploy both functions at once:
+
+```bash
+npx supabase functions deploy
+```
+
+Or deploy them individually:
 
 ```bash
 npx supabase functions deploy generate-recipes
+npx supabase functions deploy recipe-image
 ```
+
+`functions deploy` pushes code only. Secrets (see below) are set separately and
+persist across deploys, so you do not re-set them each time.
 
 You can find your project ref in the Supabase project URL or project settings. For example, in `https://abcxyz.supabase.co`, the project ref is `abcxyz`.
 
@@ -145,6 +166,18 @@ Generated recipes are session-only for now. A later Phase 3B will add saved reci
 The function is organized by provider so the app can keep calling the same `generate-recipes`
 endpoint if we later switch from Gemini to OpenAI or another LLM.
 
+## Recipe And Pantry Images
+
+The `recipe-image` Edge Function looks up images (default provider: Pexels) and
+caches results in Supabase. Set the provider key as a Supabase secret:
+
+```bash
+npx supabase secrets set PEXELS_API_KEY=your-pexels-api-key
+```
+
+Without this key, image lookups fail and the app falls back to local icon
+placeholders. Get a free key at https://www.pexels.com/api/.
+
 ## Reproducing The Project
 
 From a fresh clone:
@@ -158,10 +191,10 @@ Then:
 
 1. Create a Supabase project.
 2. Fill in `.env` with the Supabase URL and anon key.
-3. Run the SQL migrations in `supabase/migrations/`.
+3. Run all SQL migrations in `supabase/migrations/` in order (`001` through `018`).
 4. Add the auth redirect URL for your local Expo port.
-5. Add `GEMINI_API_KEY` as a Supabase Edge Function secret.
-6. Deploy `generate-recipes` with `npx supabase functions deploy generate-recipes`.
+5. Add `GEMINI_API_KEY` and `PEXELS_API_KEY` as Supabase Edge Function secrets.
+6. Link the project, then deploy both functions with `npx supabase functions deploy`.
 7. Start Expo with `npm start -- --port 8081`.
 8. Run `npm run test`, `npm run lint`, and `npx tsc --noEmit` before committing.
 
