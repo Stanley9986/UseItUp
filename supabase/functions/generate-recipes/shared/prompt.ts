@@ -211,6 +211,52 @@ export function createTermsPrompt(input: TermsPromptInput): TermsPrompt {
   };
 }
 
+export type IntakePromptInput = {
+  text: unknown;
+  targetLanguage: unknown;
+};
+
+export type IntakePrompt = {
+  systemInstruction: string;
+  userPayload: {
+    text: string;
+    targetLanguage: keyof typeof languageNamesByCode;
+    targetLanguageName: string;
+  };
+};
+
+// Turns a free-text description of groceries ("two Greek yogurts and a bag of
+// spinach") into structured pantry item drafts the user can confirm. Item names
+// are written in the active language; quantity, category, storage, and a typical
+// shelf life are inferred so the confirmation form arrives pre-filled.
+export function createIntakePrompt(input: IntakePromptInput): IntakePrompt {
+  const targetLanguage = normalizeLanguageCode(input.targetLanguage);
+  const text = cleanString(input.text);
+
+  return {
+    systemInstruction: [
+      'You extract grocery items from a free-text description for a pantry app.',
+      'Return one entry per distinct food item the user mentions.',
+      `Write each item name as a short common food name in ${languageNamesByCode[targetLanguage]}.`,
+      'Split combined phrases into separate items (e.g. "milk and eggs" becomes two items).',
+      'Set quantityValue to the number of units mentioned, defaulting to 1 when unspecified.',
+      'Set quantityUnit to "count" for discrete items, "portion" for loose or bulk amounts, or "level" for items tracked by fullness.',
+      'When quantityUnit is "level", set quantityLabel to one of empty, low, medium, half, full; otherwise leave quantityLabel null.',
+      'Set category to one of produce, meat, dairy, grain, condiment, other.',
+      'Set storageLocation to fridge, freezer, or pantry based on how the item is normally kept.',
+      'Set shelfLifeDays to a typical number of days the item stays good after purchase, or null if it effectively does not expire.',
+      'Keep JSON property names in English even when item names use another language.',
+      'Ignore non-food text and quantities you cannot interpret.',
+      'Return only valid JSON that matches the provided intake response schema.',
+    ].join(' '),
+    userPayload: {
+      text,
+      targetLanguage,
+      targetLanguageName: languageNamesByCode[targetLanguage],
+    },
+  };
+}
+
 export function sanitizeTranslationRecipe(value: unknown): TranslationRecipe {
   const record = isRecord(value) ? value : {};
 

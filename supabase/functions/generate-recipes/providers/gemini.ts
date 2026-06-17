@@ -1,12 +1,13 @@
-import { RecipePrompt, TermsPrompt, TranslationPrompt } from '../shared/prompt.ts';
+import { IntakePrompt, RecipePrompt, TermsPrompt, TranslationPrompt } from '../shared/prompt.ts';
 import { createProviderError, ProviderError } from '../shared/provider-errors.ts';
 import { fetchWithTimeout } from '../shared/request.ts';
-import { recipeSchema, termsSchema, translationSchema } from '../shared/schema.ts';
+import { intakeSchema, recipeSchema, termsSchema, translationSchema } from '../shared/schema.ts';
 import { RecipeProvider } from './types.ts';
 
 export const geminiProvider: RecipeProvider = {
   generate: generateWithGemini,
   name: 'gemini',
+  parseIntake: parseIntakeWithGemini,
   translateRecipes: translateWithGemini,
   translateTerms: translateTermsWithGemini,
 };
@@ -16,6 +17,15 @@ export async function generateWithGemini(prompt: RecipePrompt) {
     systemInstruction: prompt.systemInstruction,
     userPayload: prompt.userPayload,
     responseSchema: recipeSchema,
+  });
+}
+
+export async function parseIntakeWithGemini(prompt: IntakePrompt) {
+  return requestGeminiJson({
+    systemInstruction: prompt.systemInstruction,
+    userPayload: prompt.userPayload,
+    responseSchema: intakeSchema,
+    temperature: 0.3,
   });
 }
 

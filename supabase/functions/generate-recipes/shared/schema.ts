@@ -48,6 +48,41 @@ export const termsSchema = {
   required: ['terms'],
 };
 
+// Response schema for parsing a free-text grocery description into pantry item
+// drafts. quantityUnit/category/storageLocation are constrained to the values
+// the pantry model accepts; shelfLifeDays lets the client derive an expiration
+// date from today rather than trusting an absolute date from the model.
+export const intakeSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      maxItems: 20,
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          quantityValue: { type: ['number', 'null'] },
+          quantityUnit: { type: 'string', enum: ['count', 'portion', 'level'] },
+          quantityLabel: {
+            type: ['string', 'null'],
+            enum: ['empty', 'low', 'medium', 'half', 'full', null],
+          },
+          category: {
+            type: 'string',
+            enum: ['produce', 'meat', 'dairy', 'grain', 'condiment', 'other'],
+          },
+          storageLocation: { type: 'string', enum: ['fridge', 'freezer', 'pantry'] },
+          shelfLifeDays: { type: ['number', 'null'] },
+          notes: { type: ['string', 'null'] },
+        },
+        required: ['name', 'quantityValue', 'quantityUnit', 'category', 'storageLocation', 'shelfLifeDays'],
+      },
+    },
+  },
+  required: ['items'],
+};
+
 export const recipeSchema = {
   type: 'object',
   properties: {

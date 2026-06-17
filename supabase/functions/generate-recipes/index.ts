@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { corsHeaders, jsonResponse } from './shared/http.ts';
 import {
+  createIntakePrompt,
   createRecipePrompt,
   createTermsPrompt,
   createTranslationPrompt,
@@ -40,6 +41,12 @@ Deno.serve(async (request) => {
     }
 
     return handleTranslate(translateInput, requestSubject);
+  }
+
+  // Natural-language pantry intake: clients send a free-text description and get
+  // back structured item drafts to confirm before saving.
+  if (isRecord(body?.intake)) {
+    return handleIntake(body.intake, requestSubject);
   }
 
   const pantryItems = Array.isArray(body?.pantryItems) ? body.pantryItems : [];
@@ -238,10 +245,45 @@ async function handleTranslateTerms(input: Record<string, unknown>, requestSubje
   return jsonResponse({ terms: termsOut });
 }
 
-function rateLimitResponse(code: 'generation_rate_limited' | 'translation_rate_limited', retryAfterSeconds = 0) {
-  const error = code === 'generation_rate_limited'
-    ? 'Recipe generation is temporarily limited. Please try again later.'
-    : 'Translation is temporarily limited. Please try again later.';
+async function handleIntake(input: Record<string, unknown>, requestSubject: string) {
+  const text = typeof input.text === 'string' ? input.text.trim() : '';
+
+  if (!text) {
+    return jsonResponse({ items: [] });
+  }
+
+  const intakeLimit = await checkRateLimit({
+    key: `generate-recipes:intake:${requestSubject}`,
+    limit: getIntakeRateLimit(),
+  });
+
+  if (!intakeLimit.allowed) {
+    return rateLimitResponse('intake_rate_limited', intakeLimit.retryAfterSeconds);
+  }
+
+  try {
+    const { result } = await callWithFallback(getGenerationChain(), (provider) =>
+      provider.parseIntake(createIntakePrompt({ text, targetLanguage: input.targetLanguage })),
+    );
+    const items = Array.isArray(result?.items) ? result.items : [];
+
+    return jsonResponse({ items });
+  } catch (error) {
+    const publicError = getPublicProviderError(error, 'Item parsing');
+
+    return jsonResponse({ code: publicError.code, error: publicError.error }, publicError.status);
+  }
+}
+
+function rateLimitResponse(
+  code: 'generation_rate_limited' | 'translation_rate_limited' | 'intake_rate_limited',
+  retryAfterSeconds = 0,
+) {
+  const error = {
+    generation_rate_limited: 'Recipe generation is temporarily limited. Please try again later.',
+    translation_rate_limited: 'Translation is temporarily limited. Please try again later.',
+    intake_rate_limited: 'Item parsing is temporarily limited. Please try again later.',
+  }[code];
 
   return jsonResponse(
     {
@@ -255,6 +297,10 @@ function rateLimitResponse(code: 'generation_rate_limited' | 'translation_rate_l
 
 function getGenerationRateLimit() {
   return readPositiveIntegerEnv('GENERATION_RATE_LIMIT_PER_HOUR', 10);
+}
+
+function getIntakeRateLimit() {
+  return readPositiveIntegerEnv('INTAKE_RATE_LIMIT_PER_HOUR', 30);
 }
 
 function getTranslationRateLimit() {

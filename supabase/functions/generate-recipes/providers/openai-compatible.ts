@@ -1,7 +1,7 @@
-import { RecipePrompt, TermsPrompt, TranslationPrompt } from '../shared/prompt.ts';
+import { IntakePrompt, RecipePrompt, TermsPrompt, TranslationPrompt } from '../shared/prompt.ts';
 import { createProviderError, ProviderError } from '../shared/provider-errors.ts';
 import { fetchWithTimeout } from '../shared/request.ts';
-import { recipeSchema, termsSchema, translationSchema } from '../shared/schema.ts';
+import { intakeSchema, recipeSchema, termsSchema, translationSchema } from '../shared/schema.ts';
 import { RecipeProvider } from './types.ts';
 
 type OpenAICompatibleConfig = {
@@ -32,6 +32,12 @@ export function createOpenAICompatibleProvider(config: OpenAICompatibleConfig): 
         responseSchema: recipeSchema,
       }),
     name: config.name,
+    parseIntake: (prompt: IntakePrompt) =>
+      requestOpenAICompatibleJson(config, {
+        prompt,
+        responseSchema: intakeSchema,
+        temperature: 0.3,
+      }),
     translateRecipes: (prompt: TranslationPrompt) =>
       requestOpenAICompatibleJson(config, {
         prompt,

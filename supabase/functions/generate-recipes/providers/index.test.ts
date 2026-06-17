@@ -8,6 +8,7 @@ function fakeProvider(name: string, generate: () => Promise<unknown>): RecipePro
   return {
     name,
     generate,
+    parseIntake: async () => ({}),
     translateRecipes: async () => ({}),
     translateTerms: async () => ({}),
   };

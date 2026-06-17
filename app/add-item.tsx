@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { StyleSheet } from 'react-native';
 
 import { Button, Screen } from '@/components/useitup/ui';
 import {
@@ -112,6 +113,11 @@ export default function AddItemScreen() {
           {t('close')}
         </Button>
       }>
+      {!initialItemName && !sourceShoppingItemId ? (
+        <Button href="/intake" icon="sparkles-outline" secondary style={styles.intakeButton}>
+          {t('intakeAddByDescription')}
+        </Button>
+      ) : null}
       <PantryItemForm
         initialValues={initialItemName ? { name: initialItemName } : undefined}
         isSaving={isSaving}
@@ -126,3 +132,9 @@ export default function AddItemScreen() {
 function titleCase(value: string) {
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
+
+const styles = StyleSheet.create({
+  intakeButton: {
+    marginBottom: 12,
+  },
+});
