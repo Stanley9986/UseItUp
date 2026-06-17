@@ -53,6 +53,35 @@ describe('pantry term dictionary', () => {
     expect(getLocalPantryTermTranslation('green onion', 'ja')).toBe('ねぎ');
     expect(getLocalPantryTermTranslation('coriander', 'es')).toBe('cilantro');
   });
+
+  it('translates a non-English source name back into English', () => {
+    // Scenario C: a Chinese-entered name viewed in English.
+    expect(getLocalPantryTermTranslation('番茄', 'en', 'zh')).toBe('tomato');
+    expect(getLocalPantryTermTranslation('牛乳', 'en', 'ja')).toBe('milk');
+    expect(getLocalPantryTermTranslation('cebolla', 'en', 'es')).toBe('onion');
+  });
+
+  it('translates between two non-English languages via the English pivot', () => {
+    // A Chinese-entered name viewed in Japanese.
+    expect(getLocalPantryTermTranslation('番茄', 'ja', 'zh')).toBe('トマト');
+    expect(getLocalPantryTermTranslation('cà rốt', 'ko', 'vi')).toBe('당근');
+  });
+
+  it('resolves alternate regional source names to the English pivot', () => {
+    // 西红柿 is a second valid Chinese name for tomato alongside canonical 番茄.
+    expect(getLocalPantryTermTranslation('西红柿', 'ja', 'zh')).toBe('トマト');
+    expect(getLocalPantryTermTranslation('patata', 'de', 'es')).toBe('Kartoffel');
+  });
+
+  it('leaves an English source unchanged when viewed in English', () => {
+    expect(getLocalPantryTermTranslation('Tomato', 'en')).toBeNull();
+    expect(getLocalPantryTermTranslation('Tomato', 'en', 'en')).toBeNull();
+  });
+
+  it('falls back to an English-key match when the source tag is wrong', () => {
+    // Tagged Chinese but actually an English name.
+    expect(getLocalPantryTermTranslation('tomato', 'ja', 'zh')).toBe('トマト');
+  });
 });
 
 describe('itemNameNeedsTranslation', () => {
@@ -113,5 +142,15 @@ describe('translateTerms', () => {
     expect(supabaseFunctionsMock.invoke).toHaveBeenCalledWith('generate-recipes', {
       body: { translate: { targetLanguage: 'ja', terms: ['Gochujang'] } },
     });
+  });
+
+  it('uses source languages to resolve non-English names locally', async () => {
+    const result = await translateTerms(['番茄', 'cebolla'], 'en', {
+      番茄: 'zh',
+      cebolla: 'es',
+    });
+
+    expect(result).toEqual({ 番茄: 'tomato', cebolla: 'onion' });
+    expect(supabaseFunctionsMock.invoke).not.toHaveBeenCalled();
   });
 });

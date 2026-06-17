@@ -1408,14 +1408,156 @@ export const pantryTerms: Record<string, PantryTermTranslations> = {
   },
 };
 
-export function getLocalPantryTermTranslation(term: string, targetLanguage: SupportedLanguageCode) {
-  if (targetLanguage === 'en') {
+// Extra source-language synonyms that map back to an English dictionary key but
+// are not the canonical translation stored in `pantryTerms`. Lets a name entered
+// under an alternate regional name (e.g. 西红柿 alongside the canonical 番茄 for
+// tomato) still normalize to the English pivot. Keys must exist in `pantryTerms`.
+const extraSourceAliases: Partial<Record<SupportedLanguageCode, Record<string, string>>> = {
+  zh: {
+    西红柿: 'tomato',
+    马铃薯: 'potato',
+    芫荽: 'coriander',
+    青葱: 'green onion',
+    番薯: 'sweet potato',
+    地瓜: 'sweet potato',
+    粟米: 'corn',
+    薯仔: 'potato',
+  },
+  ja: {
+    コリアンダー: 'coriander',
+    ネギ: 'green onion',
+    トウモロコシ: 'corn',
+    ポテト: 'potato',
+  },
+  ko: {
+    대파: 'green onion',
+    감자튀김: 'potato',
+    코리앤더: 'coriander',
+  },
+  es: {
+    jitomate: 'tomato',
+    patata: 'potato',
+    palta: 'avocado',
+    choclo: 'corn',
+    elote: 'corn',
+    frijol: 'bean',
+  },
+  pt: {
+    batata: 'potato',
+    'milho verde': 'corn',
+  },
+  fr: {
+    'maïs doux': 'corn',
+  },
+  de: {
+    Tomaten: 'tomato',
+  },
+  it: {
+    pomodori: 'tomato',
+  },
+  vi: {
+    'bắp ngô': 'corn',
+    'hành hoa': 'green onion',
+  },
+};
+
+// Maps a normalized non-English name to its English dictionary key, per source
+// language. Built once from `pantryTerms` plus `extraSourceAliases`; first write
+// wins so canonical translations take precedence over aliases. English is the
+// pivot: any supported source language can normalize to a key here and then be
+// translated to any target via `pantryTerms`.
+const reverseIndex: Partial<Record<SupportedLanguageCode, Record<string, string>>> = {};
+
+function addReverseEntry(language: SupportedLanguageCode, value: string, englishKey: string) {
+  if (language === 'en') {
+    return;
+  }
+
+  const normalized = normalizeForeignTerm(value);
+
+  if (!normalized) {
+    return;
+  }
+
+  const bucket = (reverseIndex[language] ??= {});
+
+  if (!(normalized in bucket)) {
+    bucket[normalized] = englishKey;
+  }
+}
+
+for (const [englishKey, translations] of Object.entries(pantryTerms)) {
+  for (const [language, value] of Object.entries(translations)) {
+    addReverseEntry(language as SupportedLanguageCode, value, englishKey);
+  }
+}
+
+for (const [language, aliases] of Object.entries(extraSourceAliases)) {
+  for (const [value, englishKey] of Object.entries(aliases ?? {})) {
+    addReverseEntry(language as SupportedLanguageCode, value, englishKey);
+  }
+}
+
+// Lowercase/trim/collapse a name while preserving non-Latin scripts, unlike
+// normalizePantryTerm which strips anything outside [a-z0-9]. CJK has no
+// case/plurals so lowercasing is a no-op there; European names keep accents.
+export function normalizeForeignTerm(term: string) {
+  return term
+    .trim()
+    .toLowerCase()
+    .replace(/[’']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Resolve any supported-language name to its English dictionary key, or null if
+// unknown. English/unknown sources match English keys directly (with descriptor
+// and plural normalization); a non-English source is looked up in the reverse
+// index, falling back to an English-key match if the source tag is wrong.
+export function resolveEnglishKey(term: string, sourceLanguage?: string | null) {
+  if (!sourceLanguage || sourceLanguage === 'en') {
+    const normalized = normalizePantryTerm(term);
+
+    return pantryTerms[normalized] ? normalized : null;
+  }
+
+  const reverseKey = reverseIndex[sourceLanguage as SupportedLanguageCode]?.[normalizeForeignTerm(term)];
+
+  if (reverseKey) {
+    return reverseKey;
+  }
+
+  const englishNormalized = normalizePantryTerm(term);
+
+  return pantryTerms[englishNormalized] ? englishNormalized : null;
+}
+
+// Translate a name into the target language using the local dictionary, with
+// English as the pivot. The optional source language enables multidirectional
+// lookups (e.g. a Chinese-entered name viewed in Japanese, or any non-English
+// name viewed in English); omit it for English-source names.
+export function getLocalPantryTermTranslation(
+  term: string,
+  targetLanguage: SupportedLanguageCode,
+  sourceLanguage?: string | null,
+) {
+  const englishKey = resolveEnglishKey(term, sourceLanguage);
+
+  if (!englishKey) {
     return null;
   }
 
-  const normalized = normalizePantryTerm(term);
+  if (targetLanguage === 'en') {
+    // English-source names need no translation; only a non-English source
+    // resolves back to its English common name.
+    if (!sourceLanguage || sourceLanguage === 'en') {
+      return null;
+    }
 
-  return pantryTerms[normalized]?.[targetLanguage] ?? null;
+    return englishKey;
+  }
+
+  return pantryTerms[englishKey]?.[targetLanguage] ?? null;
 }
 
 export function normalizePantryTerm(term: string) {

@@ -28,17 +28,25 @@ export function useTranslatedItemNames(items: TranslatableItemName[]): Record<st
   const { languageCode } = useAppLanguage();
   const [map, setMap] = useState<Record<string, string>>({});
 
-  const namesToTranslate = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          items
-            .filter((item) => itemNameNeedsTranslation(item.sourceLanguage, languageCode))
-            .map((item) => item.name),
-        ),
-      ),
+  const translatable = useMemo(
+    () => items.filter((item) => itemNameNeedsTranslation(item.sourceLanguage, languageCode)),
     [items, languageCode],
   );
+
+  const namesToTranslate = useMemo(
+    () => Array.from(new Set(translatable.map((item) => item.name))),
+    [translatable],
+  );
+
+  const sourceLanguageByName = useMemo(() => {
+    const map: Record<string, string | null | undefined> = {};
+
+    for (const item of translatable) {
+      map[item.name.trim()] = item.sourceLanguage;
+    }
+
+    return map;
+  }, [translatable]);
 
   const key = useMemo(() => namesToTranslate.slice().sort().join('|'), [namesToTranslate]);
 
@@ -50,7 +58,7 @@ export function useTranslatedItemNames(items: TranslatableItemName[]): Record<st
 
     let cancelled = false;
 
-    translateTerms(namesToTranslate, languageCode)
+    translateTerms(namesToTranslate, languageCode, sourceLanguageByName)
       .then((result) => {
         if (!cancelled) {
           setMap(result);

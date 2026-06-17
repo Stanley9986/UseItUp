@@ -23,10 +23,13 @@ function cacheKey(term: string, targetLanguage: string) {
 
 // Translate short item/ingredient names into the target language, returned as a
 // map keyed by the original input name. Cache hits are served locally; misses go
-// to the batched terms endpoint in a single call.
+// to the batched terms endpoint in a single call. `sourceLanguageByName` lets the
+// local dictionary translate non-English source names (keyed by trimmed name);
+// names without an entry are treated as English.
 export async function translateTerms(
   names: string[],
   targetLanguage: SupportedLanguageCode,
+  sourceLanguageByName?: Record<string, string | null | undefined>,
 ): Promise<Record<string, string>> {
   const cleaned = names.filter((name) => typeof name === 'string' && name.trim().length > 0);
 
@@ -39,7 +42,7 @@ export async function translateTerms(
   const uncached: string[] = [];
 
   for (const term of unique) {
-    const local = getLocalPantryTermTranslation(term, targetLanguage);
+    const local = getLocalPantryTermTranslation(term, targetLanguage, sourceLanguageByName?.[term]);
 
     if (local) {
       resolved[term] = local;
