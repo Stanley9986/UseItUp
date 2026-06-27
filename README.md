@@ -66,13 +66,13 @@ supabase/migrations/
 ```
 
 For manual setup, open the Supabase SQL Editor and run every migration file in
-`supabase/migrations/` in numeric order (currently `001` through `018`), for example:
+`supabase/migrations/` in numeric order (currently `001` through `019`), for example:
 
 ```text
 001_create_pantry_items.sql
 002_add_pantry_item_normalized_name.sql
 ...
-018_add_pantry_item_language.sql
+019_add_user_preference_cuisines.sql
 ```
 
 The migrations create the pantry table, enable Row Level Security, add
@@ -191,7 +191,7 @@ Then:
 
 1. Create a Supabase project.
 2. Fill in `.env` with the Supabase URL and anon key.
-3. Run all SQL migrations in `supabase/migrations/` in order (`001` through `018`).
+3. Run all SQL migrations in `supabase/migrations/` in order (`001` through `019`).
 4. Add the auth redirect URL for your local Expo port.
 5. Add `GEMINI_API_KEY` and `PEXELS_API_KEY` as Supabase Edge Function secrets.
 6. Link the project, then deploy both functions with `npx supabase functions deploy`.

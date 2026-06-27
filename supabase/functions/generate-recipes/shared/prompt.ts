@@ -27,6 +27,7 @@ export function createRecipePrompt({ pantryItems, preferences }: RecipePromptInp
       'Give every ingredient a numeric quantityValue and a common cooking unit in quantityUnit (g, ml, cup, tbsp, tsp, piece, clove).',
       'Set quantityValue and quantityUnit to null only for seasonings measured to taste.',
       'Respect dietary preferences and avoided ingredients from the user payload.',
+      'When cuisinePreferences are provided, lean the recipes toward those cuisines while still favoring expiring items and respecting dietary limits; ignore cuisine bias when an empty list is given.',
       'Write all user-facing recipe content in the requested language.',
       'Write ingredient names in the requested language too, including ones that match pantry items; keep the matching pantryItemId so the link is preserved.',
       'Keep JSON property names in English even when recipe content uses another language.',
@@ -76,6 +77,7 @@ function normalizePreferences(value: unknown) {
 
   return {
     dietaryPreferences: cleanStringList(value.dietaryPreferences),
+    cuisinePreferences: cleanStringList(value.cuisinePreferences),
     avoidedIngredients: cleanStringList(value.avoidedIngredients),
     maxPrepTimeMinutes:
       typeof value.maxPrepTimeMinutes === 'number' ? value.maxPrepTimeMinutes : undefined,

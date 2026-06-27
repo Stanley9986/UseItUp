@@ -18,6 +18,7 @@ describe('createRecipePrompt', () => {
       ],
       preferences: {
         dietaryPreferences: ['Dairy-free'],
+        cuisinePreferences: ['Italian'],
         avoidedIngredients: ['peanuts'],
         maxPrepTimeMinutes: 20,
         prioritizeExpiringSoon: true,
@@ -26,6 +27,7 @@ describe('createRecipePrompt', () => {
     });
 
     expect(prompt.systemInstruction).toContain('Respect dietary preferences');
+    expect(prompt.systemInstruction).toContain('lean the recipes toward those cuisines');
     expect(prompt.systemInstruction).toContain(
       'numeric quantityValue and a common cooking unit in quantityUnit',
     );
@@ -51,6 +53,7 @@ describe('createRecipePrompt', () => {
       ],
       preferences: {
         dietaryPreferences: ['Dairy-free'],
+        cuisinePreferences: ['Italian'],
         avoidedIngredients: ['peanuts'],
         maxPrepTimeMinutes: 20,
         prioritizeExpiringSoon: true,
@@ -73,6 +76,7 @@ describe('createRecipePrompt', () => {
       }).userPayload.preferences,
     ).toEqual({
       dietaryPreferences: ['Vegetarian'],
+      cuisinePreferences: [],
       avoidedIngredients: [],
       maxPrepTimeMinutes: undefined,
       prioritizeExpiringSoon: undefined,

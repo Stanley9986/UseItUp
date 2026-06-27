@@ -18,6 +18,16 @@ import {
 import { UserPreferences } from '@/types/useitup';
 
 const dietaryOptions = ['Vegetarian', 'Vegan', 'Dairy-free', 'Gluten-free', 'Nut-free'] as const;
+const cuisineOptions = [
+  'Italian',
+  'Mexican',
+  'Chinese',
+  'Japanese',
+  'Indian',
+  'Thai',
+  'Mediterranean',
+  'American',
+] as const;
 const prepTimeOptions = [15, 30, 45, 60] as const;
 
 export default function DietaryPreferencesScreen() {
@@ -74,6 +84,19 @@ export default function DietaryPreferencesScreen() {
         dietaryPreferences: exists
           ? current.dietaryPreferences.filter((item) => item !== option)
           : [...current.dietaryPreferences, option],
+      };
+    });
+  }
+
+  function handleToggleCuisinePreference(option: string) {
+    setDraftPreferences((current) => {
+      const exists = current.cuisinePreferences.includes(option);
+
+      return {
+        ...current,
+        cuisinePreferences: exists
+          ? current.cuisinePreferences.filter((item) => item !== option)
+          : [...current.cuisinePreferences, option],
       };
     });
   }
@@ -150,6 +173,21 @@ export default function DietaryPreferencesScreen() {
               label={getDietaryOptionLabel(option, t)}
               onPress={() => handleToggleDietaryPreference(option)}
               selected={draftPreferences.dietaryPreferences.includes(option)}
+            />
+          ))}
+        </View>
+      </Card>
+
+      <Card style={styles.card}>
+        <Text style={styles.cardTitle}>{t('cuisineStyles')}</Text>
+        <Text style={styles.cardCopy}>{t('chooseCuisines')}</Text>
+        <View style={styles.chipWrap}>
+          {cuisineOptions.map((option) => (
+            <Chip
+              key={option}
+              label={getCuisineOptionLabel(option, t)}
+              onPress={() => handleToggleCuisinePreference(option)}
+              selected={draftPreferences.cuisinePreferences.includes(option)}
             />
           ))}
         </View>
@@ -249,6 +287,21 @@ function getDietaryOptionLabel(option: (typeof dietaryOptions)[number], t: Retur
   }
 
   return t('nutFree');
+}
+
+function getCuisineOptionLabel(option: (typeof cuisineOptions)[number], t: ReturnType<typeof useAppLanguage>['t']) {
+  const labels: Record<(typeof cuisineOptions)[number], string> = {
+    Italian: t('cuisineItalian'),
+    Mexican: t('cuisineMexican'),
+    Chinese: t('cuisineChinese'),
+    Japanese: t('cuisineJapanese'),
+    Indian: t('cuisineIndian'),
+    Thai: t('cuisineThai'),
+    Mediterranean: t('cuisineMediterranean'),
+    American: t('cuisineAmerican'),
+  };
+
+  return labels[option];
 }
 
 function getAvoidedIngredientPlaceholder(languageCode: string) {

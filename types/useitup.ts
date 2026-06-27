@@ -42,6 +42,7 @@ export type Recipe = {
 
 export type UserPreferences = {
   dietaryPreferences: string[];
+  cuisinePreferences: string[];
   avoidedIngredients: string[];
   maxPrepTimeMinutes?: number;
   languageCode?: string;

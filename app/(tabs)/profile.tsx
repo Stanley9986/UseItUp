@@ -177,6 +177,7 @@ export default function ProfileScreen() {
     avoidIngredientsLabel: `${t('avoidIngredients')}:`,
     avoidedIngredients: translatedAvoidedIngredients,
     dietaryPreferenceLabels: getDietaryPreferenceLabels(t),
+    cuisinePreferenceLabels: getCuisinePreferenceLabels(t),
     emptyLabel: t('recipePreferences'),
     formatMaxPrepTime: (minutes) => `${minutes} ${t('min')}`,
   });
@@ -554,5 +555,18 @@ function getDietaryPreferenceLabels(t: ReturnType<typeof useAppLanguage>['t']) {
     'Dairy-free': t('dairyFree'),
     'Gluten-free': t('glutenFree'),
     'Nut-free': t('nutFree'),
+  };
+}
+
+function getCuisinePreferenceLabels(t: ReturnType<typeof useAppLanguage>['t']) {
+  return {
+    Italian: t('cuisineItalian'),
+    Mexican: t('cuisineMexican'),
+    Chinese: t('cuisineChinese'),
+    Japanese: t('cuisineJapanese'),
+    Indian: t('cuisineIndian'),
+    Thai: t('cuisineThai'),
+    Mediterranean: t('cuisineMediterranean'),
+    American: t('cuisineAmerican'),
   };
 }
