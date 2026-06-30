@@ -70,6 +70,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 ## Section 5 - Infra / Release
 
 - Keep environment setup and deployment docs current.
+- Backend bootstrap: `npm run setup:supabase` (`scripts/setup-supabase.sh`) runs `db push` + bulk `secrets set --env-file .env.supabase` + `functions deploy` so a fresh contributor sets up the whole Supabase backend in one command. `.env.supabase.example` is the secrets-only template (no `EXPO_PUBLIC_*`/`SUPABASE_*`); `.env.production.example` stays the full annotated reference.
 - Add EAS build/submit config for TestFlight and Play Store testing.
 - Add Expo web/Vercel deployment support so the same Expo Router app can run as mobile apps and a hosted web app. Current app config already uses `expo.web.output = "static"` and has `react-native-web`; expected Vercel settings are build command `npx expo export --platform web` and output directory `dist`.
 - Web deployment risks to handle before treating web as supported:

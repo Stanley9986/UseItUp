@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "setup:supabase": "bash scripts/setup-supabase.sh"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

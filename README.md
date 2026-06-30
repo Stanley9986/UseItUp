@@ -59,6 +59,30 @@ Use `.env.example` for local Expo development. Use `.env.production.example` as 
 - Supabase Edge Function secrets such as AI provider keys, `PEXELS_API_KEY`, and `SERVICE_ROLE_KEY` must be set in the Supabase Dashboard under **Project Settings > Edge Functions > Secrets**, or with `npx supabase secrets set NAME=value`.
 - Never commit real `.env` files or expose `SERVICE_ROLE_KEY` through an `EXPO_PUBLIC_*` variable.
 
+### Quick Backend Setup
+
+After creating a Supabase project, you can set up the entire backend (migrations,
+Edge Function secrets, and function deploys) with one script instead of running
+each step by hand.
+
+```bash
+npx supabase login
+npx supabase link --project-ref your-project-ref
+
+cp .env.supabase.example .env.supabase   # then fill in real values
+npm run setup:supabase
+```
+
+`npm run setup:supabase` runs `supabase db push`, loads every secret from
+`.env.supabase` in one call (`supabase secrets set --env-file`), and deploys both
+Edge Functions. `.env.supabase` holds Edge Function secrets only and is
+git-ignored; see `.env.supabase.example` for the rules (no `EXPO_PUBLIC_*` and no
+`SUPABASE_*` names) and `.env.production.example` for the full annotated
+reference. You can re-run the script any time you change secrets or migrations.
+
+The manual, step-by-step path is documented in the sections below if you prefer
+to run each command yourself.
+
 Database migrations live in this folder:
 
 ```text

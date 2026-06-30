@@ -66,7 +66,14 @@ npx supabase functions deploy generate-recipes
 npx supabase functions deploy recipe-image
 ```
 
-Function secrets are managed separately from migrations:
+Function secrets are managed separately from migrations. Set them all at once from a git-ignored secrets file:
+
+```sh
+cp .env.supabase.example .env.supabase   # then fill in values
+npx supabase secrets set --env-file ./.env.supabase
+```
+
+`npm run setup:supabase` wraps `db push` + this secrets load + `functions deploy` into one step. Or set values individually:
 
 ```sh
 npx supabase secrets set AI_PROVIDER=gemini
