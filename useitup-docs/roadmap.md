@@ -44,6 +44,7 @@ This file tracks the working backlog for UseItUp so project direction survives c
 - Natural-language pantry intake agent: the Recipes/pantry Add screen links to a Quick Add screen (`app/intake.tsx`) where free text ("two Greek yogurts and a bag of spinach") is parsed by the `generate-recipes` Edge Function `intake` action into structured drafts (name in the active language, quantity/unit, category, storage, and a shelf-life-derived expiration), shown as editable cards for confirmation before a batch save via `createPantryItem`. Client sanitization lives in `lib/pantry/pantry-intake.ts` (clamps every field to the pantry model, caps shelf life, skips nameless items). Rate-limited per user (`INTAKE_RATE_LIMIT_PER_HOUR`, default 60). Needs an Edge Function deploy to take effect in production. Barcode scanning (the other half of the roadmap intake item) is not built yet.
 
 - Rate limits use production-reasonable per-user hourly defaults (generation 30, translation 240, intake 60), overridable per environment via the matching `*_RATE_LIMIT_PER_HOUR` secret.
+- Recipe generation streams results: the Recipes screen calls the `generate-recipes` Edge Function with `stream: true` and receives recipes as newline-delimited JSON (`status`, then one `recipe` event each, then `done`/`error`), so cards build up one at a time instead of showing only a loading state. Streaming is a provider capability (`RecipeProvider.generateStream`), implemented for Gemini (SSE `streamGenerateContent`) and the OpenAI-compatible providers (DeepSeek/OpenAI SSE `chat/completions` with `stream: true`); the Edge Function walks the normal provider chain, streams from whichever is configured, and falls back to a buffered batch if none can stream, so changing `AI_PROVIDER` needs no streaming code changes. Partial recipe JSON is reassembled by a shared incremental parser (`shared/recipe-stream.ts`); the client reads the stream with `expo/fetch` (`lib/recipes/recipe-generator-stream.ts`, `lib/recipes/ndjson.ts`) since React Native's default fetch cannot read a streamed body. Final dedupe and save run after the stream completes, so behavior matches the old buffered path. Needs an Edge Function deploy to take effect in production.
 
 ## Section 2 - Tech Debt / Cleanup
 
@@ -81,5 +82,5 @@ This file tracks the working backlog for UseItUp so project direction survives c
 ## Later / Nice-to-Have
 
 - More advanced recipe search and filters.
-- Partial/streaming recipe generation UI.
+- Streaming recipe generation: shipped (see Current Status). Remaining follow-ups if wanted: stream the translate-on-view flow too, and show per-recipe streaming progress (e.g. ingredients filling in) rather than whole-card reveal.
 - More detailed household or multi-user support.

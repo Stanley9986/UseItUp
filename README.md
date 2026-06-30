@@ -166,6 +166,14 @@ Generated recipes are session-only for now. A later Phase 3B will add saved reci
 The function is organized by provider so the app can keep calling the same `generate-recipes`
 endpoint if we later switch from Gemini to OpenAI or another LLM.
 
+The app generates recipes over a stream so cards appear one at a time instead of
+sitting on a loading state. The client sends `stream: true` and reads
+newline-delimited JSON via `expo/fetch`. Streaming is a provider capability
+(`generateStream`): it is implemented for Gemini and for the OpenAI-compatible
+providers (DeepSeek/OpenAI), and the Edge Function falls back to a single
+buffered batch if the configured provider cannot stream, so switching
+`AI_PROVIDER` needs no client or streaming code changes.
+
 ## Recipe And Pantry Images
 
 The `recipe-image` Edge Function looks up images (default provider: Pexels) and

@@ -34,7 +34,8 @@ import { addFavoriteRecipe, getFavoriteRecipesPage, removeFavoriteRecipeByTitle 
 import { setGeneratedRecipes } from '@/lib/recipes/generated-recipes';
 import { appendPageItems, defaultPageSize } from '@/lib/shared/pagination';
 import { getPantryItems } from '@/lib/pantry/pantry';
-import { generateRecipes, getRecipeGenerationErrorKey } from '@/lib/recipes/recipe-generator';
+import { getRecipeGenerationErrorKey } from '@/lib/recipes/recipe-generator';
+import { streamGenerateRecipes } from '@/lib/recipes/recipe-generator-stream';
 import { isRecipeFavorited, normalizeRecipeTitle } from '@/lib/recipes/recipe-list';
 import { getSavedRecipesPage, replaceSuggestedRecipes } from '@/lib/recipes/recipes';
 import { defaultUserPreferences, getUserPreferences } from '@/lib/preferences/user-preferences';
@@ -77,6 +78,10 @@ export default function RecipesScreen() {
   const [isCoolingDown, setIsCoolingDown] = useState(false);
   const cooldownTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [generationStepIndex, setGenerationStepIndex] = useState(0);
+  // Recipes received so far during a streaming generation, shown as cards build
+  // up. Kept separate from `suggested` so a failed stream leaves the previous
+  // suggestions intact.
+  const [streamingRecipes, setStreamingRecipes] = useState<Recipe[]>([]);
   const [favoriteScrollProgress, setFavoriteScrollProgress] = useState(0);
   const [favoriteRailWidth, setFavoriteRailWidth] = useState(0);
   const [favoriteContentWidth, setFavoriteContentWidth] = useState(0);
@@ -256,17 +261,24 @@ export default function RecipesScreen() {
     }
 
     setIsGenerating(true);
+    setGenerationStepIndex(0);
+    setStreamingRecipes([]);
     setMessage(null);
 
     try {
-      const nextRecipes = await generateRecipes({
-        pantryItems,
-        preferences: {
-          ...preferences,
-          languageCode,
-          prioritizeExpiringSoon: true,
+      const nextRecipes = await streamGenerateRecipes(
+        {
+          pantryItems,
+          preferences: {
+            ...preferences,
+            languageCode,
+            prioritizeExpiringSoon: true,
+          },
         },
-      });
+        {
+          onRecipes: (recipes) => setStreamingRecipes(recipes),
+        },
+      );
 
       if (!nextRecipes.length) {
         // Keep the current suggestions rather than replacing them with nothing.
@@ -290,6 +302,7 @@ export default function RecipesScreen() {
           : { tone: 'error', text: getErrorMessage(error, t('unableToGenerateRecipes')) },
       );
     } finally {
+      setStreamingRecipes([]);
       setIsGenerating(false);
       setIsCoolingDown(true);
       cooldownTimer.current = setTimeout(() => setIsCoolingDown(false), 4000);
@@ -507,7 +520,14 @@ export default function RecipesScreen() {
           {isLoadingRecipes && !isGenerating ? (
             <RecipeSkeleton index={0} />
           ) : isGenerating ? (
-            [0, 1, 2].map((item) => <RecipeSkeleton key={item} index={item} />)
+            <>
+              {streamingRecipes.map((recipe) => (
+                <RecipeRowCard key={recipe.id} recipe={recipe} />
+              ))}
+              {Array.from({ length: Math.max(0, 3 - streamingRecipes.length) }).map((_, item) => (
+                <RecipeSkeleton key={`skeleton-${item}`} index={item} />
+              ))}
+            </>
           ) : suggestedView.length ? (
             <>
               {suggestedView.map((recipe, index) => (

@@ -9,7 +9,8 @@ import {
   sanitizeTranslationRecipe,
 } from './shared/prompt.ts';
 import { buildProviderChain, callWithFallback } from './providers/index.ts';
-import { getPublicProviderError } from './shared/provider-errors.ts';
+import { createRecipeStreamParser } from './shared/recipe-stream.ts';
+import { getPublicProviderError, isRetryableProviderError } from './shared/provider-errors.ts';
 import { checkRateLimit, getJwtSubjectFromRequest, readPositiveIntegerEnv } from './shared/rate-limit.ts';
 import {
   buildIngredientNameMap,
@@ -71,6 +72,12 @@ Deno.serve(async (request) => {
       prioritizeExpiringSoon: true,
     },
   });
+
+  // Streaming clients get recipes one at a time as NDJSON so the UI can render
+  // cards progressively instead of waiting for the whole batch.
+  if (body?.stream === true) {
+    return streamGenerationResponse(prompt);
+  }
 
   try {
     const { result: recipes } = await callWithFallback(getGenerationChain(), (provider) =>
@@ -336,6 +343,82 @@ function parseFallbackOrder() {
 
 function getGenerationChain() {
   return buildProviderChain(Deno.env.get('AI_PROVIDER') ?? 'gemini', parseFallbackOrder());
+}
+
+// Emits recipes as newline-delimited JSON: a `status` event, one `recipe` event
+// per recipe, then `done` (or `error`). Provider-agnostic: it walks the same
+// generation chain used elsewhere and asks each provider that supports streaming
+// (Gemini, DeepSeek, OpenAI, ...) to stream, with retryable fallback to the next.
+// If no provider streams, it falls back to a buffered generation and emits that
+// batch, so switching AI_PROVIDER needs no code change here.
+function streamGenerationResponse(prompt) {
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      const emit = (event) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      let emittedAny = false;
+
+      try {
+        emit({ type: 'status', stage: 'generating' });
+
+        const chain = getGenerationChain();
+
+        for (const provider of chain) {
+          if (typeof provider.generateStream !== 'function') {
+            continue;
+          }
+
+          const parser = createRecipeStreamParser();
+
+          try {
+            for await (const text of provider.generateStream(prompt)) {
+              for (const recipe of parser.push(text)) {
+                emittedAny = true;
+                emit({ type: 'recipe', recipe });
+              }
+            }
+
+            // This provider streamed to completion.
+            break;
+          } catch (streamError) {
+            // Once recipes have gone out we cannot cleanly restart on another
+            // provider; surface the error. Otherwise only a retryable failure
+            // moves on to the next streaming provider.
+            if (emittedAny || !isRetryableProviderError(streamError)) {
+              throw streamError;
+            }
+          }
+        }
+
+        // No provider streamed anything: fall back to a single buffered batch.
+        if (!emittedAny) {
+          const { result } = await callWithFallback(chain, (provider) => provider.generate(prompt));
+          const recipes = Array.isArray(result?.recipes) ? result.recipes : [];
+
+          for (const recipe of recipes) {
+            emittedAny = true;
+            emit({ type: 'recipe', recipe });
+          }
+        }
+
+        emit({ type: 'done' });
+      } catch (error) {
+        const publicError = getPublicProviderError(error, 'Recipe generation');
+
+        emit({ type: 'error', code: publicError.code, error: publicError.error });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/x-ndjson',
+      'Cache-Control': 'no-cache',
+    },
+  });
 }
 
 function getTranslationChain() {
