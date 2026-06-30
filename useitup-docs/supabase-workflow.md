@@ -85,7 +85,10 @@ Provider resilience:
 
 - `PROVIDER_FALLBACK_ORDER` is a comma-separated list of providers to try after the primary if it hits a retryable failure such as quota, rate limiting, provider downtime, or timeout (e.g. `deepseek,gemini`). Applies to both generation and translation. Leave unset or set to `none` for no fallback. Only list providers whose API keys are configured.
 - `PROVIDER_TIMEOUT_MS` caps each AI provider request (default `45000`). DeepSeek can hold a connection open for minutes under load, so this bounds the wait and turns a stall into a fallback. Keep it well under the Edge Function's own timeout.
-- `GENERATION_RATE_LIMIT_PER_HOUR` limits fresh recipe generation requests per authenticated user per rolling hour (default `10`, set `0` to disable).
-- `TRANSLATION_RATE_LIMIT_PER_HOUR` limits uncached recipe and term translation requests per authenticated user per rolling hour (default `120`, set `0` to disable). Cached translation hits do not count against this limit.
+- `GENERATION_RATE_LIMIT_PER_HOUR` limits fresh recipe generation requests per authenticated user per rolling hour (default `30`, set `0` to disable).
+- `TRANSLATION_RATE_LIMIT_PER_HOUR` limits uncached recipe and term translation requests per authenticated user per rolling hour (default `240`, set `0` to disable). Cached translation hits do not count against this limit.
+- `INTAKE_RATE_LIMIT_PER_HOUR` limits natural-language pantry intake parsing requests per authenticated user per rolling hour (default `60`, set `0` to disable).
+
+When a `*_RATE_LIMIT_PER_HOUR` secret is set, its value **overrides the code default** — the in-code default only applies when the secret is absent. So if you set a low value for testing (e.g. `1`), changing the code default has no effect until you update or unset that secret (`npx supabase secrets unset GENERATION_RATE_LIMIT_PER_HOUR`). Secret changes take effect on the next invocation; redeploy the function if it seems sticky. Limits are a rolling one-hour window, so raising a limit immediately unblocks a user without clearing any table.
 
 `recipe-image` supports `IMAGE_PROVIDER=pexels` today. `IMAGE_PROVIDER=openai` is reserved for future generated image support after adding Supabase Storage for stable image URLs.

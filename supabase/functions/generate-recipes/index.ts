@@ -295,16 +295,20 @@ function rateLimitResponse(
   );
 }
 
+// Per-user hourly ceilings tuned for abuse prevention, not normal usage: a real
+// user exploring recipes, switching languages, or adding groceries should never
+// hit these, while a runaway client or scripted abuse is still capped. Override
+// per environment with the matching secret.
 function getGenerationRateLimit() {
-  return readPositiveIntegerEnv('GENERATION_RATE_LIMIT_PER_HOUR', 10);
+  return readPositiveIntegerEnv('GENERATION_RATE_LIMIT_PER_HOUR', 30);
 }
 
 function getIntakeRateLimit() {
-  return readPositiveIntegerEnv('INTAKE_RATE_LIMIT_PER_HOUR', 30);
+  return readPositiveIntegerEnv('INTAKE_RATE_LIMIT_PER_HOUR', 60);
 }
 
 function getTranslationRateLimit() {
-  return readPositiveIntegerEnv('TRANSLATION_RATE_LIMIT_PER_HOUR', 120);
+  return readPositiveIntegerEnv('TRANSLATION_RATE_LIMIT_PER_HOUR', 240);
 }
 
 async function getCachedTerm(sourceHash: string, targetLanguage: string) {
