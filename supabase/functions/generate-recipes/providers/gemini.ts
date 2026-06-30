@@ -136,7 +136,10 @@ async function requestGeminiJson({
 // JSON) that the caller feeds into the incremental recipe parser. Uses Gemini's
 // SSE endpoint and plain fetch (no request timeout) since the connection is held
 // open for the whole generation.
-export async function* streamGeminiText(prompt: RecipePrompt): AsyncGenerator<string> {
+export async function* streamGeminiText(
+  prompt: RecipePrompt,
+  signal?: AbortSignal,
+): AsyncGenerator<string> {
   const apiKey = Deno.env.get('GEMINI_API_KEY');
 
   if (!apiKey) {
@@ -171,6 +174,7 @@ export async function* streamGeminiText(prompt: RecipePrompt): AsyncGenerator<st
           maxOutputTokens,
         },
       }),
+      signal,
     },
   );
 

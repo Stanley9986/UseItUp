@@ -31,7 +31,8 @@ export function createOpenAICompatibleProvider(config: OpenAICompatibleConfig): 
         prompt,
         responseSchema: recipeSchema,
       }),
-    generateStream: (prompt: RecipePrompt) => streamOpenAICompatibleText(config, prompt),
+    generateStream: (prompt: RecipePrompt, signal?: AbortSignal) =>
+      streamOpenAICompatibleText(config, prompt, signal),
     name: config.name,
     parseIntake: (prompt: IntakePrompt) =>
       requestOpenAICompatibleJson(config, {
@@ -113,6 +114,7 @@ async function requestOpenAICompatibleJson(
 export async function* streamOpenAICompatibleText(
   config: OpenAICompatibleConfig,
   prompt: RecipePrompt,
+  signal?: AbortSignal,
 ): AsyncGenerator<string> {
   const apiKey = Deno.env.get(config.apiKeyEnv);
 
@@ -139,6 +141,7 @@ export async function* streamOpenAICompatibleText(
       'Content-Type': 'application/json',
     },
     method: 'POST',
+    signal,
   });
 
   if (!response.ok || !response.body) {

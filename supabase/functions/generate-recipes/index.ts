@@ -11,6 +11,7 @@ import {
 import { buildProviderChain, callWithFallback } from './providers/index.ts';
 import { createRecipeStreamParser } from './shared/recipe-stream.ts';
 import { getPublicProviderError, isRetryableProviderError } from './shared/provider-errors.ts';
+import { getProviderTimeoutMs } from './shared/request.ts';
 import { checkRateLimit, getJwtSubjectFromRequest, readPositiveIntegerEnv } from './shared/rate-limit.ts';
 import {
   buildIngredientNameMap,
@@ -362,6 +363,7 @@ function streamGenerationResponse(prompt) {
         emit({ type: 'status', stage: 'generating' });
 
         const chain = getGenerationChain();
+        const timeoutMs = getProviderTimeoutMs();
 
         for (const provider of chain) {
           if (typeof provider.generateStream !== 'function') {
@@ -370,8 +372,25 @@ function streamGenerationResponse(prompt) {
 
           const parser = createRecipeStreamParser();
 
+          // Bound time-to-first-token so a stalled provider (e.g. one that holds
+          // the connection open without producing anything) is aborted and the
+          // next provider in the chain gets a turn, instead of hanging. This
+          // restores the safety net the buffered path has via fetchWithTimeout.
+          const abortController = new AbortController();
+          let sawFirstToken = false;
+          const ttftTimer = setTimeout(() => {
+            if (!sawFirstToken) {
+              abortController.abort();
+            }
+          }, timeoutMs);
+
           try {
-            for await (const text of provider.generateStream(prompt)) {
+            for await (const text of provider.generateStream(prompt, abortController.signal)) {
+              if (!sawFirstToken) {
+                sawFirstToken = true;
+                clearTimeout(ttftTimer);
+              }
+
               for (const recipe of parser.push(text)) {
                 emittedAny = true;
                 emit({ type: 'recipe', recipe });
@@ -382,11 +401,15 @@ function streamGenerationResponse(prompt) {
             break;
           } catch (streamError) {
             // Once recipes have gone out we cannot cleanly restart on another
-            // provider; surface the error. Otherwise only a retryable failure
-            // moves on to the next streaming provider.
-            if (emittedAny || !isRetryableProviderError(streamError)) {
+            // provider; surface the error. Otherwise a retryable failure or a
+            // time-to-first-token abort moves on to the next streaming provider.
+            const aborted = streamError?.name === 'AbortError';
+
+            if (emittedAny || (!aborted && !isRetryableProviderError(streamError))) {
               throw streamError;
             }
+          } finally {
+            clearTimeout(ttftTimer);
           }
         }
 
